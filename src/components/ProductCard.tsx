@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { AlertTriangle, HelpCircle, Eye, ShoppingBag, ShieldCheck, Globe, Clock, CheckCircle2, Copy, Check } from 'lucide-react';
+import { AlertTriangle, HelpCircle, Eye, ShoppingBag, ShieldCheck, Globe, Clock, CheckCircle2, Copy, Check, GitBranch } from 'lucide-react';
 import { AiTwotoneSafetyCertificate } from 'react-icons/ai';
 import type { SuzukiPart, ActiveMotorcycle, AvailabilityStatus } from '../types';
 import { getAvailabilityStatus, AVAILABILITY_META, getPrimaryOem } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getProductWhatsAppUrl } from '../utils/whatsapp';
+import { EXPLODED_DIAGRAMS } from '../data/suzukiData';
+import { DIAGRAM_SVGS } from '../data/svgAssets';
 
 interface ProductCardProps {
   part: SuzukiPart;
@@ -51,6 +53,22 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const showProductImages = import.meta.env.PUBLIC_SHOW_PRODUCT_IMAGES === 'true';
 
   const availabilityStatus: AvailabilityStatus = getAvailabilityStatus(part);
+
+  // Resolve schematic info (diagram image, hotspot position and item number) for this part
+  const schematicInfo = (() => {
+    if (!part.schematicId || part.diagramHotspot == null) return null;
+    const diagram = EXPLODED_DIAGRAMS.find(d => d.id === part.schematicId);
+    if (!diagram) return null;
+    const diagramImage = DIAGRAM_SVGS[part.schematicId];
+    if (!diagramImage) return null;
+    return {
+      title: diagram.title,
+      itemNumber: part.diagramHotspot.itemNumber,
+      x: part.diagramHotspot.x,
+      y: part.diagramHotspot.y,
+      image: diagramImage,
+    };
+  })();
 
   const availabilityBadge = (() => {
     if (availabilityStatus === 'in_stock') {
@@ -127,20 +145,58 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             }}
             className="relative aspect-4/3 bg-slate-100/80 overflow-hidden cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
           >
-            <img
-              src={part.image}
-              alt={part.name}
-              referrerPolicy="no-referrer"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-            />
+            {schematicInfo ? (
+              <>
+                {/* Diagram (despiece) image — shows the part's position in the assembly */}
+                <img
+                  src={schematicInfo.image}
+                  alt={`Despiece: ${schematicInfo.title}`}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-contain bg-white p-2 group-hover:scale-105 transition-transform duration-500 ease-out"
+                />
+
+                {/* Hotspot marker — numbered pin at the exact part position */}
+                <div
+                  className="absolute z-20 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ left: `${schematicInfo.x}%`, top: `${schematicInfo.y}%` }}
+                  aria-hidden="true"
+                >
+                  {/* Pulse ring */}
+                  <span className="absolute inset-0 rounded-full bg-[#E60012]/40 animate-ping" style={{ animationDuration: '1.8s' }} />
+                  {/* Numbered pin */}
+                  <span className="relative inline-flex items-center justify-center min-w-[28px] h-7 px-1.5 rounded-full bg-[#E60012] text-white font-mono font-extrabold text-sm shadow-[0_4px_12px_rgba(230,0,18,0.55)] border-2 border-white">
+                    {schematicInfo.itemNumber}
+                  </span>
+                </div>
+
+                {/* "Despiece" label badge — top right corner */}
+                <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1 bg-slate-900/85 backdrop-blur-md text-white px-2 py-1 rounded-md border border-white/10 shadow-md">
+                  <GitBranch className="w-3 h-3 text-[#E60012] shrink-0" aria-hidden="true" />
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider">Despiece</span>
+                </div>
+              </>
+            ) : (
+              <img
+                src={part.image}
+                alt={part.name}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+              />
+            )}
 
             <div className="absolute top-2.5 left-2.5 z-10">{compatibilityBadge}</div>
 
-            <div className="absolute top-2.5 right-2.5 z-10">
-              <div className="bg-white/95 text-slate-800 font-bold text-[10px] uppercase px-2.5 py-1 rounded-md backdrop-blur-md border border-slate-200/80 shadow-xs">
-                {part.category}
+            {/* Schematic title footer (only when diagram is shown) */}
+            {schematicInfo && (
+              <div
+                className="absolute bottom-0 inset-x-0 z-10 bg-gradient-to-t from-slate-900/95 via-slate-900/80 to-transparent text-white px-2.5 py-2 pt-6"
+                title={schematicInfo.title}
+              >
+                <p className="font-mono text-[10px] font-extrabold uppercase tracking-wider leading-tight truncate">
+                  {schematicInfo.title}
+                </p>
               </div>
-            </div>
+            )}
           </div>
         ) : (
           <div className="px-4 pt-4 sm:px-5 sm:pt-5 flex items-start justify-between gap-2">
