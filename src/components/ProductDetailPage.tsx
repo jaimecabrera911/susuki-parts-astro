@@ -1,0 +1,451 @@
+import React, { useState, useEffect } from 'react';
+import {
+  ArrowLeft,
+  ShieldCheck,
+  AlertTriangle,
+  Wrench,
+  Factory,
+  Layers,
+  FileText,
+  Bike,
+  CheckCircle2,
+  ShoppingBag,
+  Share2,
+  Check,
+  Copy
+} from 'lucide-react';
+import type { SuzukiPart, ActiveMotorcycle } from '../types';
+import { SUZUKI_MODELS } from '../data/suzukiData';
+import { formatCurrency } from '../utils/formatCurrency';
+import { getProductWhatsAppUrl } from '../utils/whatsapp';
+import { ProductImageGallery } from './ProductImageGallery';
+
+interface ProductDetailPageProps {
+  part: SuzukiPart;
+  activeMotorcycle: ActiveMotorcycle | null;
+  allParts: SuzukiPart[];
+  onBack: () => void;
+  onAddToCart: (part: SuzukiPart) => void;
+  onOpenGarageModal: () => void;
+  onViewSchematics: (schematicId: string) => void;
+  onSelectRelatedPart: (part: SuzukiPart) => void;
+}
+
+export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
+  part,
+  activeMotorcycle,
+  allParts,
+  onBack,
+  onAddToCart,
+  onOpenGarageModal,
+  onViewSchematics,
+  onSelectRelatedPart,
+}) => {
+  const [copied, setCopied] = useState(false);
+
+  // Scroll to top when page loads/changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [part.id]);
+
+  // Compatibility evaluation
+  let isCompatible = false;
+  let compatibilityRule = null;
+
+  if (activeMotorcycle) {
+    compatibilityRule = part.compatibility.find((c) => {
+      if (c.modelId !== activeMotorcycle.modelId) return false;
+      if (activeMotorcycle.year < c.yearStart || activeMotorcycle.year > c.yearEnd) return false;
+      if (c.version && c.version !== activeMotorcycle.version) return false;
+      return true;
+    });
+    isCompatible = !!compatibilityRule;
+  }
+
+  // Calculate strictly compatible related parts
+  const isPartCompatibleWithMoto = (p: SuzukiPart, moto: ActiveMotorcycle): boolean => {
+    return p.compatibility.some((c) => {
+      if (c.modelId !== moto.modelId) return false;
+      if (moto.year < c.yearStart || moto.year > c.yearEnd) return false;
+      if (c.version && c.version !== moto.version) return false;
+      return true;
+    });
+  };
+
+  let relatedParts: SuzukiPart[] = [];
+  if (activeMotorcycle) {
+    relatedParts = allParts.filter(
+      (p) => p.id !== part.id && isPartCompatibleWithMoto(p, activeMotorcycle)
+    );
+  } else {
+    const currentModelIds = new Set(part.compatibility.map((c) => c.modelId));
+    relatedParts = allParts.filter(
+      (p) => p.id !== part.id && p.compatibility.some((c) => currentModelIds.has(c.modelId))
+    );
+  }
+
+  const handleCopyLink = () => {
+    const url = `${window.location.origin}${window.location.pathname}#producto=${part.oemNumber}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      {/* Breadcrumbs & Back Navigation Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl transition-colors flex items-center gap-2 font-bold text-xs uppercase cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4 text-[#E60012]" />
+            <span>Volver al Catálogo</span>
+          </button>
+          
+          <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 font-medium">
+            <span>Catálogo</span>
+            <span>/</span>
+            <span className="capitalize">{part.category}</span>
+            <span>/</span>
+            <span className="font-bold text-slate-900 truncate max-w-xs">{part.name}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+            title="Copiar enlace permanente del producto"
+            aria-live="polite"
+          >
+            {copied ? (
+              <>
+                <Check className="w-4 h-4 text-emerald-600" aria-hidden="true" />
+                <span className="text-emerald-700 font-bold">¡Enlace Copiado!</span>
+              </>
+            ) : (
+              <>
+                <Share2 className="w-4 h-4 text-slate-500" aria-hidden="true" />
+                <span>Compartir Producto</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Main Page Layout */}
+      <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-8">
+        
+        {/* Top Compatibility Banner */}
+        <div className={`p-4 rounded-xl flex items-start gap-3 border ${
+          activeMotorcycle
+            ? isCompatible
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+              : 'bg-red-50 border-red-200 text-red-900'
+            : 'bg-amber-50 border-amber-200 text-amber-900'
+        }`}>
+          {activeMotorcycle ? (
+            isCompatible ? (
+              <>
+                <ShieldCheck className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
+                <div>
+                  <h4 className="font-extrabold text-sm uppercase text-emerald-900">
+                    COMPATIBILIDAD 100% GARANTIZADA DE FÁBRICA
+                  </h4>
+                  <p className="text-xs text-emerald-800 mt-0.5">
+                    Esta pieza con código OEM <span className="font-mono font-bold">{part.oemNumber}</span> es exactamente la especificada para tu <span className="font-bold">{activeMotorcycle.brand} {activeMotorcycle.modelName} ({activeMotorcycle.year})</span>.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="w-6 h-6 text-[#E60012] shrink-0 mt-0.5" aria-hidden="true" />
+                <div>
+                  <h4 className="font-extrabold text-sm uppercase text-[#E60012]">
+                    ALERTA DE INCOMPATIBILIDAD TÉCNICA
+                  </h4>
+                  <p className="text-xs text-red-900 mt-0.5 font-medium">
+                    Este repuesto NO es compatible con tu vehículo activo (<span className="font-bold">{activeMotorcycle.modelName} {activeMotorcycle.year}</span>). Evita selecciones erróneas cambiando la moto en tu Garaje.
+                  </p>
+                </div>
+              </>
+            )
+          ) : (
+            <>
+              <Wrench className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="flex items-center justify-between w-full">
+                <div>
+                  <h4 className="font-extrabold text-sm uppercase text-amber-900">
+                    MOTOCICLETA NO SELECCIONADA
+                  </h4>
+                  <p className="text-xs text-amber-800 mt-0.5">
+                    Selecciona tu modelo y año antes de proceder para verificar encaje exacto.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onOpenGarageModal}
+                  className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs uppercase rounded-lg shadow-xs shrink-0 ml-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+                >
+                  Seleccionar Moto
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* 2-Column Product Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
+          {/* Left Column: Interactive Product Gallery & OEM Info */}
+          <div className="space-y-4">
+            <ProductImageGallery part={part} onViewSchematics={onViewSchematics} />
+
+            <div className="bg-slate-900 text-white p-4 rounded-xl font-mono text-xs flex items-center justify-between shadow-xs">
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase font-sans">CÓDIGO OFICIAL SUZUKI OEM</span>
+                <span className="font-bold text-emerald-400 text-base tracking-wide">{part.oemNumber}</span>
+              </div>
+              <Factory className="w-6 h-6 text-slate-400" aria-hidden="true" />
+            </div>
+
+            {part.schematicId && (
+              <button
+                type="button"
+                onClick={() => onViewSchematics(part.schematicId!)}
+                className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors border border-slate-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+              >
+                <Layers className="w-4 h-4 text-[#E60012]" aria-hidden="true" />
+                <span>Ver en Diagrama de Despiece (Exploded View)</span>
+              </button>
+            )}
+          </div>
+
+          {/* Right Column: Title, Price, Description, Specs & Vehicles */}
+          <div className="space-y-6 flex flex-col justify-between">
+            <div className="space-y-4">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-[#E60012] bg-red-50 px-2.5 py-1 rounded-md border border-red-100 inline-block">
+                  {part.category}
+                </span>
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 leading-tight">{part.name}</h1>
+                <div className="text-2xl sm:text-3xl font-mono font-black text-slate-900 mt-3 text-[#E60012]">
+                  {formatCurrency(part.price)}
+                </div>
+              </div>
+
+              <p className="text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-4">
+                {part.description}
+              </p>
+
+              {/* Technical Specifications */}
+              <div>
+                <h3 className="text-xs font-extrabold uppercase text-slate-900 mb-2 flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-[#E60012]" aria-hidden="true" />
+                  Especificaciones Técnicas
+                </h3>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2 text-xs">
+                  {part.specs.map((s, idx) => (
+                    <div key={idx} className="flex justify-between border-b border-slate-200/60 pb-1.5 last:border-none">
+                      <span className="text-slate-500 font-medium">{s.label}:</span>
+                      <span className="font-mono font-bold text-slate-800">{s.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Associated Vehicles & Compatibilities */}
+              <div>
+                <h3 className="text-xs font-extrabold uppercase text-slate-900 mb-2 flex items-center gap-1.5">
+                  <Bike className="w-4 h-4 text-[#E60012]" aria-hidden="true" />
+                  Vehículos Asociados & Compatibilidad Exacta
+                </h3>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {part.compatibility.map((c, idx) => {
+                    const modelObj = SUZUKI_MODELS.find((m) => m.id === c.modelId);
+                    const isMatch = activeMotorcycle ? activeMotorcycle.modelId === c.modelId : false;
+                    return (
+                      <div
+                        key={idx}
+                        className={`p-3 rounded-xl text-xs flex justify-between items-center border transition-colors ${
+                          isMatch
+                            ? 'bg-emerald-50 border-emerald-300 text-emerald-950 ring-1 ring-emerald-400/20'
+                            : 'bg-slate-50 border-slate-200 text-slate-800'
+                        }`}
+                      >
+                        <div>
+                          <div className="font-extrabold flex items-center gap-1.5 text-sm">
+                            {modelObj ? modelObj.name : c.modelId.toUpperCase()}
+                            {isMatch && (
+                              <span className="text-[9px] font-mono font-bold bg-emerald-600 text-white px-2 py-0.5 rounded uppercase">
+                                Tu Moto
+                              </span>
+                            )}
+                          </div>
+                          {c.version && (
+                            <div className="text-[11px] text-slate-500 font-medium">{c.version}</div>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="font-mono text-xs font-bold text-slate-700 bg-white border border-slate-200 px-2.5 py-1 rounded-md">
+                            Años: {c.yearStart} - {c.yearEnd}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Actions Bar */}
+            <div className="pt-6 border-t border-slate-200 space-y-3">
+              <div className="text-xs text-slate-500 flex items-center justify-between">
+                <span>Stock en Bodega: <strong className="text-slate-900">{part.stock} unidades</strong></span>
+                <span className="text-emerald-600 font-bold">Despacho Inmediato</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <a
+                  href={getProductWhatsAppUrl(part, activeMotorcycle)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 px-4 min-h-[44px] bg-[#25D366] hover:bg-emerald-600 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+                >
+                  <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.447-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414zM12.01 2.003c-5.504 0-9.976 4.471-9.976 9.974 0 1.759.458 3.475 1.33 4.988l-1.416 5.17 5.29-1.388c1.458.796 3.104 1.215 4.772 1.215 5.505 0 9.977-4.472 9.977-9.974 0-2.665-1.037-5.17-2.92-7.054a9.907 9.907 0 0 0-7.057-2.932z"/>
+                  </svg>
+                  <span>Consultar WhatsApp</span>
+                </a>
+
+                {!activeMotorcycle ? (
+                  <button
+                    type="button"
+                    onClick={onOpenGarageModal}
+                    className="w-full py-3 px-4 min-h-[44px] bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs uppercase rounded-xl shadow-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+                  >
+                    Seleccionar Moto para Comprar
+                  </button>
+                ) : !isCompatible ? (
+                  <div className="flex flex-col items-center sm:items-end gap-1">
+                    <button
+                      type="button"
+                      disabled
+                      aria-disabled="true"
+                      className="w-full py-3 px-4 min-h-[44px] bg-red-100 text-red-900 border border-red-300 font-black text-xs uppercase rounded-xl cursor-not-allowed shadow-none"
+                    >
+                      Compra Bloqueada (Incompatible)
+                    </button>
+                    <span className="text-[10px] text-red-700 font-medium">
+                      Selecciona tu moto en el Garaje.
+                    </span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onAddToCart(part)}
+                    className="w-full py-3 px-4 min-h-[44px] bg-[#E60012] hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+                  >
+                    <ShoppingBag className="w-4 h-4" aria-hidden="true" />
+                    <span>Añadir al Carrito</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Related Products Section */}
+        <div className="pt-8 border-t border-slate-200">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-600" aria-hidden="true" />
+                Repuestos Relacionados Garantizados
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {activeMotorcycle ? (
+                  <>
+                    Mostrando únicamente repuestos compatibles con tu{' '}
+                    <span className="font-bold text-slate-800">
+                      {activeMotorcycle.modelName} ({activeMotorcycle.year})
+                    </span>
+                  </>
+                ) : (
+                  'Selecciona una motocicleta en tu garaje para verificar compatibilidad exacta.'
+                )}
+              </p>
+            </div>
+          </div>
+
+          {relatedParts.length === 0 ? (
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center text-xs text-slate-500">
+              No hay otros repuestos registrados para este modelo en este momento.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {relatedParts.slice(0, 4).map((relPart) => (
+                <div
+                  key={relPart.id}
+                  className="bg-slate-50 hover:bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-between transition-all hover:shadow-md hover:-translate-y-0.5"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 bg-slate-200 text-slate-700 rounded">
+                        {relPart.oemNumber}
+                      </span>
+                      {activeMotorcycle && (
+                        <span className="text-[10px] font-extrabold text-emerald-600 flex items-center gap-0.5">
+                          <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" /> Compatible
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-3 items-center mb-3">
+                      <img
+                        src={relPart.image}
+                        alt={relPart.name}
+                        referrerPolicy="no-referrer"
+                        className="w-14 h-14 object-cover rounded-xl bg-slate-200 shrink-0 border border-slate-200"
+                      />
+                      <h4 className="text-xs font-bold text-slate-900 line-clamp-2 leading-snug">
+                        {relPart.name}
+                      </h4>
+                    </div>
+                    <div className="text-sm font-mono font-black text-slate-900 mb-4 text-[#E60012]">
+                      {formatCurrency(relPart.price)}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-3 border-t border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => onSelectRelatedPart(relPart)}
+                      className="flex-1 py-2 px-3 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs uppercase rounded-xl transition-colors text-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+                    >
+                      Ver Detalle
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onAddToCart(relPart)}
+                      className="py-2 px-3 bg-[#E60012] hover:bg-red-700 text-white font-bold text-xs uppercase rounded-xl transition-colors flex items-center gap-1 shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+                      title="Añadir al carrito"
+                      aria-label={`Añadir ${relPart.name} al carrito`}
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" aria-hidden="true" />
+                      <span>+Carrito</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+      </div>
+    </div>
+  );
+};
