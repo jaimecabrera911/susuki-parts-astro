@@ -14,7 +14,9 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const cleanOem = String(oem).trim().toUpperCase();
-    const part = SUZUKI_PARTS.find(p => p.oemNumber.toUpperCase().includes(cleanOem) || cleanOem.includes(p.oemNumber.toUpperCase()));
+    const part = SUZUKI_PARTS.find(p =>
+      p.oemNumbers.some(oem => oem.toUpperCase().includes(cleanOem) || cleanOem.includes(oem.toUpperCase()))
+    );
 
     if (part) {
       return new Response(JSON.stringify({ found: true, part }), {

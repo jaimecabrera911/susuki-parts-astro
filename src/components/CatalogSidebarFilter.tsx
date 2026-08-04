@@ -437,7 +437,7 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
             className="w-full py-2.5 px-3 min-h-[44px] bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
           >
             <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Restablecer ({activeFilterCount}) Filtros</span>
+            <span>Limpiar ({activeFilterCount}) Filtros</span>
           </button>
         </div>
       )}
@@ -502,7 +502,7 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
             {availabilityFilter.size < 3 && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-900 font-bold text-[11px] rounded-lg shrink-0">
                 Disponibilidad filtrada
-                <button type="button" aria-label="Restablecer filtro de disponibilidad" onClick={() => setAvailabilityFilter(new Set<AvailabilityStatus>(['in_stock', 'international', 'on_order']))} className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-amber-100 cursor-pointer">
+                <button type="button" aria-label="Limpiar filtro de disponibilidad" onClick={() => setAvailabilityFilter(new Set<AvailabilityStatus>(['in_stock', 'international', 'on_order']))} className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-amber-100 cursor-pointer">
                   <X className="w-3 h-3" />
                 </button>
               </span>

@@ -1,8 +1,8 @@
-import React from 'react';
-import { AlertTriangle, HelpCircle, Eye, ShoppingBag, ShieldCheck, Globe, Clock, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertTriangle, HelpCircle, Eye, ShoppingBag, ShieldCheck, Globe, Clock, CheckCircle2, Copy, Check } from 'lucide-react';
 import { AiTwotoneSafetyCertificate } from 'react-icons/ai';
 import type { SuzukiPart, ActiveMotorcycle, AvailabilityStatus } from '../types';
-import { getAvailabilityStatus, AVAILABILITY_META } from '../types';
+import { getAvailabilityStatus, AVAILABILITY_META, getPrimaryOem } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getProductWhatsAppUrl } from '../utils/whatsapp';
 
@@ -37,6 +37,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       isCompatible = true;
     }
   }
+
+  const [copied, setCopied] = useState(false);
+  const primaryOem = getPrimaryOem(part);
+
+  const handleCopyOem = () => {
+    navigator.clipboard.writeText(primaryOem).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   const showProductImages = import.meta.env.PUBLIC_SHOW_PRODUCT_IMAGES === 'true';
 
@@ -162,8 +172,27 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {part.name}
           </h3>
 
-          <p className="mt-1 font-mono text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-            OEM: {part.oemNumber}
+          <p className="mt-1 font-mono text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+            <span>OEM:</span>
+            <button
+              type="button"
+              onClick={handleCopyOem}
+              aria-label={`Copiar referencia ${primaryOem}`}
+              title="Copiar referencia"
+              className="inline-flex items-center gap-1 font-mono text-[10px] font-bold text-slate-400 hover:text-[#E60012] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] rounded px-1 py-0.5 bg-slate-100 hover:bg-red-50"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-2.5 h-2.5 text-emerald-500 shrink-0" />
+                  <span className="text-emerald-600">Copiado</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-2.5 h-2.5 shrink-0" />
+                  <span>{primaryOem}</span>
+                </>
+              )}
+            </button>
           </p>
 
           <p className="text-slate-600 text-xs mt-1.5 line-clamp-2 leading-relaxed">

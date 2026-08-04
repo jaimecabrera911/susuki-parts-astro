@@ -1,5 +1,6 @@
 import React from 'react';
 import { Package, ShieldCheck, FileText, Calendar, Truck } from 'lucide-react';
+import { getPrimaryOem } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
 
 interface OrdersModalProps {
@@ -76,7 +77,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ orders }) => {
                     <div className="flex items-center gap-3">
                       <img src={it.part.image} alt={it.part.name} className="w-10 h-10 rounded-lg object-cover bg-white border border-slate-100" />
                       <div>
-                        <div className="font-mono font-bold text-[#E60012] text-[10px]">{it.part.oemNumber}</div>
+                        <div className="font-mono font-bold text-[#E60012] text-[10px]">{getPrimaryOem(it.part)}</div>
                         <div className="font-bold text-slate-800">{it.part.name}</div>
                       </div>
                     </div>

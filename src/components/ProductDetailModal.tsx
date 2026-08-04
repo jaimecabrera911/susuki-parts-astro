@@ -1,6 +1,7 @@
-import React from 'react';
-import { X, CheckCircle2, AlertTriangle, ShieldCheck, Layers, ArrowRight, ShoppingBag, Wrench, Factory, FileText, Bike, Maximize2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, CheckCircle2, AlertTriangle, ShieldCheck, Layers, ArrowRight, ShoppingBag, Wrench, Factory, FileText, Bike, Maximize2, Copy, Check, Info, ChevronDown, ChevronUp, Package, HelpCircle } from 'lucide-react';
 import type { SuzukiPart, ActiveMotorcycle } from '../types';
+import { getPrimaryOem } from '../types';
 import { SUZUKI_MODELS } from '../data/suzukiData';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getProductWhatsAppUrl } from '../utils/whatsapp';
@@ -29,6 +30,16 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onSelectRelatedPart,
   onOpenAsPage,
 }) => {
+  const [copiedOem, setCopiedOem] = useState<string | null>(null);
+  const [showAllOems, setShowAllOems] = useState(false);
+
+  const handleCopyOem = (oem: string) => {
+    navigator.clipboard.writeText(oem).then(() => {
+      setCopiedOem(oem);
+      setTimeout(() => setCopiedOem(null), 2000);
+    });
+  };
+
   // Handle Escape key and body scroll lock
   React.useEffect(() => {
     if (!part) return;
@@ -141,7 +152,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     COMPATIBILIDAD 100% GARANTIZADA
                   </h4>
                   <p className="text-xs text-emerald-800 mt-0.5">
-                    Esta pieza con código OEM <span className="font-mono font-bold">{part.oemNumber}</span> es exactamente la especificada de fábrica para tu <span className="font-bold">{activeMotorcycle.brand} {activeMotorcycle.modelName} ({activeMotorcycle.year})</span>.
+                    Esta pieza con código OEM <span className="font-mono font-bold">{part.oemNumbers[0]}</span> es exactamente la especificada de fábrica para tu <span className="font-bold">{activeMotorcycle.brand} {activeMotorcycle.modelName} ({activeMotorcycle.year})</span>.
                   </p>
                 </div>
               </>
@@ -189,12 +200,102 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           <div className="space-y-3">
             <ProductImageGallery part={part} onViewSchematics={onViewSchematics} />
 
-            <div className="bg-slate-900 text-white p-3.5 rounded-xl font-mono text-xs flex items-center justify-between">
-              <div>
-                <span className="text-slate-400 block text-[10px] uppercase font-sans">CÓDIGO OFICIAL SUZUKI OEM</span>
-                <span className="font-bold text-emerald-400 text-sm tracking-wide">{part.oemNumber}</span>
+            {/* OEM References Section — colapsable, light style */}
+            <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-xl">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Factory className="w-4 h-4 text-slate-500" aria-hidden="true" />
+                  <span className="text-[10px] uppercase font-extrabold tracking-wider text-slate-600">
+                    Referencia OEM
+                  </span>
+                </div>
+                {part.oemNumbers.length > 1 && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-slate-200 rounded-md text-[10px] font-bold text-slate-500">
+                    {showAllOems ? `${part.oemNumbers.length} de ${part.oemNumbers.length}` : `1 de ${part.oemNumbers.length}`}
+                  </span>
+                )}
               </div>
-              <Factory className="w-5 h-5 text-slate-400" aria-hidden="true" />
+
+              <ul className="space-y-1.5">
+                {(showAllOems ? part.oemNumbers : part.oemNumbers.slice(0, 1)).map((oem, idx) => {
+                  const isPrimary = idx === 0;
+                  const isCopied = copiedOem === oem;
+                  return (
+                    <li
+                      key={oem}
+                      className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg border transition-colors ${
+                        isPrimary
+                          ? 'bg-emerald-50 border-emerald-200/80'
+                          : 'bg-white border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {isPrimary && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-100 border border-emerald-200 text-emerald-700 text-[9px] font-extrabold uppercase tracking-wider rounded shrink-0">
+                            <ShieldCheck className="w-2.5 h-2.5" />
+                            Principal
+                          </span>
+                        )}
+                        <span
+                          className={`font-mono font-bold tracking-wide truncate ${
+                            isPrimary ? 'text-slate-900 text-sm' : 'text-slate-700 text-xs'
+                          }`}
+                          title={oem}
+                        >
+                          {oem}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyOem(oem)}
+                        aria-label={`Copiar referencia ${oem}`}
+                        title="Copiar referencia"
+                        className={`shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                          isCopied
+                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-200'
+                        }`}
+                      >
+                        {isCopied ? (
+                          <>
+                            <Check className="w-3 h-3" />
+                            Copiado
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            Copiar
+                          </>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              {part.oemNumbers.length > 1 && (
+                <div className="mt-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowAllOems(!showAllOems)}
+                    aria-expanded={showAllOems}
+                    aria-controls="oem-references-list"
+                    className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-slate-900 text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  >
+                    {showAllOems ? (
+                      <>
+                        <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />
+                        Ocultar referencias alternativas
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />
+                        Ver {part.oemNumbers.length - 1} {part.oemNumbers.length - 1 === 1 ? 'referencia alternativa' : 'referencias alternativas'}
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
 
             {part.schematicId && (
@@ -308,11 +409,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 )}
               </p>
             </div>
-            {activeMotorcycle && (
-              <span className="text-[10px] font-bold font-mono px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full shrink-0">
-                100% Compatibles ({relatedParts.length})
-              </span>
-            )}
           </div>
 
           {relatedParts.length === 0 ? (
@@ -329,7 +425,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded">
-                        {relPart.oemNumber}
+                        {relPart.oemNumbers[0]}
                       </span>
                       {activeMotorcycle && (
                         <span className="text-[9px] font-extrabold text-emerald-600 flex items-center gap-0.5">
@@ -378,32 +474,42 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           )}
         </div>
 
-        {/* Footer Action */}
-        <div className="mt-8 border-t border-slate-200 pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-xs text-slate-600 font-medium">
-            Stock disponible: <span className="font-bold text-slate-900">{part.stock} unidades en bodega</span>
+        {/* Footer Action — reorganizado con stock en card lateral */}
+        <div className="mt-8 border-t border-slate-200 pt-5 space-y-4">
+          {/* Stock & Availability Card */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Stock indicator card */}
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200/80">
+              <div className="shrink-0 w-10 h-10 rounded-lg bg-emerald-100 border border-emerald-200 flex items-center justify-center">
+                <Package className="w-5 h-5 text-emerald-700" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">
+                  Stock Disponible
+                </div>
+                <div className="text-base font-mono font-black text-emerald-900 leading-tight">
+                  {part.stock} {part.stock === 1 ? 'unidad' : 'unidades'} <span className="text-[11px] font-bold text-emerald-700/80">en bodega</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Empty placeholder for grid alignment */}
+            <div className="hidden sm:block" />
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-end">
+          {/* Action buttons row */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2">
             <a
               href={getProductWhatsAppUrl(part, activeMotorcycle)}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2.5 min-h-[44px] bg-[#25D366] hover:bg-emerald-600 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-colors shadow-sm flex items-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+              className="px-4 py-2.5 min-h-[44px] bg-[#25D366] hover:bg-emerald-600 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
             >
               <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.447-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414zM12.01 2.003c-5.504 0-9.976 4.471-9.976 9.974 0 1.759.458 3.475 1.33 4.988l-1.416 5.17 5.29-1.388c1.458.796 3.104 1.215 4.772 1.215 5.505 0 9.977-4.472 9.977-9.974 0-2.665-1.037-5.17-2.92-7.054a9.907 9.907 0 0 0-7.057-2.932z"/>
               </svg>
               <span>Consultar WhatsApp</span>
             </a>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 min-h-[44px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase rounded-xl transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
-            >
-              Cerrar
-            </button>
 
             {!activeMotorcycle ? (
               <button

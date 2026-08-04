@@ -36,9 +36,24 @@ export const getAvailabilityStatus = (
   return part.stock > 0 ? 'in_stock' : 'on_order';
 };
 
+/** Referencia OEM principal (primera en el array). */
+export const getPrimaryOem = (part: Pick<SuzukiPart, 'oemNumbers'>): string =>
+  part.oemNumbers[0] ?? '';
+
+/**
+ * Busca si un texto coincide con CUALQUIER referencia OEM del repuesto.
+ * Búsqueda case-insensitive, trimming de espacios.
+ */
+export const matchesOem = (part: Pick<SuzukiPart, 'oemNumbers'>, query: string): boolean => {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return part.oemNumbers.some(oem => oem.toLowerCase().includes(q));
+};
+
 export interface SuzukiPart {
   id: string;
-  oemNumber: string;
+  /** Referencias OEM del repuesto. La primera es la referencia principal (la que usa Suzuki). */
+  oemNumbers: string[];
   name: string;
   category: 'motor' | 'electrico' | 'frenos' | 'transmision' | 'filtros' | 'carroceria';
   price: number;

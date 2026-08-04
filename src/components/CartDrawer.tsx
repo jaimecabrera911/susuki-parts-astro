@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Trash2, ShieldCheck, ArrowRight, ShoppingBag, Plus, Minus, MessageSquare, Bike, Eye } from 'lucide-react';
 import type { CartItem, ActiveMotorcycle, SuzukiPart } from '../types';
+import { getPrimaryOem } from '../types';
 import { SUZUKI_MODELS } from '../data/suzukiData';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getCartWhatsAppUrl } from '../utils/whatsapp';
@@ -118,7 +119,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                           onClick={() => onViewPartDetail && onViewPartDetail(item.part)}
                           className="font-mono text-[10px] font-bold text-[#E60012] cursor-pointer hover:underline"
                         >
-                          {item.part.oemNumber}
+                          {getPrimaryOem(item.part)}
                         </div>
 
                         {onViewPartDetail && (

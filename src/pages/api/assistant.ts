@@ -35,7 +35,7 @@ Tu objetivo es responder de manera técnica, precisa y profesional en ESPAÑOL a
 Contexto actual del vehículo: ${contextMotorcycle}
 
 Catálogo disponible en el sistema:
-${SUZUKI_PARTS.map(p => `- OEM: ${p.oemNumber} | ${p.name} | $${p.price} | Categ: ${p.category}`).join("\n")}
+${SUZUKI_PARTS.map(p => `- OEM: ${p.oemNumbers.join(' / ')} | ${p.name} | $${p.price} | Categ: ${p.category}`).join("\n")}
 
 Directrices de respuesta:
 1. Sé extremadamente técnico y conciso.

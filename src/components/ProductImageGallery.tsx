@@ -7,10 +7,10 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  RotateCcw,
-  ShieldCheck
+  RotateCcw
 } from 'lucide-react';
 import type { SuzukiPart } from '../types';
+import { getPrimaryOem } from '../types';
 import { DIAGRAM_SVGS } from '../data/svgAssets';
 
 interface ProductImageGalleryProps {
@@ -170,12 +170,6 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
           <span>{isHovering ? 'Explorando Zoom' : 'Clic para Pantalla Completa'}</span>
         </div>
 
-        {/* OEM Authenticity Badge */}
-        <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-xs border border-slate-200/90 text-slate-800 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md flex items-center gap-1 pointer-events-none">
-          <ShieldCheck className="w-3 h-3 text-emerald-600" aria-hidden="true" />
-          <span>OEM #{part.oemNumber}</span>
-        </div>
-
         {/* Fullscreen Button Icon Overlay */}
         <button
           type="button"
@@ -240,7 +234,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
           >
             <div className="flex items-center gap-3">
               <span className="font-mono text-xs font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800 px-2.5 py-1 rounded-lg">
-                OEM {part.oemNumber}
+                OEM {getPrimaryOem(part)}
               </span>
               <div className="hidden sm:block">
                 <h3 className="font-bold text-sm text-slate-100 truncate max-w-md">{part.name}</h3>

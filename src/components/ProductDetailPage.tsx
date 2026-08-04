@@ -12,9 +12,15 @@ import {
   ShoppingBag,
   Share2,
   Check,
-  Copy
+  Copy,
+  Info,
+  ChevronDown,
+  ChevronUp,
+  Package,
+  HelpCircle
 } from 'lucide-react';
 import type { SuzukiPart, ActiveMotorcycle } from '../types';
+import { getPrimaryOem } from '../types';
 import { SUZUKI_MODELS } from '../data/suzukiData';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getProductWhatsAppUrl } from '../utils/whatsapp';
@@ -42,6 +48,15 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   onSelectRelatedPart,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [copiedOem, setCopiedOem] = useState<string | null>(null);
+  const [showAllOems, setShowAllOems] = useState(false);
+
+  const handleCopyOem = (oem: string) => {
+    navigator.clipboard.writeText(oem).then(() => {
+      setCopiedOem(oem);
+      setTimeout(() => setCopiedOem(null), 2000);
+    });
+  };
 
   // Scroll to top when page loads/changes
   useEffect(() => {
@@ -85,7 +100,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   }
 
   const handleCopyLink = () => {
-    const url = `${window.location.origin}${window.location.pathname}#producto=${part.oemNumber}`;
+    const url = `${window.location.origin}${window.location.pathname}#producto=${getPrimaryOem(part)}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -156,7 +171,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     COMPATIBILIDAD 100% GARANTIZADA DE FÁBRICA
                   </h4>
                   <p className="text-xs text-emerald-800 mt-0.5">
-                    Esta pieza con código OEM <span className="font-mono font-bold">{part.oemNumber}</span> es exactamente la especificada para tu <span className="font-bold">{activeMotorcycle.brand} {activeMotorcycle.modelName} ({activeMotorcycle.year})</span>.
+                    Esta pieza con código OEM <span className="font-mono font-bold">{part.oemNumbers[0]}</span> es exactamente la especificada para tu <span className="font-bold">{activeMotorcycle.brand} {activeMotorcycle.modelName} ({activeMotorcycle.year})</span>.
                   </p>
                 </div>
               </>
@@ -204,12 +219,102 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           <div className="space-y-4">
             <ProductImageGallery part={part} onViewSchematics={onViewSchematics} />
 
-            <div className="bg-slate-900 text-white p-4 rounded-xl font-mono text-xs flex items-center justify-between shadow-xs">
-              <div>
-                <span className="text-slate-400 block text-[10px] uppercase font-sans">CÓDIGO OFICIAL SUZUKI OEM</span>
-                <span className="font-bold text-emerald-400 text-base tracking-wide">{part.oemNumber}</span>
+            {/* OEM References Section — colapsable, light style */}
+            <div className="bg-slate-50 border border-slate-200/80 p-5 rounded-xl">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Factory className="w-5 h-5 text-slate-500" aria-hidden="true" />
+                  <span className="text-xs uppercase font-extrabold tracking-wider text-slate-600">
+                    Referencia OEM
+                  </span>
+                </div>
+                {part.oemNumbers.length > 1 && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-slate-200 rounded-md text-[11px] font-bold text-slate-500">
+                    {showAllOems ? `${part.oemNumbers.length} de ${part.oemNumbers.length}` : `1 de ${part.oemNumbers.length}`}
+                  </span>
+                )}
               </div>
-              <Factory className="w-6 h-6 text-slate-400" aria-hidden="true" />
+
+              <ul className="space-y-2">
+                {(showAllOems ? part.oemNumbers : part.oemNumbers.slice(0, 1)).map((oem, idx) => {
+                  const isPrimary = idx === 0;
+                  const isCopied = copiedOem === oem;
+                  return (
+                    <li
+                      key={oem}
+                      className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border transition-colors ${
+                        isPrimary
+                          ? 'bg-emerald-50 border-emerald-200/80'
+                          : 'bg-white border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        {isPrimary && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 border border-emerald-200 text-emerald-700 text-[10px] font-extrabold uppercase tracking-wider rounded shrink-0">
+                            <ShieldCheck className="w-3 h-3" />
+                            Principal
+                          </span>
+                        )}
+                        <span
+                          className={`font-mono font-bold tracking-wide truncate ${
+                            isPrimary ? 'text-slate-900 text-base' : 'text-slate-700 text-sm'
+                          }`}
+                          title={oem}
+                        >
+                          {oem}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyOem(oem)}
+                        aria-label={`Copiar referencia ${oem}`}
+                        title="Copiar referencia"
+                        className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                          isCopied
+                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-200'
+                        }`}
+                      >
+                        {isCopied ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            Copiado
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            Copiar
+                          </>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              {part.oemNumbers.length > 1 && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowAllOems(!showAllOems)}
+                    aria-expanded={showAllOems}
+                    aria-controls="oem-references-list"
+                    className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-slate-900 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  >
+                    {showAllOems ? (
+                      <>
+                        <ChevronUp className="w-4 h-4" aria-hidden="true" />
+                        Ocultar referencias alternativas
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-4 h-4" aria-hidden="true" />
+                        Ver {part.oemNumbers.length - 1} {part.oemNumbers.length - 1 === 1 ? 'referencia alternativa' : 'referencias alternativas'}
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
 
             {part.schematicId && (
@@ -301,11 +406,21 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </div>
             </div>
 
-            {/* Bottom Actions Bar */}
-            <div className="pt-6 border-t border-slate-200 space-y-3">
-              <div className="text-xs text-slate-500 flex items-center justify-between">
-                <span>Stock en Bodega: <strong className="text-slate-900">{part.stock} unidades</strong></span>
-                <span className="text-emerald-600 font-bold">Despacho Inmediato</span>
+            {/* Bottom Actions Bar — reorganizado con stock en card lateral */}
+            <div className="pt-6 border-t border-slate-200 space-y-4">
+              {/* Stock Card */}
+              <div className="flex items-center gap-3 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200/80 max-w-md">
+                <div className="shrink-0 w-11 h-11 rounded-lg bg-emerald-100 border border-emerald-200 flex items-center justify-center">
+                  <Package className="w-5 h-5 text-emerald-700" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">
+                    Stock Disponible
+                  </div>
+                  <div className="text-base font-mono font-black text-emerald-900 leading-tight">
+                    {part.stock} {part.stock === 1 ? 'unidad' : 'unidades'} <span className="text-[11px] font-bold text-emerald-700/80">en bodega</span>
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -396,7 +511,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[10px] font-mono font-bold px-2 py-0.5 bg-slate-200 text-slate-700 rounded">
-                        {relPart.oemNumber}
+                        {relPart.oemNumbers[0]}
                       </span>
                       {activeMotorcycle && (
                         <span className="text-[10px] font-extrabold text-emerald-600 flex items-center gap-0.5">

@@ -16,7 +16,7 @@ import { CatalogSidebarFilter } from './components/CatalogSidebarFilter';
 import { WhatsAppWidget } from './components/WhatsAppWidget';
 import { SUZUKI_PARTS } from './data/suzukiData';
 import type { ActiveMotorcycle, SuzukiPart, CartItem, AvailabilityStatus } from './types';
-import { getAvailabilityStatus, AVAILABILITY_META } from './types';
+import { getAvailabilityStatus, AVAILABILITY_META, matchesOem, getPrimaryOem } from './types';
 import { ShieldCheck, Wrench, ArrowRight, Layers, FileSearch, Sparkles, CheckCircle2, ArrowUpDown } from 'lucide-react';
 
 export default function App() {
@@ -64,7 +64,6 @@ export default function App() {
 
   const handleResetFilters = () => {
     setSelectedCategory('all');
-    setOnlyCompatible(false);
     setAvailabilityFilter(new Set<AvailabilityStatus>(['in_stock', 'international', 'on_order']));
     setMaxPriceFilter(1000000);
     setSearchQuery('');
@@ -94,7 +93,7 @@ export default function App() {
       if (pathname.startsWith('/producto/')) {
         const oem = decodeURIComponent(pathname.replace('/producto/', ''));
         const found = SUZUKI_PARTS.find(
-          p => p.oemNumber.toLowerCase() === oem.toLowerCase() || p.id === oem
+          p => matchesOem(p, oem) || p.id === oem
         );
         if (found) {
           setSelectedPagePart(found);
@@ -104,7 +103,7 @@ export default function App() {
       } else if (hash.startsWith('#producto=')) {
         const oem = decodeURIComponent(hash.replace('#producto=', ''));
         const found = SUZUKI_PARTS.find(
-          p => p.oemNumber.toLowerCase() === oem.toLowerCase() || p.id === oem
+          p => matchesOem(p, oem) || p.id === oem
         );
         if (found) {
           setSelectedPagePart(found);
@@ -140,7 +139,7 @@ export default function App() {
   const handleOpenProductPage = (part: SuzukiPart) => {
     setSelectedPagePart(part);
     setActiveTab('product-page');
-    window.history.pushState(null, '', `/producto/${encodeURIComponent(part.oemNumber)}`);
+    window.history.pushState(null, '', `/producto/${encodeURIComponent(getPrimaryOem(part))}`);
   };
 
   const handleBackFromProductPage = () => {
@@ -262,8 +261,8 @@ export default function App() {
     // Search query match
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
+      const matchOem = matchesOem(part, q);
       const matchName = part.name.toLowerCase().includes(q);
-      const matchOem = part.oemNumber.toLowerCase().includes(q);
       const matchCategory = part.category.toLowerCase().includes(q);
       if (!matchName && !matchOem && !matchCategory) return false;
     }
@@ -466,7 +465,7 @@ export default function App() {
                       onClick={handleResetFilters}
                       className="mt-5 px-5 py-2.5 min-h-[44px] bg-[#E60012] hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
                     >
-                      Restablecer Todos los Filtros
+                      Limpiar Filtros
                     </button>
                   </div>
                 ) : (
@@ -520,7 +519,7 @@ export default function App() {
             }}
             onSelectRelatedPart={(p) => {
               setSelectedPagePart(p);
-              window.history.pushState(null, '', `/producto/${encodeURIComponent(p.oemNumber)}`);
+              window.history.pushState(null, '', `/producto/${encodeURIComponent(getPrimaryOem(p))}`);
             }}
           />
         )}

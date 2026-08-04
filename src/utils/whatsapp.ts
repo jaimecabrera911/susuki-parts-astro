@@ -1,4 +1,5 @@
 import type { SuzukiPart, CartItem, ActiveMotorcycle } from '../types';
+import { getPrimaryOem } from '../types';
 import { formatCurrency } from './formatCurrency';
 
 export const SUZUKI_WHATSAPP_NUMBER = '573009128888';
@@ -29,7 +30,7 @@ export function getGeneralWhatsAppUrl(activeMotorcycle?: ActiveMotorcycle | null
 export function getProductWhatsAppUrl(part: SuzukiPart, activeMotorcycle?: ActiveMotorcycle | null): string {
   let message = `Hola Suzuki Parts Expert 👋, quiero consultar disponibilidad y precio para este repuesto genuino:\n\n`;
   message += `📦 *Producto:* ${part.name}\n`;
-  message += `🏷️ *Ref. OEM:* ${part.oemNumber}\n`;
+  message += `🏷️ *Ref. OEM:* ${getPrimaryOem(part)}\n`;
   message += `📁 *Categoría:* ${part.category}\n`;
   message += `💰 *Precio:* ${formatCurrency(part.price)}\n`;
   message += `⚡ *Estado:* ${part.stock > 0 ? `En Stock (${part.stock} disp.)` : 'Bajo Pedido Especial'}\n`;
@@ -55,7 +56,7 @@ export function getCartWhatsAppUrl(cartItems: CartItem[], activeMotorcycle?: Act
     const subtotal = item.part.price * item.quantity;
     const motoInfo = item.motorcycle ? ` [Vehículo: ${item.motorcycle.modelName} (${item.motorcycle.year})]` : '';
     message += `${index + 1}. *${item.part.name}*${motoInfo}\n`;
-    message += `   • Ref. OEM: ${item.part.oemNumber}\n`;
+    message += `   • Ref. OEM: ${getPrimaryOem(item.part)}\n`;
     message += `   • Cantidad: ${item.quantity}\n`;
     message += `   • Subtotal: ${formatCurrency(subtotal)}\n\n`;
   });

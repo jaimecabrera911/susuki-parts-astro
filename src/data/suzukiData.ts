@@ -55,7 +55,7 @@ export const SUZUKI_MODELS: SuzukiModel[] = [
 export const SUZUKI_PARTS: SuzukiPart[] = [
   {
     id: 'part-01',
-    oemNumber: '13780-06G00',
+    oemNumbers: ['13780-06G00', '13780-06G00-000', '13780-06G10'],
     name: 'Filtro de Aire Elemento Seco OEM',
     category: 'filtros',
     price: 154000,
@@ -78,7 +78,7 @@ export const SUZUKI_PARTS: SuzukiPart[] = [
   },
   {
     id: 'part-02',
-    oemNumber: '16510-05240',
+    oemNumbers: ['16510-05240', '16510-05240-000', '16510-06B00'],
     name: 'Filtro de Aceite Genuino Cartucho Magnético',
     category: 'filtros',
     price: 52000,
@@ -103,7 +103,7 @@ export const SUZUKI_PARTS: SuzukiPart[] = [
   },
   {
     id: 'part-03',
-    oemNumber: '59300-33820-000',
+    oemNumbers: ['59300-33820', '59300-33820-000', '59300-33820-999'],
     name: 'Pastillas de Freno Sinterizadas Delanteras Tokico OEM',
     category: 'frenos',
     price: 256000,
@@ -126,7 +126,7 @@ export const SUZUKI_PARTS: SuzukiPart[] = [
   },
   {
     id: 'part-04',
-    oemNumber: '27511-24B00',
+    oemNumbers: ['27511-24B00', '27511-24B00-000', '27511-24B00-999', '27511-24B20'],
     name: 'Kit de Arrastre Sprocket & Piñón Paso 520 HD',
     category: 'transmision',
     price: 460000,
@@ -149,7 +149,7 @@ export const SUZUKI_PARTS: SuzukiPart[] = [
   },
   {
     id: 'part-05',
-    oemNumber: '15100-33E00',
+    oemNumbers: ['15100-33E00', '15100-33E00-000', '15100-33E00-999'],
     name: 'Bomba de Combustible de Alta Presión EFI 3.5 BAR',
     category: 'motor',
     price: 756000,
@@ -172,7 +172,7 @@ export const SUZUKI_PARTS: SuzukiPart[] = [
   },
   {
     id: 'part-06',
-    oemNumber: '09482-00406',
+    oemNumbers: ['09482-00406', '09482-00406-000', '9478-00406'],
     name: 'Bujía de Iridium NGK CPR8EA-9 Suzuki Spec',
     category: 'electrico',
     price: 74000,
@@ -196,7 +196,7 @@ export const SUZUKI_PARTS: SuzukiPart[] = [
   },
   {
     id: 'part-07',
-    oemNumber: '31800-21E20',
+    oemNumbers: ['31800-21E20', '31800-21E20-000', '31800-21E20-999'],
     name: 'Relé Solenoide de Arranque con Fusible de 30A',
     category: 'electrico',
     price: 168000,
@@ -219,7 +219,7 @@ export const SUZUKI_PARTS: SuzukiPart[] = [
   },
   {
     id: 'part-08',
-    oemNumber: '12111-38A00',
+    oemNumbers: ['12111-38A00', '12111-38A00-000', '12111-38A10', '12111-38A20'],
     name: 'Kit Pistón Estándar 62.0mm con Anillos RIK OEM',
     category: 'motor',
     price: 376000,
@@ -242,7 +242,7 @@ export const SUZUKI_PARTS: SuzukiPart[] = [
   },
   {
     id: 'part-09',
-    oemNumber: '13400-27G10',
+    oemNumbers: ['13400-27G10', '13400-27G10-000', '13400-27G10-999'],
     name: 'Cuerpo de Aceleración Electrónico EFI Throttle Body 32mm',
     category: 'motor',
     price: 920000,

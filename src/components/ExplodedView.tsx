@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { EXPLODED_DIAGRAMS, SUZUKI_PARTS } from '../data/suzukiData';
 import type { ExplodedDiagram, SuzukiPart, ActiveMotorcycle } from '../types';
+import { getPrimaryOem } from '../types';
 import { Layers, ZoomIn, ZoomOut, CheckCircle2, AlertTriangle, ShoppingBag, Eye, Info, ShieldCheck } from 'lucide-react';
 import { formatCurrency } from '../utils/formatCurrency';
 
@@ -152,7 +153,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
           {/* Bottom Legend */}
           <div className="bg-slate-900/90 p-3 rounded-xl border border-slate-800 text-slate-300 text-xs flex items-center justify-between">
             <span>Objetivo: <strong className="text-white">{currentDiagram.modelTarget}</strong></span>
-            <span className="text-[11px] text-slate-400 font-mono">Seleccionado: {selectedPart ? selectedPart.oemNumber : 'Ningún elemento'}</span>
+            <span className="text-[11px] text-slate-400 font-mono">Seleccionado: {selectedPart ? getPrimaryOem(selectedPart) : 'Ningún elemento'}</span>
           </div>
 
         </div>
@@ -168,7 +169,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                   REF. OEM DEL DIAGRAMA
                 </span>
                 <span className="font-mono font-extrabold text-[#E60012] text-sm">
-                  {selectedPart.oemNumber}
+                  {getPrimaryOem(selectedPart)}
                 </span>
               </div>
 
@@ -318,7 +319,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                       {spot.itemNumber}
                     </span>
                     <span className="text-[10px] font-mono font-bold px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded">
-                      {partObj.oemNumber}
+                      {getPrimaryOem(partObj)}
                     </span>
                   </div>
 
