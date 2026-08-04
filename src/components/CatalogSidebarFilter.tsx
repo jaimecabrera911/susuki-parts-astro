@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   Filter,
   Search,
@@ -15,7 +15,7 @@ import {
   X,
   Sparkles,
   ArrowUpDown,
-  ArrowUpRight,
+  ArrowRightLeft,
   Globe,
   Clock
 } from 'lucide-react';
@@ -34,6 +34,8 @@ interface CatalogSidebarFilterProps {
   setAvailabilityFilter: (filter: Set<AvailabilityStatus>) => void;
   maxPriceFilter: number;
   setMaxPriceFilter: (price: number) => void;
+  minPriceFilter: number;
+  setMinPriceFilter: (price: number) => void;
   sortBy: string;
   setSortBy: (sort: string) => void;
   searchQuery: string;
@@ -54,6 +56,8 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
   setAvailabilityFilter,
   maxPriceFilter,
   setMaxPriceFilter,
+  minPriceFilter,
+  setMinPriceFilter,
   sortBy,
   setSortBy,
   searchQuery,
@@ -92,6 +96,100 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
 
   // Find max possible price in database
   const maxDatabasePrice = Math.max(...allParts.map(p => p.price), 1000000);
+  const minDatabasePrice = Math.min(...allParts.map(p => p.price), 20000);
+
+  // Histogram bins for price distribution
+  const histogramBins = 8;
+  const binSize = (maxDatabasePrice - minDatabasePrice) / histogramBins;
+  const histogram = Array.from({ length: histogramBins }, (_, i) => {
+    const binStart = minDatabasePrice + i * binSize;
+    const binEnd = binStart + binSize;
+    return allParts.filter(p => p.price >= binStart && p.price < binEnd).length;
+  });
+  const maxBin = Math.max(...histogram, 1);
+
+  // Custom dual-range slider state & helpers
+  const trackRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef<'min' | 'max' | null>(null);
+  const minPriceRef = useRef(minPriceFilter);
+  const maxPriceRef = useRef(maxPriceFilter);
+  minPriceRef.current = minPriceFilter;
+  maxPriceRef.current = maxPriceFilter;
+  const range = maxDatabasePrice - minDatabasePrice;
+  const minPercent = ((minPriceFilter - minDatabasePrice) / range) * 100;
+  const maxPercent = ((maxPriceFilter - minDatabasePrice) / range) * 100;
+
+  const getPriceFromPosition = useCallback(
+    (clientX: number): number => {
+      const track = trackRef.current;
+      if (!track) return minDatabasePrice;
+      const rect = track.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      const raw = minDatabasePrice + ratio * range;
+      const stepped = Math.round(raw / 10000) * 10000;
+      return Math.max(minDatabasePrice, Math.min(maxDatabasePrice, stepped));
+    },
+    [minDatabasePrice, maxDatabasePrice, range]
+  );
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>, handle: 'min' | 'max') => {
+    e.preventDefault();
+    e.stopPropagation();
+    draggingRef.current = handle;
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return;
+    const price = getPriceFromPosition(e.clientX);
+    if (draggingRef.current === 'min') {
+      setMinPriceFilter(Math.min(price, maxPriceFilter - 10000));
+    } else {
+      setMaxPriceFilter(Math.max(price, minPriceFilter + 10000));
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return;
+    draggingRef.current = null;
+    (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+  };
+
+  const handleTrackPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (draggingRef.current) return;
+    const price = getPriceFromPosition(e.clientX);
+    const distToMin = Math.abs(price - minPriceFilter);
+    const distToMax = Math.abs(price - maxPriceFilter);
+    if (distToMin <= distToMax) {
+      setMinPriceFilter(Math.min(price, maxPriceFilter - 10000));
+    } else {
+      setMaxPriceFilter(Math.max(price, minPriceFilter + 10000));
+    }
+  };
+
+  // Global pointer listeners — keeps drag fluid even when cursor leaves the track
+  React.useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (!draggingRef.current) return;
+      const price = getPriceFromPosition(e.clientX);
+      if (draggingRef.current === 'min') {
+        setMinPriceFilter(Math.min(price, maxPriceRef.current - 10000));
+      } else {
+        setMaxPriceFilter(Math.max(price, minPriceRef.current + 10000));
+      }
+    };
+    const onUp = () => {
+      draggingRef.current = null;
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+  }, [getPriceFromPosition]);
 
   // Category counts
   const categories = [
@@ -130,7 +228,7 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
     (selectedCategory !== 'all' ? 1 : 0) +
     (onlyCompatible && activeMotorcycle ? 1 : 0) +
     (availabilityFilter.size < 3 ? 1 : 0) +
-    (maxPriceFilter < maxDatabasePrice ? 1 : 0) +
+    (minPriceFilter > minDatabasePrice || maxPriceFilter < maxDatabasePrice ? 1 : 0) +
     (searchQuery.trim() ? 1 : 0);
 
   const activeModelMeta = activeMotorcycle
@@ -142,42 +240,10 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
       
       {/* 1. Vehicle Context — Active Garage Card */}
       <div className="group relative overflow-hidden rounded-2xl bg-[#0a1628] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.55)]">
-        {/* Technical grid overlay */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.06]"
-          aria-hidden="true"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
-            backgroundSize: '20px 20px',
-          }}
-        />
-
         {/* Subtle ambient glow */}
         <div className="pointer-events-none absolute -right-8 -bottom-8 h-32 w-40 rounded-full bg-[#0A3088]/25 blur-3xl" aria-hidden="true" />
 
         <div className="relative z-20 p-4">
-          {/* Header: Status + Action */}
-          <div className="flex items-center justify-between gap-2 mb-4">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-              </span>
-              <span className="text-[11px] font-extrabold tracking-[0.18em] text-white uppercase">
-                Garaje Activo
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={onOpenGarageModal}
-              className="inline-flex shrink-0 items-center gap-1 rounded-md bg-[#E60012] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-[0_4px_12px_-4px_rgba(230,0,18,0.6)] transition-all hover:bg-red-700 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            >
-              Cambiar
-              <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
-            </button>
-          </div>
-
           {activeMotorcycle ? (
             <div className="flex flex-col gap-3">
               {/* Motorcycle image — full-width hero, no frame */}
@@ -197,28 +263,24 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
 
               {/* Text content — identity block */}
               <div className="flex flex-col gap-1.5">
-                {activeModelMeta && (
-                  <span className="inline-flex w-fit items-center rounded-full bg-[#0A3088] px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-white">
-                    {activeModelMeta.category}
-                  </span>
-                )}
-
-                <h3 className="font-display text-[1.85rem] font-black leading-[0.9] tracking-tighter text-white">
-                  {activeMotorcycle.modelName}
+                <h3 className="font-display text-[1.65rem] font-black leading-[0.95] tracking-tighter text-white">
+                  {activeMotorcycle.modelName} <span className="text-[#E60012]">{activeMotorcycle.year}</span>
                 </h3>
 
-                <div className="mt-0.5 flex items-stretch gap-2">
-                  <span className="inline-flex items-center justify-center rounded-lg bg-[#0A3088] px-2.5 py-1 font-mono text-sm font-black text-white min-w-[52px]">
-                    {activeMotorcycle.year}
-                  </span>
-                  <div className="flex flex-col justify-center leading-tight min-w-0">
-                    <span className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-white">MY</span>
-                    <span className="text-[10px] font-mono text-slate-300 truncate max-w-[170px]">
-                      SPEC {activeMotorcycle.version}
-                    </span>
-                  </div>
-                </div>
+                <span className="text-[10px] font-mono text-slate-300 truncate max-w-full">
+                  {activeMotorcycle.version}
+                </span>
               </div>
+
+              {/* Bottom action: Cambiar moto */}
+              <button
+                type="button"
+                onClick={onOpenGarageModal}
+                className="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 px-3 py-2.5 min-h-[44px] text-[11px] font-extrabold uppercase tracking-wider text-white transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+              >
+                <ArrowRightLeft className="w-4 h-4 text-[#E60012]" aria-hidden="true" />
+                <span>Cambiar Moto</span>
+              </button>
             </div>
           ) : (
             <div className="space-y-3 py-1">
@@ -322,7 +384,7 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
         )}
       </div>
 
-      {/* 4. Price Range Slider */}
+      {/* 4. Price Range — Dual Slider con Histograma y Presets */}
       <div className="border-t border-slate-200 pt-4">
         <button
           type="button"
@@ -332,32 +394,112 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
           className="w-full flex items-center justify-between py-1 text-xs font-extrabold uppercase tracking-wider text-slate-800 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] rounded"
         >
           <span className="flex items-center gap-1.5">
-            <DollarSign className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" /> Precio Máximo
+            <DollarSign className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" /> Rango de Precio
           </span>
+          {(minPriceFilter > minDatabasePrice || maxPriceFilter < maxDatabasePrice) && (
+            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[#E60012] text-white text-[10px] font-extrabold">
+              {allParts.filter(p => p.price >= minPriceFilter && p.price <= maxPriceFilter).length}
+            </span>
+          )}
           {expandedSections.price ? <ChevronUp className="w-4 h-4 text-slate-500" aria-hidden="true" /> : <ChevronDown className="w-4 h-4 text-slate-500" aria-hidden="true" />}
         </button>
 
         {expandedSections.price && (
-          <div id="filter-section-price" className="mt-3 space-y-3 px-1">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-              <span className="text-slate-500">$0 COP</span>
-              <span className="text-[#E60012] font-mono text-xs">{formatCurrency(maxPriceFilter)}</span>
+          <div id="filter-section-price" className="mt-3 space-y-3.5">
+            {/* Current Range Display */}
+            <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
+              <div className="text-center flex-1 min-w-0">
+                <div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Mínimo</div>
+                <div className="font-mono text-xs font-black text-slate-900 truncate">{formatCurrency(minPriceFilter)}</div>
+              </div>
+              <div className="w-px h-7 bg-slate-300" />
+              <div className="text-center flex-1 min-w-0">
+                <div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Máximo</div>
+                <div className="font-mono text-xs font-black text-[#E60012] truncate">{formatCurrency(maxPriceFilter)}</div>
+              </div>
             </div>
-            <label htmlFor="price-range-slider" className="sr-only">Seleccionar precio máximo</label>
-            <input
-              id="price-range-slider"
-              type="range"
-              min={20000}
-              max={maxDatabasePrice}
-              step={10000}
-              value={maxPriceFilter}
-              onChange={(e) => setMaxPriceFilter(Number(e.target.value))}
-              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#E60012]"
-            />
-            <div className="flex justify-between text-[10px] text-slate-600 font-mono">
-              <span>Mín: $20.000 COP</span>
-              <span>Máx: {formatCurrency(maxDatabasePrice)}</span>
+
+            {/* Histogram */}
+            <div className="flex items-end gap-0.5 h-10 px-0.5">
+              {histogram.map((count, i) => {
+                const binStart = minDatabasePrice + i * binSize;
+                const binEnd = binStart + binSize;
+                const inRange = binEnd >= minPriceFilter && binStart <= maxPriceFilter;
+                const heightPct = (count / maxBin) * 100;
+                return (
+                  <div
+                    key={i}
+                    className={`flex-1 rounded-t transition-colors ${
+                      inRange ? 'bg-[#E60012]/70' : 'bg-slate-200'
+                    }`}
+                    style={{ height: `${heightPct}%` }}
+                    title={`${formatCurrency(binStart)} - ${formatCurrency(binEnd)}: ${count} repuestos`}
+                    aria-hidden="true"
+                  />
+                );
+              })}
             </div>
+
+            {/* Dual Range Slider — Custom implementation for fluid dragging */}
+            <div
+              ref={trackRef}
+              onPointerDown={handleTrackPointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              className="relative h-10 select-none touch-none cursor-pointer"
+            >
+              {/* Track base */}
+              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2 bg-slate-200 rounded-full pointer-events-none" />
+              {/* Active range */}
+              <div
+                className="absolute top-1/2 -translate-y-1/2 h-2 bg-[#E60012] rounded-full pointer-events-none"
+                style={{ left: `${minPercent}%`, right: `${100 - maxPercent}%` }}
+                aria-hidden="true"
+              />
+
+              {/* Min thumb */}
+              <div
+                role="slider"
+                tabIndex={0}
+                aria-label="Precio mínimo"
+                aria-valuemin={minDatabasePrice}
+                aria-valuemax={maxPriceFilter - 10000}
+                aria-valuenow={minPriceFilter}
+                aria-valuetext={formatCurrency(minPriceFilter)}
+                onPointerDown={(e) => handlePointerDown(e, 'min')}
+                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 bg-white border-[2.5px] border-[#E60012] rounded-full cursor-grab active:cursor-grabbing shadow-[0_2px_10px_rgba(230,0,18,0.4)] hover:scale-110 active:scale-105 transition-transform z-20"
+                style={{ left: `${minPercent}%` }}
+              />
+
+              {/* Max thumb */}
+              <div
+                role="slider"
+                tabIndex={0}
+                aria-label="Precio máximo"
+                aria-valuemin={minPriceFilter + 10000}
+                aria-valuemax={maxDatabasePrice}
+                aria-valuenow={maxPriceFilter}
+                aria-valuetext={formatCurrency(maxPriceFilter)}
+                onPointerDown={(e) => handlePointerDown(e, 'max')}
+                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 bg-white border-[2.5px] border-[#E60012] rounded-full cursor-grab active:cursor-grabbing shadow-[0_2px_10px_rgba(230,0,18,0.4)] hover:scale-110 active:scale-105 transition-transform z-20"
+                style={{ left: `${maxPercent}%` }}
+              />
+            </div>
+
+            {/* Reset Button */}
+            {(minPriceFilter > minDatabasePrice || maxPriceFilter < maxDatabasePrice) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMinPriceFilter(minDatabasePrice);
+                  setMaxPriceFilter(maxDatabasePrice);
+                }}
+                className="w-full text-[10px] font-bold text-slate-500 hover:text-[#E60012] transition-colors cursor-pointer focus-visible:outline-none focus-visible:underline"
+              >
+                Restablecer rango
+              </button>
+            )}
           </div>
         )}
       </div>

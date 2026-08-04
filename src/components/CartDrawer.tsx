@@ -1,5 +1,6 @@
 import React from 'react';
-import { X, Trash2, ShieldCheck, ArrowRight, ShoppingBag, Plus, Minus, MessageSquare, Bike, Eye } from 'lucide-react';
+import { X, Trash2, ArrowRight, ShoppingBag, Plus, Minus, MessageSquare, Eye } from 'lucide-react';
+import { AiTwotoneSafetyCertificate } from 'react-icons/ai';
 import type { CartItem, ActiveMotorcycle, SuzukiPart } from '../types';
 import { getPrimaryOem } from '../types';
 import { SUZUKI_MODELS } from '../data/suzukiData';
@@ -75,17 +76,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             </button>
           </div>
 
-          {/* Active Motorcycle Warranty Banner */}
-          {activeMotorcycle && (
-            <div className="bg-emerald-50 border-b border-emerald-200 p-3.5 px-5 flex items-center gap-2 text-emerald-900 text-xs shrink-0">
-              <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" aria-hidden="true" />
-              <div>
-                <span className="font-extrabold uppercase block text-[10px] text-emerald-700">GARANTÍA DE COMPATIBILIDAD</span>
-                <span>Vehículo: <strong>{activeMotorcycle.brand} {activeMotorcycle.modelName} ({activeMotorcycle.year})</strong></span>
-              </div>
-            </div>
-          )}
-
           {/* Items List */}
           <div className="flex-1 p-5 overflow-y-auto space-y-4">
             {cartItems.length === 0 ? (
@@ -150,9 +140,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       {/* Vehicle Specific Association Badge */}
                       <div
                         onClick={() => onViewPartDetail && onViewPartDetail(item.part)}
-                        className="mt-1 flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-red-50/80 hover:bg-red-100/80 border border-red-200/80 px-2 py-0.5 rounded-md w-fit max-w-full truncate cursor-pointer transition-colors"
+                        className="mt-1 flex items-center gap-1 text-[10px] font-bold text-emerald-900 bg-emerald-50/80 hover:bg-emerald-100/80 border border-emerald-200/80 px-2 py-0.5 rounded-md w-fit max-w-full truncate cursor-pointer transition-colors"
                       >
-                        <Bike className="w-3 h-3 text-[#E60012] shrink-0" aria-hidden="true" />
+                        <AiTwotoneSafetyCertificate className="w-3 h-3 text-emerald-600 shrink-0" aria-hidden="true" />
                         <span className="truncate">Vehículo: {vehicleLabel}</span>
                       </div>
 

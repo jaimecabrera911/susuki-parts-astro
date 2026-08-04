@@ -60,12 +60,14 @@ export default function App() {
     () => new Set<AvailabilityStatus>(['in_stock', 'international', 'on_order'])
   );
   const [maxPriceFilter, setMaxPriceFilter] = useState(1000000);
+  const [minPriceFilter, setMinPriceFilter] = useState(20000);
   const [sortBy, setSortBy] = useState('relevance');
 
   const handleResetFilters = () => {
     setSelectedCategory('all');
     setAvailabilityFilter(new Set<AvailabilityStatus>(['in_stock', 'international', 'on_order']));
     setMaxPriceFilter(1000000);
+    setMinPriceFilter(20000);
     setSearchQuery('');
     setSortBy('relevance');
   };
@@ -273,9 +275,7 @@ export default function App() {
     }
 
     // Price range filter
-    if (part.price > maxPriceFilter) {
-      return false;
-    }
+    if (part.price < minPriceFilter || part.price > maxPriceFilter) return false;
 
     // Availability filter (multi-select)
     if (!availabilityFilter.has(getAvailabilityStatus(part))) return false;
@@ -440,6 +440,8 @@ export default function App() {
                 setAvailabilityFilter={setAvailabilityFilter}
                 maxPriceFilter={maxPriceFilter}
                 setMaxPriceFilter={setMaxPriceFilter}
+                minPriceFilter={minPriceFilter}
+                setMinPriceFilter={setMinPriceFilter}
                 sortBy={sortBy}
                 setSortBy={setSortBy}
                 searchQuery={searchQuery}

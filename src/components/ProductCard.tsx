@@ -136,22 +136,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
             <div className="absolute top-2.5 left-2.5 z-10">{compatibilityBadge}</div>
 
-            <div className="absolute top-2.5 right-2.5 z-10 flex flex-col items-end gap-1.5">
+            <div className="absolute top-2.5 right-2.5 z-10">
               <div className="bg-white/95 text-slate-800 font-bold text-[10px] uppercase px-2.5 py-1 rounded-md backdrop-blur-md border border-slate-200/80 shadow-xs">
                 {part.category}
               </div>
-              {availabilityBadge}
             </div>
           </div>
         ) : (
           <div className="px-4 pt-4 sm:px-5 sm:pt-5 flex items-start justify-between gap-2">
             {compatibilityBadge}
-            <div className="flex flex-col items-end gap-1.5 shrink-0">
-              <span className="bg-slate-100 text-slate-800 font-bold text-[10px] uppercase px-2.5 py-1 rounded-md border border-slate-200/80">
-                {part.category}
-              </span>
-              {availabilityBadge}
-            </div>
+            <span className="bg-slate-100 text-slate-800 font-bold text-[10px] uppercase px-2.5 py-1 rounded-md border border-slate-200/80 shrink-0">
+              {part.category}
+            </span>
           </div>
         )}
 
@@ -198,6 +194,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <p className="text-slate-600 text-xs mt-1.5 line-clamp-2 leading-relaxed">
             {part.description}
           </p>
+
+          <div className="mt-2.5 w-fit">
+            {availabilityBadge}
+          </div>
 
         </div>
       </div>

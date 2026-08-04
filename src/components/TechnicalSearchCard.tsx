@@ -90,68 +90,6 @@ export const TechnicalSearchCard: React.FC<TechnicalSearchCardProps> = ({
             Si conoces la referencia exacta o el número de identificación de tu vehículo (VIN), búscalo directamente.
           </p>
 
-          {/* VIN or Placa Field */}
-          <div className="mb-4">
-            <label htmlFor="vin-search-input" className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
-              NÚMERO VIN O PLACA
-            </label>
-            <div className="relative">
-              <input
-                id="vin-search-input"
-                type="text"
-                value={vinInput}
-                onChange={(e) => setVinInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearchVin()}
-                placeholder="Ej. JS1GW73A..."
-                className="w-full bg-white border border-slate-300 rounded-xl pl-3.5 pr-14 py-2.5 text-sm font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
-              />
-              <button
-                type="button"
-                onClick={() => handleSearchVin()}
-                disabled={isSearchingVin}
-                className="absolute right-1 top-1 bottom-1 w-11 bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
-                aria-label="Buscar VIN"
-              >
-                <Search className="w-4 h-4" aria-hidden="true" />
-              </button>
-            </div>
-
-            {/* Quick Sample VINs */}
-            <div className="flex items-center gap-2 mt-2 overflow-x-auto pb-1 text-[11px]">
-              <span className="text-slate-600 font-bold text-[10px] uppercase shrink-0">Ejemplos:</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setVinInput('JS1GW73A2100984');
-                  handleSearchVin('JS1GW73A2100984');
-                }}
-                className="bg-slate-200 hover:bg-slate-300 text-slate-800 font-mono text-[10px] px-2.5 py-1.5 min-h-[36px] rounded-md transition-colors shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
-              >
-                GSX-R1000
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setVinInput('LC6PCJ42891234');
-                  handleSearchVin('LC6PCJ42891234');
-                }}
-                className="bg-slate-200 hover:bg-slate-300 text-slate-800 font-mono text-[10px] px-2.5 py-1.5 min-h-[36px] rounded-md transition-colors shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
-              >
-                Gixxer 150
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setVinInput('JS1DL65A1009123');
-                  handleSearchVin('JS1DL65A1009123');
-                }}
-                className="bg-slate-200 hover:bg-slate-300 text-slate-800 font-mono text-[10px] px-2.5 py-1.5 min-h-[36px] rounded-md transition-colors shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
-              >
-                V-Strom 650
-              </button>
-            </div>
-          </div>
-
           {/* VIN Result Feedback */}
           {vinFeedback && (
             <div className={`p-3 rounded-xl mb-4 text-xs ${vinFeedback.found ? 'bg-emerald-50 border border-emerald-200 text-emerald-900' : 'bg-amber-50 border border-amber-200 text-amber-900'}`}>
