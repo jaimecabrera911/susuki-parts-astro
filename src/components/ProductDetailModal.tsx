@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, CheckCircle2, AlertTriangle, ShieldCheck, Layers, ArrowRight, ShoppingBag, Wrench, Factory, FileText, Bike, Maximize2, Copy, Check, Info, ChevronDown, ChevronUp, Package, HelpCircle } from 'lucide-react';
+import { X, CheckCircle2, AlertTriangle, ShieldCheck, ArrowRight, ShoppingBag, Wrench, Factory, FileText, Bike, Maximize2, Copy, Check, Info, ChevronDown, ChevronUp, Package, HelpCircle } from 'lucide-react';
 import type { SuzukiPart, ActiveMotorcycle } from '../types';
 import { getPrimaryOem } from '../types';
 import { SUZUKI_MODELS } from '../data/suzukiData';
@@ -14,7 +14,7 @@ interface ProductDetailModalProps {
   onClose: () => void;
   onAddToCart: (part: SuzukiPart) => void;
   onOpenGarageModal: () => void;
-  onViewSchematics: (schematicId: string) => void;
+  onViewSchematics: (schematicId: string, partId: string) => void;
   onSelectRelatedPart?: (part: SuzukiPart) => void;
   onOpenAsPage?: (part: SuzukiPart) => void;
 }
@@ -198,7 +198,13 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           
           {/* Left Column: Interactive Image Gallery & Schematic link */}
           <div className="space-y-3">
-            <ProductImageGallery part={part} onViewSchematics={onViewSchematics} />
+            <ProductImageGallery
+              part={part}
+              onViewSchematics={(sId: string, pId: string) => {
+                onClose();
+                onViewSchematics(sId, pId);
+              }}
+            />
 
             {/* OEM References Section — colapsable, light style */}
             <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-xl">
@@ -297,20 +303,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </div>
               )}
             </div>
-
-            {part.schematicId && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onViewSchematics(part.schematicId!);
-                }}
-                className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors border border-slate-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
-              >
-                <Layers className="w-4 h-4 text-[#E60012]" aria-hidden="true" />
-                <span>Ver en Diagrama de Despiece (Exploded View)</span>
-              </button>
-            )}
           </div>
 
           {/* Right Column: Technical Specs & Description */}

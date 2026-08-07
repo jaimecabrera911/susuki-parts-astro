@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   Wrench,
   Factory,
-  Layers,
   FileText,
   Bike,
   CheckCircle2,
@@ -33,7 +32,7 @@ interface ProductDetailPageProps {
   onBack: () => void;
   onAddToCart: (part: SuzukiPart) => void;
   onOpenGarageModal: () => void;
-  onViewSchematics: (schematicId: string) => void;
+  onViewSchematics: (schematicId: string, partId: string) => void;
   onSelectRelatedPart: (part: SuzukiPart) => void;
 }
 
@@ -316,17 +315,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 </div>
               )}
             </div>
-
-            {part.schematicId && (
-              <button
-                type="button"
-                onClick={() => onViewSchematics(part.schematicId!)}
-                className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors border border-slate-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
-              >
-                <Layers className="w-4 h-4 text-[#E60012]" aria-hidden="true" />
-                <span>Ver en Diagrama de Despiece (Exploded View)</span>
-              </button>
-            )}
           </div>
 
           {/* Right Column: Title, Price, Description, Specs & Vehicles */}

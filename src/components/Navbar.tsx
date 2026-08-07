@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, Wrench, ShoppingBag, Sparkles, Layers, Menu, X, Package, Clock, ShieldCheck, ChevronRight } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Search, Wrench, ShoppingBag, Sparkles, Layers, Menu, X, Package, Clock, ShieldCheck, ChevronRight, User, LogIn, LogOut, ChevronDown } from 'lucide-react';
 import type { ActiveMotorcycle } from '../types';
 
 interface NavbarProps {
@@ -7,11 +7,15 @@ interface NavbarProps {
   cartCount: number;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
-  activeTab: 'catalog' | 'garage' | 'schematics' | 'orders' | 'product-page';
-  setActiveTab: (tab: 'catalog' | 'garage' | 'schematics' | 'orders' | 'product-page') => void;
+  activeTab: 'catalog' | 'garage' | 'schematics' | 'orders' | 'product-page' | 'account';
+  setActiveTab: (tab: 'catalog' | 'garage' | 'schematics' | 'orders' | 'product-page' | 'account') => void;
   onOpenGarageModal: () => void;
   onOpenCart: () => void;
   onOpenAI: () => void;
+  userName?: string;
+  isLoggedIn?: boolean;
+  onOpenAuthModal?: () => void;
+  onLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -23,15 +27,40 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   onOpenGarageModal,
   onOpenCart,
-  onOpenAI
+  onOpenAI,
+  userName = 'Juan Pérez',
+  isLoggedIn = true,
+  onOpenAuthModal,
+  onLogout
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
-  const handleTabClick = (tab: 'catalog' | 'garage' | 'schematics' | 'orders' | 'product-page') => {
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setUserDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleTabClick = (tab: 'catalog' | 'garage' | 'schematics' | 'orders' | 'product-page' | 'account') => {
+    if (tab === 'account' && !isLoggedIn && onOpenAuthModal) {
+      onOpenAuthModal();
+      return;
+    }
     setActiveTab(tab);
     setMobileMenuOpen(false);
+    setUserDropdownOpen(false);
   };
+
+
+
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
@@ -120,19 +149,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Layers className="w-3.5 h-3.5" aria-hidden="true" />
               Despieces
             </button>
-
-            <button
-              type="button"
-              onClick={() => handleTabClick('orders')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-semibold tracking-wide uppercase transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] ${
-                activeTab === 'orders' 
-                  ? 'text-[#E60012] bg-red-50 border-b-2 border-[#E60012]' 
-                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              Pedidos
-            </button>
           </nav>
+
+
 
           {/* Right Action Icons & Buttons (Desktop & Mobile) */}
           <div className="flex items-center gap-1.5 sm:gap-2">
@@ -146,6 +165,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               title="Buscar repuestos"
             >
               <Search className="w-5 h-5" aria-hidden="true" />
+            </button>
+
+            {/* AI Assistant Button */}
+            <button
+              type="button"
+              onClick={onOpenAI}
+              aria-label="Abrir asistente técnico de IA Suzuki"
+              className="min-h-[44px] px-3 text-slate-800 hover:text-[#E60012] hover:bg-slate-50 rounded-xl border border-slate-300 transition-colors flex items-center gap-1.5 text-xs font-medium cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+              title="Asistente Técnico Suzuki AI"
+            >
+              <Sparkles className="w-4 h-4 text-[#E60012]" aria-hidden="true" />
+              <span className="hidden sm:inline font-semibold text-xs">Asistente AI</span>
             </button>
 
             {/* Active Garage Badge Button */}
@@ -171,19 +202,84 @@ export const Navbar: React.FC<NavbarProps> = ({
               </span>
             </button>
 
-            {/* AI Assistant Button */}
-            <button
-              type="button"
-              onClick={onOpenAI}
-              aria-label="Abrir asistente técnico de IA Suzuki"
-              className="min-h-[44px] px-3 text-slate-800 hover:text-[#E60012] hover:bg-slate-50 rounded-xl border border-slate-300 transition-colors flex items-center gap-1.5 text-xs font-medium cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
-              title="Asistente Técnico Suzuki AI"
-            >
-              <Sparkles className="w-4 h-4 text-[#E60012]" aria-hidden="true" />
-              <span className="hidden sm:inline font-semibold text-xs">Asistente AI</span>
-            </button>
+            {/* User Account Dropdown (Desktop & Tablet) */}
+
+            {isLoggedIn ? (
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                  aria-label="Menú de usuario"
+                  className={`min-h-[44px] px-3 rounded-xl border transition-colors flex items-center gap-1.5 text-xs font-medium cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] ${
+                    activeTab === 'account'
+                      ? 'bg-red-50 text-[#E60012] border-red-300'
+                      : 'text-slate-800 hover:text-[#E60012] hover:bg-slate-50 border-slate-300'
+                  }`}
+                  title="Mi Cuenta Suzuki"
+                >
+                  <div className="w-6 h-6 rounded-full bg-[#E60012] text-white flex items-center justify-center text-[10px] font-black shrink-0">
+                    {userName.charAt(0)}
+                  </div>
+                  <span className="hidden sm:inline font-semibold text-xs truncate max-w-[80px]">{userName.split(' ')[0]}</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                </button>
+
+                {userDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-4 py-2 border-b border-slate-100">
+                      <p className="text-xs font-bold text-slate-900 truncate">{userName}</p>
+                      <p className="text-[10px] text-slate-400 uppercase font-semibold">Cliente Verificado</p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleTabClick('account')}
+                      className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <User className="w-3.5 h-3.5 text-[#E60012]" />
+                      <span>Mi Cuenta / Perfil</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleTabClick('orders')}
+                      className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <Package className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Mis Pedidos</span>
+                    </button>
+
+                    <div className="pt-1 mt-1 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserDropdownOpen(false);
+                          if (onLogout) onLogout();
+                        }}
+                        className="w-full text-left px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors cursor-pointer"
+                      >
+                        <LogOut className="w-3.5 h-3.5 text-red-600" />
+                        <span>Cerrar Sesión</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={onOpenAuthModal}
+                aria-label="Iniciar Sesión"
+                className="min-h-[44px] px-3 bg-[#E60012] hover:bg-red-700 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+                title="Iniciar Sesión"
+              >
+                <LogIn className="w-4 h-4" />
+                <span className="hidden sm:inline font-extrabold text-xs">Iniciar Sesión</span>
+              </button>
+            )}
 
             {/* Cart Button */}
+
             <button
               type="button"
               onClick={onOpenCart}
@@ -317,6 +413,54 @@ export const Navbar: React.FC<NavbarProps> = ({
               </span>
               <ChevronRight className="w-4 h-4 text-slate-400" />
             </button>
+
+            {isLoggedIn ? (
+              <>
+                <button
+                  onClick={() => handleTabClick('account')}
+                  className={`w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-between transition-colors ${
+                    activeTab === 'account'
+                      ? 'bg-red-50 text-[#E60012]'
+                      : 'text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="flex items-center gap-2.5">
+                    <User className="w-4 h-4 text-red-600" />
+                    Mi Cuenta ({userName})
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (onLogout) onLogout();
+                  }}
+                  className="w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-between text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <LogOut className="w-4 h-4 text-red-600" />
+                    Cerrar Sesión
+                  </span>
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => {
+                  if (onOpenAuthModal) onOpenAuthModal();
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-between bg-red-50 text-[#E60012] border border-red-100"
+              >
+                <span className="flex items-center gap-2.5">
+                  <LogIn className="w-4 h-4 text-[#E60012]" />
+                  Iniciar Sesión / Crear Cuenta
+                </span>
+                <ChevronRight className="w-4 h-4 text-[#E60012]" />
+              </button>
+            )}
+
+
 
             <div className="pt-2 mt-2 border-t border-slate-100">
               <button

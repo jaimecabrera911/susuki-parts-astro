@@ -260,6 +260,132 @@ export const SUZUKI_PARTS: SuzukiPart[] = [
     compatibility: [
       { modelId: 'gixxer-150-fi', yearStart: 2019, yearEnd: 2024, version: 'FI (Inyección Electrónica)' }
     ]
+  },
+  {
+    id: 'part-10',
+    name: 'Radiador de Refrigeración con Termostato',
+    description: 'Conjunto de radiador de aluminio con ventilador termo-activado, termostato de 80°C y tapa de presión de 1.1 bar. Esencial para mantener la temperatura óptima del motor monocilíndrico.',
+    price: 320000,
+    stock: 8,
+    category: 'motor',
+    oemNumbers: ['17710-14G00', '17710-14G00-000'],
+    schematicId: 'diag-gixxer-cooling',
+    diagramHotspot: { itemNumber: 1, x: 38, y: 42 },
+    image: PARTS_SVGS['part-10'],
+    specs: [
+      { label: 'Material', value: 'Aluminio soldado TIG' },
+      { label: 'Capacidad', value: '0.95 L refrigerante' },
+      { label: 'Apertura termostato', value: '80°C ± 2°C' },
+      { label: 'Origen', value: 'Suzuki Genuine OEM' }
+    ],
+    compatibility: [
+      { modelId: 'gixxer-150-fi', yearStart: 2018, yearEnd: 2024 }
+    ]
+  },
+  {
+    id: 'part-11',
+    name: 'Múltiple de Escape Acero Inoxidable',
+    description: 'Header de escape en acero inoxidable 304 con colector tri-axial. Conexión slip-fit al silenciador original. Incluye junta de grafito y tornillería de montaje.',
+    price: 285000,
+    stock: 5,
+    category: 'motor',
+    oemNumbers: ['14181-35F00', '14181-35F10'],
+    schematicId: 'diag-gixxer-exhaust',
+    diagramHotspot: { itemNumber: 2, x: 56, y: 38 },
+    image: PARTS_SVGS['part-10'],
+    specs: [
+      { label: 'Material', value: 'SS304 pulido espejo' },
+      { label: 'Diámetro', value: '32mm entrada / 45mm salida' },
+      { label: 'Sensor lambda', value: 'M18 x 1.5' },
+      { label: 'Origen', value: 'Suzuki Genuine OEM' }
+    ],
+    compatibility: [
+      { modelId: 'gixxer-150-fi', yearStart: 2018, yearEnd: 2024 }
+    ]
+  },
+  {
+    id: 'part-12',
+    name: 'Pinza de Freno Delantero 4 Pistones',
+    description: 'Pinza radial monobloque de aluminio forjado con 4 pistones opuestos. Compatible con disco de 310mm. Sellos de pistón resistentes a DOT-5.1.',
+    price: 890000,
+    stock: 3,
+    category: 'frenos',
+    oemNumbers: ['59100-31850', '59100-31851'],
+    schematicId: 'diag-gsxr-brake',
+    diagramHotspot: { itemNumber: 1, x: 28, y: 50 },
+    image: PARTS_SVGS['part-10'],
+    specs: [
+      { label: 'Configuración', value: '4 pistones opuestos' },
+      { label: 'Material', value: 'Aluminio forjado 2014-T6' },
+      { label: 'Peso', value: '720 g' },
+      { label: 'Origen', value: 'Tokico · OEM Suzuki' }
+    ],
+    compatibility: [
+      { modelId: 'gsxr-1000', yearStart: 2017, yearEnd: 2024 }
+    ]
+  },
+  {
+    id: 'part-13',
+    name: 'Slider de Chasis Protector (Par)',
+    description: 'Protectores de chasis deslizantes con inserto de teflón reemplazable. Absorben impacto en caída protegiendo el frame, el carenado y el motor.',
+    price: 165000,
+    stock: 12,
+    category: 'motor',
+    oemNumbers: ['99182-31J00', '99182-31J00-000'],
+    schematicId: 'diag-vstrom-frame',
+    diagramHotspot: { itemNumber: 1, x: 50, y: 60 },
+    image: PARTS_SVGS['part-10'],
+    specs: [
+      { label: 'Material', value: 'Nylon PA66 + Teflón' },
+      { label: 'Inserto', value: 'Reemplazable' },
+      { label: 'Diámetro', value: '25mm' },
+      { label: 'Origen', value: 'Suzuki Genuine OEM' }
+    ],
+    compatibility: [
+      { modelId: 'vstrom-650', yearStart: 2015, yearEnd: 2024 }
+    ]
+  },
+  {
+    id: 'part-14',
+    name: 'Pedal de Cambios Reforzado con Punta Plegable',
+    description: 'Palanca de cambios mecanizada en aluminio 6061-T6 con punta plegable de polímero. Mayor leverage y mejor feel al reducir el recorrido.',
+    price: 95000,
+    stock: 18,
+    category: 'motor',
+    oemNumbers: ['25600-14G01', '25610-14G01'],
+    schematicId: 'diag-gixxer-foot-control',
+    diagramHotspot: { itemNumber: 3, x: 42, y: 70 },
+    image: PARTS_SVGS['part-10'],
+    specs: [
+      { label: 'Material', value: 'Aluminio 6061-T6 anodizado' },
+      { label: 'Punta', value: 'Polímero plegable' },
+      { label: 'Recorrido', value: 'Reducido 15% vs OEM' },
+      { label: 'Origen', value: 'Suzuki Genuine OEM' }
+    ],
+    compatibility: [
+      { modelId: 'gixxer-150-fi', yearStart: 2018, yearEnd: 2024 }
+    ]
+  },
+  {
+    id: 'part-15',
+    name: 'Tacómetro Digital Multifunción',
+    description: 'Cluster de instrumentos LCD con tacómetro analógico-digital, odómetro, trip, indicador de marcha y nivel de combustible. Calibrado al protocolo CAN-bus OEM.',
+    price: 540000,
+    stock: 4,
+    category: 'electrico',
+    oemNumbers: ['34100-14G20', '34100-14G20-000'],
+    schematicId: 'diag-gixxer-dash',
+    diagramHotspot: { itemNumber: 2, x: 50, y: 40 },
+    image: PARTS_SVGS['part-10'],
+    specs: [
+      { label: 'Display', value: 'LCD con retroiluminación LED' },
+      { label: 'Funciones', value: 'Taco, Odo, Trip, Marcha, Fuel' },
+      { label: 'Conector', value: '6 pines sellado IP67' },
+      { label: 'Origen', value: 'Suzuki Genuine OEM' }
+    ],
+    compatibility: [
+      { modelId: 'gixxer-150-fi', yearStart: 2020, yearEnd: 2024 }
+    ]
   }
 ];
 
@@ -268,6 +394,8 @@ export const EXPLODED_DIAGRAMS: ExplodedDiagram[] = [
     id: 'diag-gixxer-engine',
     title: 'Despiece Bloque Motor & Inyección Electrónica',
     category: 'Motor & Admisión',
+    section: 'Engine',
+    applicableModelIds: ['gixxer-150-fi'],
     modelTarget: 'Gixxer 150 FI (2018-2024)',
     diagramImage: DIAGRAM_SVGS['diag-gixxer-engine'],
     description: 'Diagrama técnico exploded-view del conjunto de culata, pistón, inyector de combustible Denso y módulo de filtrado de aceite.',
@@ -282,6 +410,8 @@ export const EXPLODED_DIAGRAMS: ExplodedDiagram[] = [
     id: 'diag-vstrom-intake',
     title: 'Diagrama de Admisión y Filtrado de Aire',
     category: 'Sistema de Aire',
+    section: 'Air & Fuel',
+    applicableModelIds: ['vstrom-650'],
     modelTarget: 'V-Strom 650 (2015-2024)',
     diagramImage: DIAGRAM_SVGS['diag-vstrom-intake'],
     description: 'Caja de filtro de aire secundario, toberas de resonancia y sensores de presión MAP/IAT.',
@@ -291,27 +421,167 @@ export const EXPLODED_DIAGRAMS: ExplodedDiagram[] = [
     ]
   },
   {
-    id: 'diag-gsxr-brake',
-    title: 'Sistema de Freno Delantero Monobloque Tokico',
-    category: 'Frenos & ABS',
-    modelTarget: 'GSX-R1000 (2017-2024)',
-    diagramImage: DIAGRAM_SVGS['diag-gsxr-brake'],
-    description: 'Pinzas radiales de 4 pistones, sensores de rueda ABS y latiguillos metálicos blindados.',
-    hotspots: [
-      { partId: 'part-03', itemNumber: 2, x: 48, y: 58, label: 'Pastillas Tokico Sinterizadas SSS' }
-    ]
-  },
-  {
     id: 'diag-transmission',
     title: 'Kit de Arrastre & Transmisión Final',
     category: 'Transmisión',
+    section: 'Drive & Transmission',
+    applicableModelIds: ['gixxer-250'],
     modelTarget: 'Gixxer 250 (2020-2024)',
     diagramImage: DIAGRAM_SVGS['diag-transmission'],
     description: 'Conjunto de piñón de ataque, corona trasera paso 520 y cadena de transmisión con O-Ring.',
     hotspots: [
       { partId: 'part-04', itemNumber: 3, x: 28, y: 50, label: 'Kit de Arrastre Sprocket & Piñón Paso 520 HD' }
     ]
+  },
+  {
+    id: 'diag-gixxer-cooling',
+    title: 'Sistema de Refrigeración del Motor',
+    category: 'Sistema de Refrigeración',
+    section: 'Cooling System',
+    applicableModelIds: ['gixxer-150-fi'],
+    modelTarget: 'Gixxer 150 FI (2018-2024)',
+    diagramImage: DIAGRAM_SVGS['diag-gixxer-engine'],
+    description: 'Conjunto de radiador de aluminio, termostato de 80°C, ventilador termo-activado, mangueras de coolant y tapa de presión.',
+    hotspots: [
+      { partId: 'part-10', itemNumber: 1, x: 38, y: 42, label: 'Radiador de Refrigeración con Termostato' }
+    ]
+  },
+  {
+    id: 'diag-gixxer-exhaust',
+    title: 'Sistema de Escape Completo',
+    category: 'Sistema de Escape',
+    section: 'Exhaust',
+    applicableModelIds: ['gixxer-150-fi'],
+    modelTarget: 'Gixxer 150 FI (2018-2024)',
+    diagramImage: DIAGRAM_SVGS['diag-gixxer-engine'],
+    description: 'Múltiple de escape en acero inoxidable, junta de grafito, catalizador y silenciador trasero con sensor lambda integrado.',
+    hotspots: [
+      { partId: 'part-11', itemNumber: 2, x: 56, y: 38, label: 'Múltiple de Escape Acero Inoxidable' }
+    ]
+  },
+  {
+    id: 'diag-gixxer-foot-control',
+    title: 'Pedales y Controles del Piloto',
+    category: 'Controles',
+    section: 'Foot Control',
+    applicableModelIds: ['gixxer-150-fi'],
+    modelTarget: 'Gixxer 150 FI (2018-2024)',
+    diagramImage: DIAGRAM_SVGS['diag-transmission'],
+    description: 'Conjunto de pedal de cambios, pedal de freno trasero, foot-pegs del piloto y estriberas del pasajero.',
+    hotspots: [
+      { partId: 'part-14', itemNumber: 3, x: 42, y: 70, label: 'Pedal de Cambios Reforzado con Punta Plegable' }
+    ]
+  },
+  {
+    id: 'diag-gixxer-dash',
+    title: 'Panel de Instrumentos & Display',
+    category: 'Instrumentación',
+    section: 'Dash & Gauges',
+    applicableModelIds: ['gixxer-150-fi'],
+    modelTarget: 'Gixxer 150 FI (2020-2024)',
+    diagramImage: DIAGRAM_SVGS['diag-vstrom-intake'],
+    description: 'Cluster de instrumentos LCD con tacómetro, odómetro, indicador de marcha, nivel de combustible y testigos de aviso.',
+    hotspots: [
+      { partId: 'part-15', itemNumber: 2, x: 50, y: 40, label: 'Tacómetro Digital Multifunción' }
+    ]
+  },
+  {
+    id: 'diag-gsxr-engine',
+    title: 'Bloque Motor GSX-R1000 Performance',
+    category: 'Motor & Admisión',
+    section: 'Engine',
+    applicableModelIds: ['gsxr-1000'],
+    modelTarget: 'GSX-R1000 (2017-2024)',
+    diagramImage: DIAGRAM_SVGS['diag-gixxer-engine'],
+    description: 'Despiece del motor tetracilíndrico en línea con árbol de levas DOHC, pistones forjados y sistema de inyección doble.',
+    hotspots: [
+      { partId: 'part-06', itemNumber: 1, x: 50, y: 22, label: 'Bujía Iridium NGK CPR8EA-9' },
+      { partId: 'part-08', itemNumber: 3, x: 52, y: 50, label: 'Kit Pistón STD 62mm & Anillos' }
+    ]
+  },
+  {
+    id: 'diag-gsxr-brake',
+    title: 'Sistema de Freno Delantero Monobloque Tokico',
+    category: 'Frenos & ABS',
+    section: 'Brakes',
+    applicableModelIds: ['gsxr-1000'],
+    modelTarget: 'GSX-R1000 (2017-2024)',
+    diagramImage: DIAGRAM_SVGS['diag-gsxr-brake'],
+    description: 'Pinzas radiales de 4 pistones, sensores de rueda ABS y latiguillos metálicos blindados.',
+    hotspots: [
+      { partId: 'part-12', itemNumber: 1, x: 28, y: 50, label: 'Pinza de Freno Delantero 4 Pistones' },
+      { partId: 'part-03', itemNumber: 2, x: 48, y: 58, label: 'Pastillas Tokico Sinterizadas SSS' }
+    ]
+  },
+  {
+    id: 'diag-vstrom-electrical',
+    title: 'Sistema Eléctrico & Cableado V-Strom',
+    category: 'Sistema Eléctrico',
+    section: 'Electrical',
+    applicableModelIds: ['vstrom-650'],
+    modelTarget: 'V-Strom 650 (2015-2024)',
+    diagramImage: DIAGRAM_SVGS['diag-vstrom-intake'],
+    description: 'Arnés principal, relé de arranque, regulador/rectificador y ECU de gestión del motor.',
+    hotspots: [
+      { partId: 'part-07', itemNumber: 1, x: 42, y: 50, label: 'Relé Estanco de Arranque' }
+    ]
+  },
+  {
+    id: 'diag-vstrom-frame',
+    title: 'Chasis & Protectores de Carenado',
+    category: 'Chasis & Body',
+    section: 'Frame',
+    applicableModelIds: ['vstrom-650'],
+    modelTarget: 'V-Strom 650 (2015-2024)',
+    diagramImage: DIAGRAM_SVGS['diag-transmission'],
+    description: 'Estructura tubular de doble viga, sliders de chasis y puntos de anclaje del carenado adventure.',
+    hotspots: [
+      { partId: 'part-13', itemNumber: 1, x: 50, y: 60, label: 'Slider de Chasis Protector (Par)' }
+    ]
+  },
+  {
+    id: 'diag-gixxer-250-engine',
+    title: 'Motor Gixxer 250 Oil-Cooled',
+    category: 'Motor & Admisión',
+    section: 'Engine',
+    applicableModelIds: ['gixxer-250'],
+    modelTarget: 'Gixxer 250 (2020-2024)',
+    diagramImage: DIAGRAM_SVGS['diag-gixxer-engine'],
+    description: 'Despiece del motor monocilíndrico de 249cc con refrigeración por aceite, sistema SOHC y balancines de rodillos.',
+    hotspots: [
+      { partId: 'part-06', itemNumber: 1, x: 50, y: 22, label: 'Bujía Iridium NGK CPR8EA-9' },
+      { partId: 'part-02', itemNumber: 2, x: 64, y: 76, label: 'Filtro de Aceite Cartucho Magnético' }
+    ]
+  },
+  {
+    id: 'diag-gixxer-250-transmission',
+    title: 'Transmisión 6-Speed Gixxer 250',
+    category: 'Transmisión',
+    section: 'Drive & Transmission',
+    applicableModelIds: ['gixxer-250'],
+    modelTarget: 'Gixxer 250 (2020-2024)',
+    diagramImage: DIAGRAM_SVGS['diag-transmission'],
+    description: 'Caja de cambios de 6 velocidades, embrague slipper y eje de salida sellado.',
+    hotspots: [
+      { partId: 'part-04', itemNumber: 1, x: 28, y: 50, label: 'Kit de Arrastre Sprocket & Piñón Paso 520 HD' }
+    ]
   }
+];
+
+/** Orden canónico de las secciones de la motocicleta para mostrar en el catálogo. */
+export const MOTORCYCLE_SECTION_ORDER: string[] = [
+  'Engine',
+  'Air & Fuel',
+  'Drive & Transmission',
+  'Brakes',
+  'Cooling System',
+  'Electrical',
+  'Frame',
+  'Body, Fairing & Fender',
+  'Exhaust',
+  'Foot Control',
+  'Dash & Gauges',
+  'Accessory'
 ];
 
 export const SAMPLE_VINS: Record<string, VinLookupResult> = {

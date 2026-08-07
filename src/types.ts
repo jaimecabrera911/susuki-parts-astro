@@ -22,10 +22,10 @@ export interface TechnicalSpec {
 
 export type AvailabilityStatus = 'in_stock' | 'international' | 'on_order';
 
-export const AVAILABILITY_META: Record<AvailabilityStatus, { label: string; shortLabel: string; sortOrder: number }> = {
-  in_stock:      { label: 'Disponible',          shortLabel: 'En Stock',       sortOrder: 0 },
-  international: { label: 'Envío Internacional', shortLabel: 'Internacional', sortOrder: 1 },
-  on_order:      { label: 'Bajo Pedido',         shortLabel: 'Bajo Pedido',    sortOrder: 2 }
+export const AVAILABILITY_META: Record<AvailabilityStatus, { label: string; shortLabel: string; sortOrder: number; bgClass: string; textClass: string; borderClass: string }> = {
+  in_stock:      { label: 'Disponible',          shortLabel: 'En Stock',       sortOrder: 0, bgClass: 'bg-emerald-50',  textClass: 'text-emerald-700',  borderClass: 'border-emerald-200' },
+  international: { label: 'Envío Internacional', shortLabel: 'Internacional', sortOrder: 1, bgClass: 'bg-blue-50',     textClass: 'text-blue-700',     borderClass: 'border-blue-200' },
+  on_order:      { label: 'Bajo Pedido',         shortLabel: 'Bajo Pedido',    sortOrder: 2, bgClass: 'bg-amber-50',    textClass: 'text-amber-700',    borderClass: 'border-amber-200' }
 };
 
 /** Resuelve el estado de disponibilidad con fallback para datos antiguos. */
@@ -73,6 +73,10 @@ export interface ExplodedDiagram {
   id: string;
   title: string;
   category: string;
+  /** Sección de la motocicleta a la que pertenece el despiece (Engine, Brakes, Air & Fuel, etc.) */
+  section: string;
+  /** IDs de modelos Suzuki a los que aplica este despiece. Vacío = aplica a todos. */
+  applicableModelIds: string[];
   modelTarget: string;
   diagramImage: string;
   description: string;
@@ -109,3 +113,48 @@ export interface VinLookupResult {
   specsSummary?: string;
   message?: string;
 }
+
+export interface UserProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  documentId: string;
+  city: string;
+  address: string;
+  postalCode: string;
+  favoritePartIds: string[];
+  createdAt: string;
+  avatarUrl?: string;
+}
+
+export type PaymentMethod = 'transferencia';
+
+export type OrderStatus =
+  | 'Pendiente de pago'
+  | 'Pago confirmado'
+  | 'Despachado en Bodega Central'
+  | 'En tránsito'
+  | 'Entregado'
+  | 'Cancelado';
+
+export interface Order {
+  id: string;
+  date: string;
+  customerName: string;
+  email: string;
+  phone: string;
+  documentId: string;
+  city: string;
+  shippingAddress: string;
+  postalCode: string;
+  items: CartItem[];
+  totalPrice: number;
+  motorcycle: ActiveMotorcycle | null;
+  guaranteeCode: string;
+  paymentMethod: PaymentMethod;
+  status: OrderStatus;
+  paymentReference?: string;
+}
+
+

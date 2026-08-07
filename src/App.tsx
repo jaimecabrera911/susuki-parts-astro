@@ -11,13 +11,19 @@ import { ExplodedView } from './components/ExplodedView';
 import { AIAssistantModal } from './components/AIAssistantModal';
 import { CartDrawer } from './components/CartDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
+import { CheckoutPage } from './components/CheckoutPage';
 import { OrdersModal } from './components/OrdersModal';
+
+import { UserProfilePage } from './components/UserProfilePage';
+import { AuthModal } from './components/AuthModal';
 import { CatalogSidebarFilter } from './components/CatalogSidebarFilter';
+
 import { WhatsAppWidget } from './components/WhatsAppWidget';
 import { SUZUKI_PARTS } from './data/suzukiData';
-import type { ActiveMotorcycle, SuzukiPart, CartItem, AvailabilityStatus } from './types';
+import type { ActiveMotorcycle, SuzukiPart, CartItem, AvailabilityStatus, UserProfile } from './types';
 import { getAvailabilityStatus, AVAILABILITY_META, matchesOem, getPrimaryOem } from './types';
 import { ShieldCheck, Wrench, ArrowRight, Layers, FileSearch, Sparkles, CheckCircle2, ArrowUpDown } from 'lucide-react';
+
 
 export default function App() {
   // State for active motorcycle in garage
@@ -48,8 +54,65 @@ export default function App() {
     ];
   });
 
+  // Auth & Login State
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    const saved = localStorage.getItem('sz_is_logged_in');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('sz_is_logged_in', isLoggedIn ? 'true' : 'false');
+  }, [isLoggedIn]);
+
+  // User Profile State
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
+    const saved = localStorage.getItem('sz_user_profile');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return {
+      id: 'USR-8849',
+      fullName: 'Juan Pérez',
+      email: 'juan.perez@mototaller.com',
+      phone: '+57 310 982 7311',
+      documentId: '1.098.472.910',
+      city: 'Bogotá D.C.',
+      address: 'Av. Central #450, Taller Mecánico Motos',
+      postalCode: '110111',
+      favoritePartIds: ['suzuki-gsxr-1000-air-filter', 'suzuki-gixxer-150-brake-pads'],
+      createdAt: 'Marzo 2024'
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sz_user_profile', JSON.stringify(userProfile));
+  }, [userProfile]);
+
+  const handleLoginSuccess = (user: UserProfile) => {
+    setUserProfile(user);
+    setIsLoggedIn(true);
+    navigateToTab('account');
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    navigateToTab('garage');
+  };
+
+  const handleToggleFavorite = (partId: string) => {
+    setUserProfile(prev => {
+      const exists = prev.favoritePartIds.includes(partId);
+      const updatedFavorites = exists
+        ? prev.favoritePartIds.filter(id => id !== partId)
+        : [...prev.favoritePartIds, partId];
+      return { ...prev, favoritePartIds: updatedFavorites };
+    });
+  };
+
   // App Navigation & Modal States
-  const [activeTab, setActiveTab] = useState<'garage' | 'catalog' | 'schematics' | 'orders' | 'product-page'>('garage');
+  const [activeTab, setActiveTab] = useState<'garage' | 'catalog' | 'schematics' | 'orders' | 'product-page' | 'account' | 'checkout'>('garage');
+
   const [selectedPagePart, setSelectedPagePart] = useState<SuzukiPart | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -72,12 +135,19 @@ export default function App() {
     setSortBy('relevance');
   };
 
-  const navigateToTab = (tab: 'garage' | 'catalog' | 'schematics' | 'orders' | 'product-page', pathOverride?: string) => {
+  const navigateToTab = (tab: 'garage' | 'catalog' | 'schematics' | 'orders' | 'product-page' | 'account' | 'checkout', pathOverride?: string) => {
+    // Clear schematic targets when leaving the schematics view to avoid stale pre-selection
+    if (tab !== 'schematics') {
+      setSchematicTargetId(undefined);
+      setSchematicTargetPartId(undefined);
+    }
     setActiveTab(tab);
     let targetPath = '/garaje';
     if (tab === 'catalog') targetPath = '/catalogo';
     else if (tab === 'schematics') targetPath = '/despieces';
     else if (tab === 'orders') targetPath = '/pedidos';
+    else if (tab === 'account') targetPath = '/cuenta';
+    else if (tab === 'checkout') targetPath = '/completar-pedido';
     else if (pathOverride) targetPath = pathOverride;
 
     if (window.location.pathname !== targetPath) {
@@ -121,6 +191,10 @@ export default function App() {
         setActiveTab('schematics');
       } else if (pathname === '/pedidos' || hash === '#pedidos' || hash === '#orders') {
         setActiveTab('orders');
+      } else if (pathname === '/cuenta' || pathname === '/usuario' || hash === '#cuenta' || hash === '#perfil') {
+        setActiveTab('account');
+      } else if (pathname === '/completar-pedido' || hash === '#completar-pedido' || hash === '#checkout') {
+        setActiveTab('checkout');
       } else if (pathname === '/garaje' || pathname === '/' || hash === '#garaje' || hash === '#garage') {
         if (pathname === '/') {
           window.history.replaceState(null, '', '/garaje');
@@ -131,6 +205,7 @@ export default function App() {
 
     handleLocationChange();
     window.addEventListener('popstate', handleLocationChange);
+
     window.addEventListener('hashchange', handleLocationChange);
     return () => {
       window.removeEventListener('popstate', handleLocationChange);
@@ -161,6 +236,7 @@ export default function App() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedPartDetail, setSelectedPartDetail] = useState<SuzukiPart | null>(null);
   const [schematicTargetId, setSchematicTargetId] = useState<string | undefined>(undefined);
+  const [schematicTargetPartId, setSchematicTargetPartId] = useState<string | undefined>(undefined);
 
   // Save motorcycle in localStorage
   useEffect(() => {
@@ -317,7 +393,13 @@ export default function App() {
         onOpenGarageModal={() => setIsGarageModalOpen(true)}
         onOpenCart={() => setIsCartOpen(true)}
         onOpenAI={() => setIsAIOpen(true)}
+        userName={userProfile.fullName}
+        isLoggedIn={isLoggedIn}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onLogout={handleLogout}
       />
+
+
 
       {/* Main View Switcher */}
       <main className="flex-1">
@@ -382,6 +464,8 @@ export default function App() {
                     onOpenDetail={(p) => setSelectedPartDetail(p)}
                     onAddToCart={handleAddToCart}
                     onOpenGarageModal={() => setIsGarageModalOpen(true)}
+                    isFavorite={userProfile.favoritePartIds.includes(part.id)}
+                    onToggleFavorite={handleToggleFavorite}
                   />
                 ))}
               </div>
@@ -480,6 +564,8 @@ export default function App() {
                         onOpenDetail={(p) => setSelectedPartDetail(p)}
                         onAddToCart={handleAddToCart}
                         onOpenGarageModal={() => setIsGarageModalOpen(true)}
+                        isFavorite={userProfile.favoritePartIds.includes(part.id)}
+                        onToggleFavorite={handleToggleFavorite}
                       />
                     ))}
                   </div>
@@ -497,7 +583,9 @@ export default function App() {
             activeMotorcycle={activeMotorcycle}
             onAddToCart={handleAddToCart}
             onOpenPartDetail={(p) => setSelectedPartDetail(p)}
+            onOpenGarageModal={() => setIsGarageModalOpen(true)}
             initialSchematicId={schematicTargetId}
+            initialPartId={schematicTargetPartId}
           />
         )}
 
@@ -506,7 +594,32 @@ export default function App() {
           <OrdersModal orders={orders} />
         )}
 
-        {/* Tab 5: Standalone Full Product Page View */}
+        {/* Tab 5: User Profile & Account Dashboard */}
+        {activeTab === 'account' && (
+          <UserProfilePage
+            userProfile={userProfile}
+            onUpdateProfile={(updated) => setUserProfile(updated)}
+            savedGarages={savedGarages}
+            activeMotorcycle={activeMotorcycle}
+            onSelectActiveBike={handleSelectMotorcycle}
+            onOpenGarageModal={() => setIsGarageModalOpen(true)}
+            onRemoveGarageBike={(modelId, year) => {
+              const updated = savedGarages.filter(m => !(m.modelId === modelId && m.year === year));
+              setSavedGarages(updated);
+              localStorage.setItem('sz_saved_garages', JSON.stringify(updated));
+            }}
+            orders={orders}
+            favoriteParts={SUZUKI_PARTS.filter(p => userProfile.favoritePartIds.includes(p.id))}
+            onToggleFavorite={handleToggleFavorite}
+            onAddToCart={handleAddToCart}
+            onNavigateToCatalog={() => navigateToTab('catalog')}
+            onNavigateToSchematics={() => navigateToTab('schematics')}
+            onLogout={handleLogout}
+          />
+        )}
+
+        {/* Tab 6: Standalone Full Product Page View */}
+
         {activeTab === 'product-page' && selectedPagePart && (
           <ProductDetailPage
             part={selectedPagePart}
@@ -515,8 +628,9 @@ export default function App() {
             onBack={handleBackFromProductPage}
             onAddToCart={handleAddToCart}
             onOpenGarageModal={() => setIsGarageModalOpen(true)}
-            onViewSchematics={(sId) => {
+            onViewSchematics={(sId, pId) => {
               setSchematicTargetId(sId);
+              setSchematicTargetPartId(pId);
               navigateToTab('schematics');
             }}
             onSelectRelatedPart={(p) => {
@@ -526,9 +640,31 @@ export default function App() {
           />
         )}
 
+        {/* Tab 7: Dedicated Checkout Page (/completar-pedido) */}
+        {activeTab === 'checkout' && (
+          <CheckoutPage
+            cartItems={cartItems}
+            activeMotorcycle={activeMotorcycle}
+            userProfile={userProfile}
+            isLoggedIn={isLoggedIn}
+            onOrderComplete={(order) => {
+              setOrders(prev => [order, ...prev]);
+            }}
+            onClearCart={() => setCartItems([])}
+            onNavigateToCatalog={() => navigateToTab('catalog')}
+            onNavigateToOrders={() => navigateToTab('orders')}
+          />
+        )}
+
       </main>
 
       {/* Global Modals & Drawers */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+      />
+
       <GarageModal
         isOpen={isGarageModalOpen}
         onClose={() => setIsGarageModalOpen(false)}
@@ -537,6 +673,7 @@ export default function App() {
         savedGarages={savedGarages}
         onRemoveFromGarage={handleRemoveFromGarage}
       />
+
 
       <IdentificationGuideModal
         isOpen={isTutorialOpen}
@@ -550,8 +687,9 @@ export default function App() {
         onClose={() => setSelectedPartDetail(null)}
         onAddToCart={handleAddToCart}
         onOpenGarageModal={() => setIsGarageModalOpen(true)}
-        onViewSchematics={(sId) => {
+        onViewSchematics={(sId, pId) => {
           setSchematicTargetId(sId);
+          setSchematicTargetPartId(pId);
           navigateToTab('schematics');
         }}
         onSelectRelatedPart={(p) => setSelectedPartDetail(p)}
@@ -572,19 +710,12 @@ export default function App() {
         onRemoveItem={handleRemoveCartItem}
         onProceedCheckout={() => {
           setIsCartOpen(false);
-          setIsCheckoutOpen(true);
+          navigateToTab('checkout');
         }}
         onViewPartDetail={(part) => setSelectedPartDetail(part)}
         activeMotorcycle={activeMotorcycle}
       />
 
-      <CheckoutModal
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-        cartItems={cartItems}
-        activeMotorcycle={activeMotorcycle}
-        onOrderComplete={handleOrderComplete}
-      />
 
       {/* Floating WhatsApp Widget */}
       <WhatsAppWidget

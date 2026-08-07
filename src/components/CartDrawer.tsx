@@ -203,9 +203,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   onClick={onProceedCheckout}
                   className="w-full py-3 min-h-[44px] bg-[#E60012] hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
                 >
-                  <span>Procesar Pedido Directo</span>
+                  <span>Completar Pedido</span>
                   <ArrowRight className="w-4 h-4" aria-hidden="true" />
                 </button>
+
 
                 <a
                   href={getCartWhatsAppUrl(cartItems, activeMotorcycle)}

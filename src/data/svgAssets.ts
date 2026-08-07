@@ -360,6 +360,35 @@ export const PARTS_SVGS = {
       <text x="300" y="100" font-family="sans-serif" font-weight="900" font-size="20" fill="#ffffff" text-anchor="middle">THROTTLE BODY ASSY</text>
       <text x="300" y="350" font-family="monospace" font-weight="700" font-size="16" fill="#e60012" text-anchor="middle">13400-27G10 EFI</text>
     </svg>
+  `),
+
+  'part-10': encodeSvg(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" width="100%" height="100%">
+      <rect width="600" height="450" fill="#0f172a"/>
+      <!-- Radiator core -->
+      <rect x="100" y="100" width="400" height="240" rx="10" fill="#1e3a8a" stroke="#3b82f6" stroke-width="6"/>
+      <!-- Fins -->
+      ${Array.from({ length: 28 }, (_, i) => `<line x1="${110 + i * 14}" y1="110" x2="${110 + i * 14}" y2="330" stroke="#60a5fa" stroke-width="1.5" opacity="0.55"/>`).join('')}
+      ${Array.from({ length: 12 }, (_, i) => `<line x1="110" y1="${110 + i * 20}" x2="490" y2="${110 + i * 20}" stroke="#1e40af" stroke-width="1" opacity="0.4"/>`).join('')}
+      <!-- Top tank -->
+      <rect x="100" y="80" width="400" height="40" rx="8" fill="#334155" stroke="#94a3b8" stroke-width="3"/>
+      <!-- Bottom tank -->
+      <rect x="100" y="320" width="400" height="40" rx="8" fill="#334155" stroke="#94a3b8" stroke-width="3"/>
+      <!-- Filler cap -->
+      <circle cx="300" cy="100" r="22" fill="#0f172a" stroke="#e60012" stroke-width="4"/>
+      <text x="300" y="106" font-family="monospace" font-weight="900" font-size="14" fill="#e60012" text-anchor="middle">1.1</text>
+      <!-- Hose connections -->
+      <rect x="80" y="160" width="30" height="20" fill="#475569" stroke="#94a3b8" stroke-width="2"/>
+      <rect x="80" y="270" width="30" height="20" fill="#475569" stroke="#94a3b8" stroke-width="2"/>
+      <!-- Fan -->
+      <circle cx="550" cy="220" r="60" fill="none" stroke="#64748b" stroke-width="3" opacity="0.5"/>
+      <path d="M550 180 Q565 220 550 260" stroke="#94a3b8" stroke-width="3" fill="none"/>
+      <path d="M515 200 Q540 220 515 240" stroke="#94a3b8" stroke-width="3" fill="none"/>
+      <path d="M585 200 Q560 220 585 240" stroke="#94a3b8" stroke-width="3" fill="none"/>
+      <!-- Labels -->
+      <text x="300" y="60" font-family="sans-serif" font-weight="900" font-size="18" fill="#ffffff" text-anchor="middle">RADIADOR</text>
+      <text x="300" y="400" font-family="monospace" font-weight="700" font-size="14" fill="#e60012" text-anchor="middle">17710-14G00</text>
+    </svg>
   `)
 };
 

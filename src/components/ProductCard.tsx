@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, HelpCircle, Eye, ShoppingBag, ShieldCheck, Globe, Clock, CheckCircle2, Copy, Check } from 'lucide-react';
+import { AlertTriangle, HelpCircle, Eye, ShoppingBag, ShieldCheck, Globe, Clock, CheckCircle2, Copy, Check, Heart } from 'lucide-react';
 import { AiTwotoneSafetyCertificate } from 'react-icons/ai';
 import type { SuzukiPart, ActiveMotorcycle, AvailabilityStatus } from '../types';
 import { getAvailabilityStatus, AVAILABILITY_META, getPrimaryOem } from '../types';
@@ -12,6 +12,8 @@ interface ProductCardProps {
   onOpenDetail: (part: SuzukiPart) => void;
   onAddToCart: (part: SuzukiPart) => void;
   onOpenGarageModal: () => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: (partId: string) => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -19,8 +21,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   activeMotorcycle,
   onOpenDetail,
   onAddToCart,
-  onOpenGarageModal
+  onOpenGarageModal,
+  isFavorite = false,
+  onToggleFavorite
 }) => {
+
 
   // Evaluate compatibility status against active motorcycle
   let isCompatible = false;
@@ -136,7 +141,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
             <div className="absolute top-2.5 left-2.5 z-10">{compatibilityBadge}</div>
 
-            <div className="absolute top-2.5 right-2.5 z-10">
+            <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1.5">
+              {onToggleFavorite && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite(part.id);
+                  }}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md border transition-all cursor-pointer ${
+                    isFavorite
+                      ? 'bg-rose-500 text-white border-rose-600 shadow-md'
+                      : 'bg-white/90 text-slate-600 hover:text-rose-500 border-slate-200 shadow-xs'
+                  }`}
+                  title={isFavorite ? 'Quitar de Favoritos' : 'Guardar en Favoritos'}
+                >
+                  <Heart className={`w-4 h-4 ${isFavorite ? 'fill-white' : ''}`} />
+                </button>
+              )}
               <div className="bg-white/95 text-slate-800 font-bold text-[10px] uppercase px-2.5 py-1 rounded-md backdrop-blur-md border border-slate-200/80 shadow-xs">
                 {part.category}
               </div>
@@ -145,11 +167,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         ) : (
           <div className="px-4 pt-4 sm:px-5 sm:pt-5 flex items-start justify-between gap-2">
             {compatibilityBadge}
-            <span className="bg-slate-100 text-slate-800 font-bold text-[10px] uppercase px-2.5 py-1 rounded-md border border-slate-200/80 shrink-0">
-              {part.category}
-            </span>
+            <div className="flex items-center gap-1.5">
+              {onToggleFavorite && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite(part.id);
+                  }}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
+                    isFavorite
+                      ? 'bg-rose-500 text-white border-rose-600'
+                      : 'bg-slate-100 text-slate-600 hover:text-rose-500 border-slate-200'
+                  }`}
+                  title={isFavorite ? 'Quitar de Favoritos' : 'Guardar en Favoritos'}
+                >
+                  <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-white' : ''}`} />
+                </button>
+              )}
+              <span className="bg-slate-100 text-slate-800 font-bold text-[10px] uppercase px-2.5 py-1 rounded-md border border-slate-200/80 shrink-0">
+                {part.category}
+              </span>
+            </div>
           </div>
         )}
+
 
         {/* Info */}
         <div className="p-4 sm:p-5">
