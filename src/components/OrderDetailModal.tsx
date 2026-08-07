@@ -2,6 +2,9 @@ import React, { useEffect } from 'react';
 import { X, ShieldCheck, Printer, Calendar, MapPin, User, Phone, Package, CheckCircle2, Truck } from 'lucide-react';
 import { getPrimaryOem } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
+import { shouldShowProductImages } from '../utils/config';
+import { ProductImageFallback } from './ProductImageFallback';
+
 
 interface OrderDetailModalProps {
   order: any | null;
@@ -139,11 +142,16 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               return (
                 <div key={idx} className="bg-white p-3 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 text-xs shadow-2xs">
                   <div className="flex items-center gap-3">
-                    <img 
-                      src={it.part.image} 
-                      alt={it.part.name} 
-                      className="w-12 h-12 rounded-xl object-cover bg-slate-50 border border-slate-100 shrink-0" 
-                    />
+                    {shouldShowProductImages() ? (
+                      <img 
+                        src={it.part.image} 
+                        alt={it.part.name} 
+                        className="w-12 h-12 rounded-xl object-cover bg-slate-50 border border-slate-100 shrink-0" 
+                      />
+                    ) : (
+                      <ProductImageFallback part={it.part} size="sm" className="w-12 h-12 shrink-0" />
+                    )}
+
                     <div>
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="font-mono text-[10px] font-bold text-[#E60012] bg-red-50 px-2 py-0.5 rounded border border-red-100">

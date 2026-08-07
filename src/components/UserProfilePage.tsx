@@ -27,6 +27,9 @@ import type { UserProfile, ActiveMotorcycle, SuzukiPart, CartItem } from '../typ
 import { getAvailabilityStatus, AVAILABILITY_META, getPrimaryOem } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
 import { OrdersTable } from './OrdersTable';
+import { shouldShowProductImages } from '../utils/config';
+import { ProductImageFallback } from './ProductImageFallback';
+
 
 
 interface UserProfilePageProps {
@@ -66,6 +69,24 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 }) => {
 
   const [activeTab, setActiveTab] = useState<'profile' | 'garage' | 'orders' | 'favorites'>(initialTab);
+  
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.toLowerCase();
+      if (hash === '#favoritos' || hash === '#favorites') {
+        setActiveTab('favorites');
+      } else if (hash === '#pedidos' || hash === '#orders') {
+        setActiveTab('orders');
+      } else if (hash === '#garaje' || hash === '#garage') {
+        setActiveTab('garage');
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   
   // Local form state for user profile editing
   const [formData, setFormData] = useState({
@@ -588,8 +609,13 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                           </div>
 
                           <div className="flex gap-3 my-2">
-                            <img src={part.image} alt={part.name} className="w-16 h-16 rounded-xl object-cover border border-slate-100 bg-slate-50 shrink-0" />
+                            {shouldShowProductImages() ? (
+                              <img src={part.image} alt={part.name} className="w-16 h-16 rounded-xl object-cover border border-slate-100 bg-slate-50 shrink-0" />
+                            ) : (
+                              <ProductImageFallback part={part} size="sm" className="w-16 h-16 shrink-0" />
+                            )}
                             <div>
+
                               <h4 className="text-xs font-bold text-slate-900 line-clamp-2">{part.name}</h4>
                               <div className="mt-1">
                                 <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded border ${availMeta.bgClass} ${availMeta.textClass} ${availMeta.borderClass}`}>

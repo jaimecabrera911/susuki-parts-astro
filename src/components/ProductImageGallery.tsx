@@ -1,8 +1,12 @@
 import React, { useMemo } from 'react';
 import { Layers, ArrowUpRight } from 'lucide-react';
 import type { SuzukiPart } from '../types';
+import { getPrimaryOem } from '../types';
+import { shouldShowProductImages } from '../utils/config';
+import { ProductImageFallback } from './ProductImageFallback';
 import { DIAGRAM_SVGS } from '../data/svgAssets';
 import { EXPLODED_DIAGRAMS } from '../data/suzukiData';
+
 
 interface ProductImageGalleryProps {
   part: SuzukiPart;
@@ -124,16 +128,21 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
   // ---------- CASE 2: No schematic — show the product image (static, no zoom) ----------
   return (
     <div className="w-full">
-      <div className="relative bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden aspect-4/3 sm:aspect-16/10 shadow-xs">
-        <div className="w-full h-full p-6 flex items-center justify-center overflow-hidden">
-          <img
-            src={part.image}
-            alt={part.name}
-            referrerPolicy="no-referrer"
-            className="max-w-full max-h-full object-contain"
-          />
+      {shouldShowProductImages() ? (
+        <div className="relative bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden aspect-4/3 sm:aspect-16/10 shadow-xs">
+          <div className="w-full h-full p-6 flex items-center justify-center overflow-hidden">
+            <img
+              src={part.image}
+              alt={part.name}
+              referrerPolicy="no-referrer"
+              className="max-w-full max-h-full object-contain"
+            />
+          </div>
         </div>
-      </div>
+      ) : (
+        <ProductImageFallback part={part} size="lg" className="w-full aspect-4/3 sm:aspect-16/10" />
+      )}
     </div>
   );
+
 };

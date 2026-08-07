@@ -1,14 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Wrench, ShoppingBag, Sparkles, Layers, Menu, X, Package, Clock, ShieldCheck, ChevronRight, User, LogIn, LogOut, ChevronDown } from 'lucide-react';
+import { Search, Wrench, ShoppingBag, Sparkles, Layers, Menu, X, Package, Clock, ShieldCheck, ChevronRight, User, LogIn, LogOut, ChevronDown, Heart } from 'lucide-react';
 import type { ActiveMotorcycle } from '../types';
+
 
 interface NavbarProps {
   activeMotorcycle: ActiveMotorcycle | null;
   cartCount: number;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
-  activeTab: 'catalog' | 'garage' | 'schematics' | 'orders' | 'product-page' | 'account';
-  setActiveTab: (tab: 'catalog' | 'garage' | 'schematics' | 'orders' | 'product-page' | 'account') => void;
+  activeTab: 'catalog' | 'garage' | 'schematics' | 'orders' | 'product-page' | 'account' | 'checkout' | 'favorites';
+  setActiveTab: (tab: 'catalog' | 'garage' | 'schematics' | 'orders' | 'product-page' | 'account' | 'checkout' | 'favorites') => void;
+
   onOpenGarageModal: () => void;
   onOpenCart: () => void;
   onOpenAI: () => void;
@@ -248,6 +250,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <Package className="w-3.5 h-3.5 text-blue-600" />
                       <span>Mis Pedidos</span>
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleTabClick('favorites')}
+                      className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+                      <span>Repuestos Guardados</span>
+                    </button>
+
+
 
                     <div className="pt-1 mt-1 border-t border-slate-100">
                       <button

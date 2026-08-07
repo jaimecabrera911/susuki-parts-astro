@@ -5,6 +5,9 @@ import type { SuzukiPart, ActiveMotorcycle, AvailabilityStatus } from '../types'
 import { getAvailabilityStatus, AVAILABILITY_META, getPrimaryOem } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getProductWhatsAppUrl } from '../utils/whatsapp';
+import { shouldShowProductImages } from '../utils/config';
+import { ProductImageFallback } from './ProductImageFallback';
+
 
 interface ProductCardProps {
   part: SuzukiPart;
@@ -53,7 +56,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     });
   };
 
-  const showProductImages = import.meta.env.PUBLIC_SHOW_PRODUCT_IMAGES === 'true';
+  const showProductImages = shouldShowProductImages();
+
 
   const availabilityStatus: AvailabilityStatus = getAvailabilityStatus(part);
 
@@ -89,12 +93,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <span>Compatible</span>
       </div>
     ) : (
-      <div className="bg-red-600/95 text-white font-extrabold text-[11px] px-2.5 py-1 rounded-lg shadow-md border border-red-400/40 flex items-center gap-1.5 uppercase tracking-wider">
-        <AlertTriangle className="w-4 h-4 text-red-200 shrink-0" />
+      <div className="bg-red-600/95 text-white font-bold text-[9px] px-1.5 py-0.5 rounded-md shadow-sm border border-red-400/40 flex items-center gap-1 uppercase tracking-wider">
+        <AlertTriangle className="w-3 h-3 text-red-200 shrink-0" />
         <span>No Compatible</span>
       </div>
     )
   ) : (
+
     <button
       type="button"
       onClick={(e) => {
@@ -132,33 +137,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             }}
             className="relative aspect-4/3 bg-slate-100/80 overflow-hidden cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
           >
-            <img
-              src={part.image}
-              alt={part.name}
-              referrerPolicy="no-referrer"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-            />
+            {showProductImages ? (
+              <img
+                src={part.image}
+                alt={part.name}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+              />
+            ) : (
+              <ProductImageFallback part={part} size="lg" className="w-full h-full rounded-none" />
+            )}
+
 
             <div className="absolute top-2.5 left-2.5 z-10">{compatibilityBadge}</div>
 
-            <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1.5">
-              {onToggleFavorite && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleFavorite(part.id);
-                  }}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md border transition-all cursor-pointer ${
-                    isFavorite
-                      ? 'bg-rose-500 text-white border-rose-600 shadow-md'
-                      : 'bg-white/90 text-slate-600 hover:text-rose-500 border-slate-200 shadow-xs'
-                  }`}
-                  title={isFavorite ? 'Quitar de Favoritos' : 'Guardar en Favoritos'}
-                >
-                  <Heart className={`w-4 h-4 ${isFavorite ? 'fill-white' : ''}`} />
-                </button>
-              )}
+            <div className="absolute top-2.5 right-2.5 z-10">
               <div className="bg-white/95 text-slate-800 font-bold text-[10px] uppercase px-2.5 py-1 rounded-md backdrop-blur-md border border-slate-200/80 shadow-xs">
                 {part.category}
               </div>
@@ -167,30 +160,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         ) : (
           <div className="px-4 pt-4 sm:px-5 sm:pt-5 flex items-start justify-between gap-2">
             {compatibilityBadge}
-            <div className="flex items-center gap-1.5">
-              {onToggleFavorite && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleFavorite(part.id);
-                  }}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
-                    isFavorite
-                      ? 'bg-rose-500 text-white border-rose-600'
-                      : 'bg-slate-100 text-slate-600 hover:text-rose-500 border-slate-200'
-                  }`}
-                  title={isFavorite ? 'Quitar de Favoritos' : 'Guardar en Favoritos'}
-                >
-                  <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-white' : ''}`} />
-                </button>
-              )}
-              <span className="bg-slate-100 text-slate-800 font-bold text-[10px] uppercase px-2.5 py-1 rounded-md border border-slate-200/80 shrink-0">
-                {part.category}
-              </span>
-            </div>
+            <span className="bg-slate-100 text-slate-800 font-bold text-[10px] uppercase px-2.5 py-1 rounded-md border border-slate-200/80 shrink-0">
+              {part.category}
+            </span>
           </div>
         )}
+
 
 
         {/* Info */}
@@ -275,6 +250,25 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Row 2: Action Buttons */}
         <div className="flex items-center gap-2">
+          {onToggleFavorite && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFavorite(part.id);
+              }}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center border transition-all cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] ${
+                isFavorite
+                  ? 'bg-rose-500 text-white border-rose-600 shadow-xs'
+                  : 'bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-500 border-slate-200'
+              }`}
+              title={isFavorite ? 'Quitar de Favoritos' : 'Guardar en Favoritos'}
+              aria-label={isFavorite ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+            >
+              <Heart className={`w-4 h-4 ${isFavorite ? 'fill-white' : ''}`} />
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => onOpenDetail(part)}
@@ -284,6 +278,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           >
             <Eye className="w-4 h-4" />
           </button>
+
 
           <a
             href={getProductWhatsAppUrl(part, activeMotorcycle)}
@@ -313,22 +308,25 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <button
               type="button"
               onClick={() => onOpenDetail(part)}
+              aria-label={`Producto no compatible: ver detalles de ${part.name}`}
               className="flex-1 py-2.5 px-3 bg-red-100 hover:bg-red-200 text-red-900 font-bold text-xs uppercase rounded-xl cursor-pointer flex items-center justify-center gap-1.5 border border-red-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
               title="Producto no compatible con la motocicleta activa. Haz clic para ver detalles."
             >
               <AlertTriangle className="w-4 h-4 text-[#E60012] shrink-0" />
-              <span>Ver Incompatibilidad</span>
             </button>
+
           ) : (
             <button
               type="button"
               onClick={() => onAddToCart(part)}
+              aria-label={`Añadir ${part.name} al carrito`}
+              title="Añadir al Carrito"
               className="flex-1 py-2.5 px-3 bg-[#E60012] hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
             >
               <ShoppingBag className="w-4 h-4 shrink-0" />
-              <span>Añadir</span>
             </button>
           )}
+
         </div>
       </div>
 

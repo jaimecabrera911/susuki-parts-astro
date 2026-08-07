@@ -12,7 +12,9 @@ import { AIAssistantModal } from './components/AIAssistantModal';
 import { CartDrawer } from './components/CartDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
 import { CheckoutPage } from './components/CheckoutPage';
+import { FavoritesPage } from './components/FavoritesPage';
 import { OrdersModal } from './components/OrdersModal';
+
 
 import { UserProfilePage } from './components/UserProfilePage';
 import { AuthModal } from './components/AuthModal';
@@ -111,7 +113,7 @@ export default function App() {
   };
 
   // App Navigation & Modal States
-  const [activeTab, setActiveTab] = useState<'garage' | 'catalog' | 'schematics' | 'orders' | 'product-page' | 'account' | 'checkout'>('garage');
+  const [activeTab, setActiveTab] = useState<'garage' | 'catalog' | 'schematics' | 'orders' | 'product-page' | 'account' | 'checkout' | 'favorites'>('garage');
 
   const [selectedPagePart, setSelectedPagePart] = useState<SuzukiPart | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -135,7 +137,7 @@ export default function App() {
     setSortBy('relevance');
   };
 
-  const navigateToTab = (tab: 'garage' | 'catalog' | 'schematics' | 'orders' | 'product-page' | 'account' | 'checkout', pathOverride?: string) => {
+  const navigateToTab = (tab: 'garage' | 'catalog' | 'schematics' | 'orders' | 'product-page' | 'account' | 'checkout' | 'favorites', pathOverride?: string) => {
     // Clear schematic targets when leaving the schematics view to avoid stale pre-selection
     if (tab !== 'schematics') {
       setSchematicTargetId(undefined);
@@ -148,6 +150,7 @@ export default function App() {
     else if (tab === 'orders') targetPath = '/pedidos';
     else if (tab === 'account') targetPath = '/cuenta';
     else if (tab === 'checkout') targetPath = '/completar-pedido';
+    else if (tab === 'favorites') targetPath = '/favoritos';
     else if (pathOverride) targetPath = pathOverride;
 
     if (window.location.pathname !== targetPath) {
@@ -195,6 +198,8 @@ export default function App() {
         setActiveTab('account');
       } else if (pathname === '/completar-pedido' || hash === '#completar-pedido' || hash === '#checkout') {
         setActiveTab('checkout');
+      } else if (pathname === '/favoritos' || hash === '#favoritos' || hash === '#favorites') {
+        setActiveTab('favorites');
       } else if (pathname === '/garaje' || pathname === '/' || hash === '#garaje' || hash === '#garage') {
         if (pathname === '/') {
           window.history.replaceState(null, '', '/garaje');
@@ -202,6 +207,7 @@ export default function App() {
         setActiveTab('garage');
       }
     };
+
 
     handleLocationChange();
     window.addEventListener('popstate', handleLocationChange);
@@ -655,6 +661,20 @@ export default function App() {
             onNavigateToOrders={() => navigateToTab('orders')}
           />
         )}
+
+        {/* Tab 8: Dedicated Favorites Page (/favoritos) */}
+        {activeTab === 'favorites' && (
+          <FavoritesPage
+            favoriteParts={SUZUKI_PARTS.filter(p => userProfile.favoritePartIds.includes(p.id))}
+            activeMotorcycle={activeMotorcycle}
+            onOpenDetail={(p) => setSelectedPartDetail(p)}
+            onAddToCart={handleAddToCart}
+            onOpenGarageModal={() => setIsGarageModalOpen(true)}
+            onToggleFavorite={handleToggleFavorite}
+            onNavigateToCatalog={() => navigateToTab('catalog')}
+          />
+        )}
+
 
       </main>
 

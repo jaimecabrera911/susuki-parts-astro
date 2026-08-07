@@ -23,6 +23,9 @@ import type { CartItem, ActiveMotorcycle, UserProfile, Order } from '../types';
 import { getPrimaryOem } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
 import { BANK_DETAILS } from '../data/bankDetails';
+import { shouldShowProductImages } from '../utils/config';
+import { ProductImageFallback } from './ProductImageFallback';
+
 
 interface CheckoutPageProps {
   cartItems: CartItem[];
@@ -287,7 +290,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   return (
                     <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
                       <div className="flex items-center gap-3">
-                        <img src={it.part.image} alt={it.part.name} className="w-12 h-12 rounded-lg object-cover bg-white border border-slate-100 shrink-0" />
+                        {shouldShowProductImages() ? (
+                          <img src={it.part.image} alt={it.part.name} className="w-12 h-12 rounded-lg object-cover bg-white border border-slate-100 shrink-0" />
+                        ) : (
+                          <ProductImageFallback part={it.part} size="sm" className="w-12 h-12 shrink-0" />
+                        )}
+
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-mono font-bold text-[#E60012] text-[10px]">{getPrimaryOem(it.part)}</span>
@@ -619,7 +627,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 return (
                   <div key={idx} className="flex items-center justify-between gap-3 text-xs p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                     <div className="flex items-center gap-2.5">
-                      <img src={item.part.image} alt={item.part.name} className="w-10 h-10 rounded-lg object-cover bg-white border border-slate-100 shrink-0" />
+                      {shouldShowProductImages() ? (
+                        <img src={item.part.image} alt={item.part.name} className="w-10 h-10 rounded-lg object-cover bg-white border border-slate-100 shrink-0" />
+                      ) : (
+                        <ProductImageFallback part={item.part} size="sm" className="w-10 h-10 shrink-0" />
+                      )}
+
                       <div>
                         <span className="font-mono text-[9px] font-bold text-[#E60012] block">{getPrimaryOem(item.part)}</span>
                         <span className="font-bold text-slate-900 line-clamp-1">{item.part.name}</span>

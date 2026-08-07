@@ -5,6 +5,9 @@ import { getPrimaryOem } from '../types';
 import { SUZUKI_MODELS } from '../data/suzukiData';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getProductWhatsAppUrl } from '../utils/whatsapp';
+import { shouldShowProductImages } from '../utils/config';
+import { ProductImageFallback } from './ProductImageFallback';
+
 import { ProductImageGallery } from './ProductImageGallery';
 
 interface ProductDetailModalProps {
@@ -426,12 +429,17 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       )}
                     </div>
                     <div className="flex gap-2 items-center mb-2">
-                      <img
-                        src={relPart.image}
-                        alt={relPart.name}
-                        referrerPolicy="no-referrer"
-                        className="w-10 h-10 object-cover rounded-lg bg-slate-200 shrink-0"
-                      />
+                      {shouldShowProductImages() ? (
+                        <img
+                          src={relPart.image}
+                          alt={relPart.name}
+                          referrerPolicy="no-referrer"
+                          className="w-10 h-10 object-cover rounded-lg bg-slate-200 shrink-0"
+                        />
+                      ) : (
+                        <ProductImageFallback part={relPart} size="sm" className="w-10 h-10 shrink-0" />
+                      )}
+
                       <h4 className="text-xs font-bold text-slate-900 line-clamp-2 leading-tight">
                         {relPart.name}
                       </h4>

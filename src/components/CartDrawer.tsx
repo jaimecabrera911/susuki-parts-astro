@@ -6,6 +6,9 @@ import { getPrimaryOem } from '../types';
 import { SUZUKI_MODELS } from '../data/suzukiData';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getCartWhatsAppUrl } from '../utils/whatsapp';
+import { shouldShowProductImages } from '../utils/config';
+import { ProductImageFallback } from './ProductImageFallback';
+
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -97,12 +100,19 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     key={item.part.id}
                     className="bg-slate-50 hover:bg-white border border-slate-200 hover:border-slate-300 rounded-xl p-3 flex gap-3 relative transition-all group"
                   >
-                    <img
-                      src={item.part.image}
-                      alt={item.part.name}
-                      onClick={() => onViewPartDetail && onViewPartDetail(item.part)}
-                      className="w-16 h-16 rounded-lg object-cover bg-white border border-slate-200 shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
-                    />
+                    {shouldShowProductImages() ? (
+                      <img
+                        src={item.part.image}
+                        alt={item.part.name}
+                        onClick={() => onViewPartDetail && onViewPartDetail(item.part)}
+                        className="w-16 h-16 rounded-lg object-cover bg-white border border-slate-200 shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
+                      />
+                    ) : (
+                      <div onClick={() => onViewPartDetail && onViewPartDetail(item.part)}>
+                        <ProductImageFallback part={item.part} size="sm" className="w-16 h-16 cursor-pointer" />
+                      </div>
+                    )}
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
                         <div
