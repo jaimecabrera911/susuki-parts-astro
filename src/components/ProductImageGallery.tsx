@@ -1,12 +1,10 @@
 import React, { useMemo } from 'react';
 import { Layers, ArrowUpRight } from 'lucide-react';
 import type { SuzukiPart } from '../types';
-import { getPrimaryOem } from '../types';
 import { shouldShowProductImages } from '../utils/config';
 import { ProductImageFallback } from './ProductImageFallback';
 import { DIAGRAM_SVGS } from '../data/svgAssets';
 import { EXPLODED_DIAGRAMS } from '../data/suzukiData';
-
 
 interface ProductImageGalleryProps {
   part: SuzukiPart;
@@ -17,26 +15,38 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
   part,
   onViewSchematics,
 }) => {
-  const hasSchematic = !!(part.schematicId && (DIAGRAM_SVGS as Record<string, string | undefined>)[part.schematicId]);
-
-  // Look up diagram info (title + hotspot for this part)
+  // Find schematic info by explicit schematicId or by matching category fallback
   const diagramInfo = useMemo(() => {
-    if (!part.schematicId) return null;
-    const diagram = EXPLODED_DIAGRAMS.find(d => d.id === part.schematicId);
-    if (!diagram) return null;
+    let schematicId = part.schematicId;
+    
+    // Fallback: match category if explicit schematicId is not set
+    if (!schematicId) {
+      if (part.category === 'filtros' || part.category === 'admision') schematicId = 'diag-vstrom-intake';
+      else if (part.category === 'motor' || part.category === 'bujias') schematicId = 'diag-gixxer-engine';
+      else if (part.category === 'transmision') schematicId = 'diag-transmission';
+      else if (part.category === 'frenos') schematicId = 'diag-gsxr-brake';
+    }
+
+    if (!schematicId) return null;
+    const diagram = EXPLODED_DIAGRAMS.find(d => d.id === schematicId);
+    const svgImage = (DIAGRAM_SVGS as Record<string, string>)[schematicId];
+    
+    if (!diagram || !svgImage) return null;
+
     return {
+      id: schematicId,
       title: diagram.title,
       section: diagram.section,
       hotspot: part.diagramHotspot ?? null,
-      image: (DIAGRAM_SVGS as Record<string, string>)[part.schematicId]
+      image: svgImage
     };
-  }, [part.schematicId, part.diagramHotspot]);
+  }, [part]);
 
-  // ---------- CASE 1: Part has a schematic — show ONLY the diagram with pin ----------
-  if (hasSchematic && diagramInfo) {
+  // ---------- CASE 1: Schematic Diagram Available — ALWAYS show the exploded view diagram image ----------
+  if (diagramInfo) {
     const handleClick = () => {
-      if (onViewSchematics && part.schematicId) {
-        onViewSchematics(part.schematicId, part.id);
+      if (onViewSchematics && diagramInfo.id) {
+        onViewSchematics(diagramInfo.id, part.id);
       }
     };
 
@@ -55,7 +65,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
             <Layers className="w-3.5 h-3.5 text-[#E60012] shrink-0" aria-hidden="true" />
             <div className="min-w-0">
               <div className="text-[9px] font-mono font-extrabold uppercase tracking-wider text-slate-500">
-                Diagrama de Despiece
+                Diagrama de Despiece Técnico
               </div>
               <div className="text-xs font-extrabold text-slate-900 truncate">
                 {diagramInfo.title}
@@ -74,7 +84,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
           )}
         </div>
 
-        {/* Clickable diagram image */}
+        {/* Clickable diagram image (ALWAYS SHOWN) */}
         <div
           role="button"
           tabIndex={0}
@@ -83,7 +93,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
           aria-label={`Ver despiece ${diagramInfo.title} en la vista completa`}
           className="relative bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden aspect-16/10 cursor-pointer group shadow-xs transition-all hover:border-[#E60012] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
         >
-          <div className="w-full h-full p-6 flex items-center justify-center overflow-hidden">
+          <div className="w-full h-full p-4 flex items-center justify-center overflow-hidden bg-white">
             <img
               src={diagramInfo.image}
               alt={`Despiece: ${diagramInfo.title}`}
@@ -104,7 +114,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
               aria-label={`Pieza #${diagramInfo.hotspot.itemNumber}`}
             >
               <span className="absolute inset-0 -m-2 rounded-full bg-[#E60012]/25 animate-ping" aria-hidden="true" />
-              <span className="relative inline-flex items-center justify-center w-11 h-11 rounded-full font-mono font-black text-sm bg-[#E60012] text-white ring-4 ring-white shadow-xl">
+              <span className="relative inline-flex items-center justify-center w-10 h-10 rounded-full font-mono font-black text-xs bg-[#E60012] text-white ring-4 ring-white shadow-xl">
                 {diagramInfo.hotspot.itemNumber}
               </span>
             </div>
@@ -119,13 +129,13 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
 
         {/* Footer hint */}
         <p className="text-[10px] text-slate-500 px-1 leading-relaxed">
-          Clic en la imagen para abrir el despiece completo en la vista de diagramas.
+          Haz clic en la imagen del despiece para inspeccionar todos los componentes en la vista de diagramas.
         </p>
       </div>
     );
   }
 
-  // ---------- CASE 2: No schematic — show the product image (static, no zoom) ----------
+  // ---------- CASE 2: Static product photo / fallback ----------
   return (
     <div className="w-full">
       {shouldShowProductImages() ? (
@@ -144,5 +154,4 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
       )}
     </div>
   );
-
 };

@@ -1,40 +1,53 @@
-import React, { useState } from 'react';
-import { X, Sparkles, Send, Bot, User, Wrench, ShieldCheck, RefreshCw } from 'lucide-react';
-import type { ActiveMotorcycle } from '../types';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, Sparkles, Send, Bot, User, Wrench, ShieldCheck, RefreshCw, Eye, ShoppingBag, Package, CheckCircle2, AlertTriangle } from 'lucide-react';
+import type { ActiveMotorcycle, SuzukiPart } from '../types';
+import { getPrimaryOem } from '../types';
+import { SUZUKI_PARTS } from '../data/suzukiData';
+import { formatCurrency } from '../utils/formatCurrency';
+import { shouldShowProductImages } from '../utils/config';
+import { ProductImageFallback } from './ProductImageFallback';
 
 interface AIAssistantModalProps {
   isOpen: boolean;
   onClose: () => void;
   activeMotorcycle: ActiveMotorcycle | null;
+  onOpenDetail?: (part: SuzukiPart) => void;
+  onAddToCart?: (part: SuzukiPart) => void;
+  onOpenGarageModal?: () => void;
 }
 
 interface Message {
   sender: 'user' | 'assistant';
   text: string;
+  recommendedOems?: string[];
 }
 
 export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
   isOpen,
   onClose,
-  activeMotorcycle
+  activeMotorcycle,
+  onOpenDetail,
+  onAddToCart,
+  onOpenGarageModal
 }) => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       sender: 'assistant',
-      text: `¡Hola! Soy tu **Asistente Técnico Suzuki Expert** powered by Gemini AI.\n\nPuedo responder tus dudas mecánicas, verificar pares de apriete, sugerir lubricantes OEM y validar códigos de piezas para tu ${activeMotorcycle ? `${activeMotorcycle.brand} ${activeMotorcycle.modelName} (${activeMotorcycle.year})` : 'motocicleta'}.`
+      text: `¡Hola! Soy tu **Asistente Técnico Suzuki Expert** powered by Gemini AI.\n\nPuedo responder tus dudas mecánicas, verificar pares de apriete, sugerir lubricantes OEM y validar códigos de piezas para tu ${activeMotorcycle ? `${activeMotorcycle.brand} ${activeMotorcycle.modelName} (${activeMotorcycle.year})` : 'motocicleta'}.`,
+      recommendedOems: activeMotorcycle ? ['16510-05240', '09482-00406'] : []
     }
   ]);
-  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto scroll to bottom when messages or loading state changes
-  React.useEffect(() => {
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
   // Handle Escape key and body scroll lock
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -71,7 +84,8 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
       const data = await res.json();
       const botMsg: Message = {
         sender: 'assistant',
-        text: data.text || 'Respuesta generada correctamente.'
+        text: data.text || 'Respuesta generada correctamente.',
+        recommendedOems: data.recommendedOems || []
       };
       setMessages(prev => [...prev, botMsg]);
     } catch (err) {
@@ -91,11 +105,12 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
       aria-modal="true"
       aria-labelledby="ai-assistant-modal-title"
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 overflow-y-auto"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/75 backdrop-blur-xs p-4 overflow-y-auto"
     >
+
       <div 
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-2xl max-w-2xl w-full h-[85vh] max-h-[640px] flex flex-col shadow-2xl relative border border-slate-200 overflow-hidden my-auto"
+        className="bg-white rounded-2xl max-w-2xl w-full h-[85vh] max-h-[660px] flex flex-col shadow-2xl relative border border-slate-200 overflow-hidden my-auto"
       >
         
         {/* Header */}
@@ -132,6 +147,13 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
           <span className="text-slate-600 font-bold text-[10px] uppercase shrink-0">Consultas:</span>
           <button
             type="button"
+            onClick={() => handleSend("¿Qué repuestos y aceite le sirven a mi moto Suzuki?")}
+            className="bg-white hover:bg-slate-200 text-slate-800 px-3 py-1.5 min-h-[36px] rounded-lg border border-slate-300 shrink-0 font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+          >
+            ¿Qué producto le sirve a mi moto?
+          </button>
+          <button
+            type="button"
             onClick={() => handleSend("¿Qué aceite y filtro necesita mi Suzuki según manual de fábrica?")}
             className="bg-white hover:bg-slate-200 text-slate-800 px-3 py-1.5 min-h-[36px] rounded-lg border border-slate-300 shrink-0 font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
           >
@@ -144,37 +166,123 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
           >
             Diagnóstico de Inyección
           </button>
-          <button
-            type="button"
-            onClick={() => handleSend("¿Cómo verificar la compatibilidad por número de parte OEM?")}
-            className="bg-white hover:bg-slate-200 text-slate-800 px-3 py-1.5 min-h-[36px] rounded-lg border border-slate-300 shrink-0 font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
-          >
-            Verificar Códigos OEM
-          </button>
         </div>
 
-        {/* Message Log with Live Region for Screen Readers */}
+        {/* Message Log */}
         <div role="log" aria-live="polite" className="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-50">
-          {messages.map((m, idx) => (
-            <div
-              key={idx}
-              className={`flex items-start gap-3 ${m.sender === 'user' ? 'flex-row-reverse' : ''}`}
-            >
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs shrink-0 font-bold ${
-                m.sender === 'user' ? 'bg-slate-900 text-white' : 'bg-[#E60012] text-white'
-              }`}>
-                {m.sender === 'user' ? <User className="w-4 h-4" aria-hidden="true" /> : <Bot className="w-4 h-4" aria-hidden="true" />}
-              </div>
+          {messages.map((m, idx) => {
+            // Find matched SuzukiPart objects from catalog
+            const matchedParts = m.recommendedOems && m.recommendedOems.length > 0
+              ? SUZUKI_PARTS.filter(part => 
+                  part.oemNumbers.some(oem => m.recommendedOems?.includes(oem)) ||
+                  m.recommendedOems?.includes(part.id)
+                )
+              : [];
 
-              <div className={`max-w-[80%] rounded-2xl p-4 text-xs leading-relaxed whitespace-pre-wrap ${
-                m.sender === 'user' 
-                  ? 'bg-slate-900 text-white rounded-tr-xs' 
-                  : 'bg-white border border-slate-200 text-slate-800 shadow-xs rounded-tl-xs'
-              }`}>
-                {m.text}
+            return (
+              <div
+                key={idx}
+                className={`flex items-start gap-3 ${m.sender === 'user' ? 'flex-row-reverse' : ''}`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs shrink-0 font-bold ${
+                  m.sender === 'user' ? 'bg-slate-900 text-white' : 'bg-[#E60012] text-white'
+                }`}>
+                  {m.sender === 'user' ? <User className="w-4 h-4" aria-hidden="true" /> : <Bot className="w-4 h-4" aria-hidden="true" />}
+                </div>
+
+                <div className={`max-w-[85%] rounded-2xl p-4 text-xs leading-relaxed ${
+                  m.sender === 'user' 
+                    ? 'bg-slate-900 text-white rounded-tr-xs whitespace-pre-wrap' 
+                    : 'bg-white border border-slate-200 text-slate-800 shadow-xs rounded-tl-xs'
+                }`}>
+                  <div className="whitespace-pre-wrap">{m.text}</div>
+
+                  {/* Render Product Cards inside Assistant Chat */}
+                  {m.sender === 'assistant' && matchedParts.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+                      <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase text-slate-500 tracking-wider">
+                        <Package className="w-3.5 h-3.5 text-[#E60012]" />
+                        <span>Repuestos Compatibles Recomendados ({matchedParts.length})</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {matchedParts.map((part) => {
+                          const isCompatible = activeMotorcycle
+                            ? (part.compatibility || []).some(cm => cm.modelId === activeMotorcycle.modelId || cm.modelId === 'all')
+                            : true;
+
+
+                          return (
+                            <div key={part.id} className="bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl p-2.5 flex flex-col justify-between gap-2 shadow-2xs transition-all">
+                              <div className="flex items-start gap-2.5">
+                                {shouldShowProductImages() ? (
+                                  <img 
+                                    src={part.image} 
+                                    alt={part.name} 
+                                    className="w-12 h-12 rounded-lg object-cover bg-white border border-slate-200 shrink-0" 
+                                  />
+                                ) : (
+                                  <ProductImageFallback part={part} size="sm" className="w-12 h-12 shrink-0" />
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span className="font-mono text-[9px] font-bold text-[#E60012] truncate">
+                                      {getPrimaryOem(part)}
+                                    </span>
+                                    {activeMotorcycle && isCompatible && (
+                                      <span className="text-[8px] font-extrabold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-0.5 shrink-0">
+                                        <CheckCircle2 className="w-2.5 h-2.5" /> Compatible
+                                      </span>
+                                    )}
+                                  </div>
+                                  <h5 className="font-bold text-slate-900 text-xs line-clamp-1 mt-0.5">{part.name}</h5>
+                                  <span className="font-mono font-black text-slate-900 text-xs block mt-0.5">
+                                    {formatCurrency(part.price)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Interactive Product Actions */}
+                              <div className="flex items-center gap-1.5 pt-1.5 border-t border-slate-200/60">
+                                {onOpenDetail && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      onOpenDetail(part);
+                                    }}
+                                    className="flex-1 py-1.5 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-extrabold text-[10px] uppercase rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                                    title="Ver Ficha Técnica"
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    <span>Detalles</span>
+                                  </button>
+                                )}
+
+                                {onAddToCart && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      onAddToCart(part);
+                                    }}
+                                    className="flex-1 py-1.5 px-2 bg-[#E60012] hover:bg-red-700 text-white font-extrabold text-[10px] uppercase rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                                    title="Añadir al Carrito"
+                                  >
+                                    <ShoppingBag className="w-3 h-3" />
+                                    <span>Añadir</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {loading && (
             <div className="flex items-center gap-2 text-xs text-slate-600 font-medium p-2">
@@ -194,8 +302,8 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Escribe tu consulta técnica o duda de repuesto..."
-            className="flex-1 bg-slate-100 border border-slate-300 rounded-xl px-4 py-2.5 text-xs text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
+            placeholder="Ej: ¿Qué productos le sirven a mi moto?"
+            className="flex-1 bg-slate-100 border border-slate-300 rounded-xl px-4 py-2.5 text-xs text-slate-900 placeholder:text-slate-500 focus:outline-none focus-ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
           />
           <button
             type="button"

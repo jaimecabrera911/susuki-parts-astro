@@ -720,7 +720,11 @@ export default function App() {
         isOpen={isAIOpen}
         onClose={() => setIsAIOpen(false)}
         activeMotorcycle={activeMotorcycle}
+        onOpenDetail={(p) => setSelectedPartDetail(p)}
+        onAddToCart={handleAddToCart}
+        onOpenGarageModal={() => setIsGarageModalOpen(true)}
       />
+
 
       <CartDrawer
         isOpen={isCartOpen}
@@ -742,6 +746,8 @@ export default function App() {
         activeMotorcycle={activeMotorcycle}
         onOpenGarageModal={() => setIsGarageModalOpen(true)}
       />
+
+
 
       {/* Footer strictly formatted as user design */}
       <footer className="bg-slate-200/80 border-t border-slate-300 mt-16 py-10 text-slate-700 text-xs">
