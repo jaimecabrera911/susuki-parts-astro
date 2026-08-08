@@ -1,10 +1,41 @@
+export interface Subcategory {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  active: boolean;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  iconName?: string;
+  description?: string;
+  active: boolean;
+  order: number;
+  subcategories: Subcategory[];
+}
+
+export interface Brand {
+  id: string;
+  name: string;
+  logo?: string;
+  country?: string;
+  active: boolean;
+  description?: string;
+}
+
 export interface SuzukiModel {
   id: string;
+  brandId?: string;
   name: string;
   category: string;
   image: string;
   years: number[];
   versions: string[];
+  active?: boolean;
+  notes?: string;
 }
 
 export interface CompatibilityRule {

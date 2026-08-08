@@ -61,9 +61,9 @@ export const CompatibilitySelector: React.FC<CompatibilitySelectorProps> = ({
               <ShieldCheck className="w-7 h-7" aria-hidden="true" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase text-emerald-400 tracking-wider">COMPATIBILIDAD ACTIVA GUARANTEED</span>
-                <span className="bg-emerald-500/10 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">100% OK</span>
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_0_3px_rgba(16,185,129,0.18)] shrink-0" aria-hidden="true" />
+                <span className="text-xs font-bold uppercase text-emerald-400 tracking-wider">COMPATIBILIDAD ACTIVA GARANTIZADA</span>
               </div>
               <h3 className="text-lg font-black text-white mt-0.5">
                 {activeMotorcycle.brand} {activeMotorcycle.modelName} ({activeMotorcycle.year})

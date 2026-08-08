@@ -299,6 +299,10 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   }
 
   // ============ DETAIL MODE ============
+  // Zoom & Pin Size State for small parts readability
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [pinSize, setPinSize] = useState<'normal' | 'compact' | 'micro'>('compact');
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Breadcrumb / Back Bar */}
@@ -337,42 +341,95 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
           }} aria-hidden="true" />
 
           <div className="relative z-10">
-            <div className="flex items-center justify-between gap-2 mb-3 text-white">
+            {/* Header Toolbar: Zoom Controls & Pin Size Selector */}
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3 text-white">
               <div className="min-w-0">
                 <span className="text-[9px] font-mono uppercase text-slate-400 block">Modelo objetivo</span>
                 <span className="text-xs font-extrabold truncate block">{currentDiagram.modelTarget}</span>
               </div>
-              <span className="font-mono text-[10px] text-slate-400 shrink-0">{currentDiagram.hotspots.length} puntos</span>
+
+              <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setZoomLevel(prev => Math.min(prev + 0.5, 2.5))}
+                  className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 hover:bg-slate-700 text-slate-200"
+                  title="Ampliar zoom"
+                >
+                  +{Math.round(zoomLevel * 100)}%
+                </button>
+                {zoomLevel > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setZoomLevel(1)}
+                    className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold text-slate-400 hover:text-white"
+                    title="Restablecer zoom"
+                  >
+                    Reset
+                  </button>
+                )}
+
+                <div className="h-3 w-[1px] bg-slate-700 mx-0.5" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (pinSize === 'normal') setPinSize('compact');
+                    else if (pinSize === 'compact') setPinSize('micro');
+                    else setPinSize('normal');
+                  }}
+                  className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 hover:bg-slate-700 text-slate-200"
+                  title="Cambiar tamaño de puntos de piezas"
+                >
+                  Puntos: {pinSize.toUpperCase()}
+                </button>
+              </div>
             </div>
 
-            <div className="relative bg-white rounded-lg overflow-hidden p-2">
-              <img
-                src={currentDiagram.diagramImage}
-                alt={currentDiagram.title}
-                referrerPolicy="no-referrer"
-                className="w-full h-auto object-contain"
-              />
+            {/* Viewport with Zoom Overflow Scroll */}
+            <div className="relative bg-white rounded-lg overflow-auto p-2 max-h-[520px] custom-scrollbar">
+              <div
+                className="relative transition-transform duration-200 origin-top-left"
+                style={{ transform: `scale(${zoomLevel})`, width: zoomLevel > 1 ? `${zoomLevel * 100}%` : '100%' }}
+              >
+                <img
+                  src={currentDiagram.diagramImage}
+                  alt={currentDiagram.title}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-auto object-contain pointer-events-none select-none"
+                />
 
-              {/* Hotspot pins */}
-              {currentDiagram.hotspots.map(spot => {
-                const isSelected = selectedPartId === spot.partId;
-                return (
-                  <button
-                    key={spot.itemNumber}
-                    type="button"
-                    onClick={() => setSelectedPartId(spot.partId)}
-                    aria-label={`Punto #${spot.itemNumber} - ${spot.label}`}
-                    style={{ left: `${spot.x}%`, top: `${spot.y}%` }}
-                    className={`absolute -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full font-mono font-extrabold text-xs flex items-center justify-center transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
-                      isSelected
-                        ? 'bg-[#E60012] text-white ring-4 ring-red-400/50 z-20'
-                        : 'bg-white text-slate-900 ring-2 ring-slate-900 hover:bg-[#E60012] hover:text-white z-10'
-                    }`}
-                  >
-                    {spot.itemNumber}
-                  </button>
-                );
-              })}
+                {/* Hotspot pins with inverse zoom scale */}
+                {currentDiagram.hotspots.map(spot => {
+                  const isSelected = selectedPartId === spot.partId;
+
+                  // Dynamic pin sizes for small parts
+                  const pinClasses =
+                    pinSize === 'normal' ? 'w-8 h-8 font-mono text-xs font-black' :
+                    pinSize === 'compact' ? 'w-5 h-5 font-mono text-[10px] font-black' :
+                    'w-3.5 h-3.5 text-[0px] ring-2 ring-white shadow-lg';
+
+                  return (
+                    <button
+                      key={spot.itemNumber}
+                      type="button"
+                      onClick={() => setSelectedPartId(spot.partId)}
+                      aria-label={`Punto #${spot.itemNumber} - ${spot.label}`}
+                      style={{
+                        left: `${spot.x}%`,
+                        top: `${spot.y}%`,
+                        transform: `translate(-50%, -50%) scale(${1 / Math.sqrt(zoomLevel)})`
+                      }}
+                      className={`absolute rounded-full flex items-center justify-center transition-all cursor-pointer focus-visible:outline-none ${pinClasses} ${
+                        isSelected
+                          ? 'bg-[#E60012] text-white ring-4 ring-red-400/50 z-20 scale-125'
+                          : 'bg-white text-slate-900 ring-2 ring-slate-900 hover:bg-[#E60012] hover:text-white z-10'
+                      }`}
+                    >
+                      {pinSize !== 'micro' && spot.itemNumber}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <p className="text-[11px] text-slate-400 leading-relaxed mt-3 px-1">

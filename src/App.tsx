@@ -24,7 +24,7 @@ import { WhatsAppWidget } from './components/WhatsAppWidget';
 import { SUZUKI_PARTS } from './data/suzukiData';
 import type { ActiveMotorcycle, SuzukiPart, CartItem, AvailabilityStatus, UserProfile } from './types';
 import { getAvailabilityStatus, AVAILABILITY_META, matchesOem, getPrimaryOem } from './types';
-import { ShieldCheck, Wrench, ArrowRight, Layers, FileSearch, Sparkles, CheckCircle2, ArrowUpDown } from 'lucide-react';
+import { ShieldCheck, Wrench, ArrowRight, Layers, FileSearch, Sparkles, CheckCircle2, ArrowUpDown, ShoppingBag } from 'lucide-react';
 
 
 export default function App() {
@@ -739,6 +739,22 @@ export default function App() {
         onViewPartDetail={(part) => setSelectedPartDetail(part)}
         activeMotorcycle={activeMotorcycle}
       />
+
+
+      {/* Floating Cart Button */}
+      <button
+        type="button"
+        onClick={() => setIsCartOpen(true)}
+        aria-label={`Abrir carrito (${cartItems.reduce((a, b) => a + b.quantity, 0)} repuestos)`}
+        className="fixed right-5 top-1/2 -translate-y-1/2 z-40 w-14 h-14 flex items-center justify-center bg-[#E60012] hover:bg-[#b5000b] text-white rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#E60012]/40"
+      >
+        <ShoppingBag className="w-6 h-6" aria-hidden="true" />
+        {cartItems.reduce((a, b) => a + b.quantity, 0) > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-white text-[#E60012] text-[11px] font-black flex items-center justify-center border border-[#E60012]/20 shadow-sm">
+            {cartItems.reduce((a, b) => a + b.quantity, 0)}
+          </span>
+        )}
+      </button>
 
 
       {/* Floating WhatsApp Widget */}

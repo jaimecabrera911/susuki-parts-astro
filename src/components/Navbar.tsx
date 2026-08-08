@@ -260,6 +260,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <span>Repuestos Guardados</span>
                     </button>
 
+                    <a
+                      href="/admin"
+                      className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-sky-50 hover:text-sky-700 flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 text-sky-600" />
+                      <span>Panel Admin (Marcas/Modelos)</span>
+                    </a>
+
 
 
                     <div className="pt-1 mt-1 border-t border-slate-100">
