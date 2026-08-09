@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, Wrench, ShoppingBag, Sparkles, Layers, Menu, X, Package, Clock, ShieldCheck, ChevronRight, User, LogIn, LogOut, ChevronDown, Heart } from 'lucide-react';
 import type { ActiveMotorcycle } from '../types';
+import logoImg from '../assets/logo.png';
+
+const logoUrl = typeof logoImg === 'string' ? logoImg : (logoImg?.src || '/src/assets/logo.png');
 
 
 interface NavbarProps {
@@ -83,14 +86,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             }}
             className="flex items-center gap-2.5 shrink-0 cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] rounded-xl p-1"
           >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#E60012] flex items-center justify-center text-white font-black text-lg sm:text-xl shadow-sm tracking-tighter shrink-0">
-              S
+            <div className="w-9 h-9 sm:w-10 sm:h-10 overflow-hidden shrink-0">
+              <img src={logoUrl} alt="Suzuki Parts" className="w-full h-full object-cover pointer-events-none select-none" />
             </div>
             <div>
               <div className="flex items-center gap-1">
                 <span className="text-[#E60012] font-black tracking-tight text-lg sm:text-xl leading-none uppercase">SUZUKI</span>
               </div>
-              <span className="text-slate-900 font-extrabold text-[10px] sm:text-xs tracking-widest block leading-tight uppercase whitespace-nowrap">GENUINE PARTS</span>
+              <span className="text-slate-900 font-extrabold text-[10px] sm:text-xs tracking-widest block leading-tight uppercase whitespace-nowrap">REPUESTOS COLOMBIA</span>
             </div>
           </button>
 

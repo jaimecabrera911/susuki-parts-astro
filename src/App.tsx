@@ -19,6 +19,7 @@ import { OrdersModal } from './components/OrdersModal';
 import { UserProfilePage } from './components/UserProfilePage';
 import { AuthModal } from './components/AuthModal';
 import { CatalogSidebarFilter } from './components/CatalogSidebarFilter';
+import { ProductCatalogSkeletonGrid } from './components/SkeletonLoaders';
 
 import { WhatsAppWidget } from './components/WhatsAppWidget';
 import { SUZUKI_PARTS, SUZUKI_MODELS, EXPLODED_DIAGRAMS } from './data/suzukiData';
@@ -33,6 +34,7 @@ export default function App() {
   const [models, setModels] = useState<SuzukiModel[]>(() => SUZUKI_MODELS);
   const [parts, setParts] = useState<SuzukiPart[]>(() => SUZUKI_PARTS);
   const [schematics, setSchematics] = useState<ExplodedDiagram[]>(() => EXPLODED_DIAGRAMS);
+  const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
   // Dynamic Catalog Filter States
   const [availabilityFilter, setAvailabilityFilter] = useState<Set<AvailabilityStatus>>(
@@ -44,6 +46,7 @@ export default function App() {
 
   useEffect(() => {
     async function loadStorefrontData() {
+      setIsLoadingData(true);
       try {
         const [liveModels, liveParts, liveSchematics] = await Promise.all([
           fetchModels().catch(() => []),
@@ -59,6 +62,8 @@ export default function App() {
         if (liveSchematics && liveSchematics.length > 0) setSchematics(liveSchematics);
       } catch (err) {
         console.error('Error loading live storefront data:', err);
+      } finally {
+        setIsLoadingData(false);
       }
     }
     loadStorefrontData();
@@ -629,11 +634,14 @@ export default function App() {
                 filteredCount={filteredParts.length}
                 onResetFilters={handleResetFilters}
                 models={models}
+                isLoading={isLoadingData}
               />
 
               {/* Right Products Grid */}
               <div className="flex-1 w-full">
-                {filteredParts.length === 0 ? (
+                {isLoadingData ? (
+                  <ProductCatalogSkeletonGrid count={6} />
+                ) : filteredParts.length === 0 ? (
                   <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 max-w-lg mx-auto">
                     <ShieldCheck className="w-12 h-12 text-slate-400 mx-auto mb-3" aria-hidden="true" />
                     <h3 className="text-base font-bold text-slate-800">No se encontraron repuestos</h3>
@@ -683,6 +691,7 @@ export default function App() {
             schematicsList={schematics}
             partsList={parts}
             modelsList={models}
+            isLoading={isLoadingData}
           />
         )}
 
@@ -864,9 +873,9 @@ export default function App() {
       <footer className="bg-slate-200/80 border-t border-slate-300 mt-16 py-10 text-slate-700 text-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
-            <div className="font-extrabold text-slate-900 uppercase text-sm mb-2">SUZUKI PARTS</div>
+            <div className="font-extrabold text-slate-900 uppercase text-sm mb-2">SUZUKI REPUESTOS COLOMBIA</div>
             <p className="text-slate-600 text-[11px] leading-relaxed">
-              © 2026 SUZUKI GENUINE PARTS | INDUSTRIAL PRECISION<br />
+              © 2026 SUZUKI REPUESTOS COLOMBIA | INDUSTRIAL PRECISION<br />
               Sistema oficial de consulta y suministro de repuestos con garantía de ajuste técnico OEM.
             </p>
           </div>

@@ -109,7 +109,7 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
       setApplicableModelIds(models.slice(0, 1).map(m => m.id));
       setModelTarget('Suzuki GSX-R / V-Strom (2018-2024)');
       setDiagramImage(DIAGRAM_SVGS['diag-gixxer-engine']);
-      setDescription('Diagrama despiece oficial Suzuki Genuine Parts.');
+      setDescription('Diagrama despiece oficial Suzuki Repuestos Colombia.');
       setHotspots([]);
     }
     setZoomLevel(1);

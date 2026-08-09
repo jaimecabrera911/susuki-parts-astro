@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Filter,
   Search,
@@ -24,6 +24,9 @@ import { AVAILABILITY_META } from '../types';
 import { SUZUKI_MODELS } from '../data/suzukiData';
 import { getMotorcyclePng } from '../data/motorcycleImages';
 import { formatCurrency } from '../utils/formatCurrency';
+import motoLoadImg from '../assets/moto-load.webp';
+
+const motoLoadUrl = typeof motoLoadImg === 'string' ? motoLoadImg : (motoLoadImg?.src || '/src/assets/moto-load.webp');
 
 interface CatalogSidebarFilterProps {
   selectedCategory: string;
@@ -46,6 +49,7 @@ interface CatalogSidebarFilterProps {
   filteredCount: number;
   onResetFilters: () => void;
   models?: SuzukiModel[];
+  isLoading?: boolean;
 }
 
 export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
@@ -68,7 +72,8 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
   allParts,
   filteredCount,
   onResetFilters,
-  models
+  models,
+  isLoading = false
 }) => {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
@@ -236,7 +241,12 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
 
   const availableModels = models && models.length > 0 ? models : SUZUKI_MODELS;
   const activeModelMeta = activeMotorcycle
-    ? availableModels.find((m) => m.id === activeMotorcycle.modelId)
+    ? availableModels.find((m) =>
+        m.id === activeMotorcycle.modelId ||
+        m.id.toLowerCase().replace(/[^a-z0-9]/g, '') === activeMotorcycle.modelId.toLowerCase().replace(/[^a-z0-9]/g, '') ||
+        m.name.toLowerCase().includes(activeMotorcycle.modelName.toLowerCase()) ||
+        activeMotorcycle.modelName.toLowerCase().includes(m.name.toLowerCase())
+      )
     : null;
   const activeMotoImage = activeModelMeta?.image || (activeMotorcycle ? getMotorcyclePng(activeMotorcycle.modelId) : '');
 
@@ -251,19 +261,29 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
         <div className="relative z-20 p-4">
           {activeMotorcycle ? (
             <div className="flex flex-col gap-3">
-              {/* Motorcycle image — full-width hero, no frame */}
-              <div className="relative w-full h-36" aria-hidden="true">
-                <div className="absolute inset-0 rounded-md bg-white" />
-                <img
-                  src={activeMotoImage}
-                  alt={activeMotorcycle.modelName}
-                  className="absolute inset-0 h-full w-full object-contain p-2 transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-                />
+              {/* Motorcycle image — full-width hero with moto-load.webp skeleton */}
+              <div className="relative w-full h-36 rounded-md overflow-hidden bg-white" aria-hidden="true">
+                {isLoading || !activeMotoImage ? (
+                  <img
+                    src={motoLoadUrl}
+                    alt="Cargando..."
+                    className="absolute inset-0 h-full w-full object-contain p-3 opacity-40 animate-pulse pointer-events-none"
+                  />
+                ) : (
+                  <img
+                    src={activeMotoImage}
+                    alt={activeMotorcycle.modelName}
+                    className="absolute inset-0 h-full w-full object-contain p-2 transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = motoLoadUrl;
+                    }}
+                  />
+                )}
                 {/* Red corner brackets */}
-                <div className="absolute -top-0.5 -left-0.5 w-3 h-3 border-l-2 border-t-2 border-[#E60012]" />
-                <div className="absolute -top-0.5 -right-0.5 w-3 h-3 border-r-2 border-t-2 border-[#E60012]" />
-                <div className="absolute -bottom-0.5 -left-0.5 w-3 h-3 border-l-2 border-b-2 border-[#E60012]" />
-                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 border-r-2 border-b-2 border-[#E60012]" />
+                <div className="absolute -top-0.5 -left-0.5 w-3 h-3 border-l-2 border-t-2 border-[#E60012] z-20" />
+                <div className="absolute -top-0.5 -right-0.5 w-3 h-3 border-r-2 border-t-2 border-[#E60012] z-20" />
+                <div className="absolute -bottom-0.5 -left-0.5 w-3 h-3 border-l-2 border-b-2 border-[#E60012] z-20" />
+                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 border-r-2 border-b-2 border-[#E60012] z-20" />
               </div>
 
               {/* Text content — identity block */}

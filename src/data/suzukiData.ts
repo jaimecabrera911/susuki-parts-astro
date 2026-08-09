@@ -85,7 +85,7 @@ export const SUZUKI_PARTS: SuzukiPart[] = [
     stock: 45,
     image: 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/parts/part-02.jpg',
     availability: 'in_stock',
-    description: 'Filtro de aceite metálico centrifugado Suzuki Genuine Parts. Diseñado para motores mono y bicilíndricos de alta velocidad de rotación.',
+    description: 'Filtro de aceite metálico centrifugado Suzuki Repuestos Colombia. Diseñado para motores mono y bicilíndricos de alta velocidad de rotación.',
     specs: [
       { label: 'Rosca', value: 'M20 x 1.5mm' },
       { label: 'Válvula By-Pass', value: 'Calibrada a 1.0 bar' },

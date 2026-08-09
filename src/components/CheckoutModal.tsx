@@ -191,7 +191,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
 
             <h3 className="text-2xl font-black text-slate-900">¡Pedido Generado Exitosamente!</h3>
-            <p className="text-xs text-slate-500 mt-1">Orden de despacho registrada con sello de garantía Suzuki Genuine Parts.</p>
+            <p className="text-xs text-slate-500 mt-1">Orden de despacho registrada con sello de garantía Suzuki Repuestos Colombia.</p>
 
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 my-6 text-left space-y-3">
               <div className="flex justify-between items-center text-xs border-b border-slate-200 pb-2">
