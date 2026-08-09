@@ -11,6 +11,7 @@ import { OrdersManager } from './OrdersManager';
 import { UsersManager } from './UsersManager';
 import { BrandModal } from './BrandModal';
 import { ModelDrawer } from './ModelDrawer';
+import { ModelViewModal } from './ModelViewModal';
 import { CategoryModal } from './CategoryModal';
 import { PartDrawer } from './PartDrawer';
 import { SchematicDrawer } from './SchematicDrawer';
@@ -59,8 +60,38 @@ import {
 import type { Brand, SuzukiModel, Category, SuzukiPart, AvailabilityStatus, ExplodedDiagram, Order, UserProfile } from '../../types';
 import { CheckCircle2, ShoppingCart, BarChart3, Users } from 'lucide-react';
 
+const getTabFromUrl = (): AdminTab => {
+  if (typeof window === 'undefined') return 'brands';
+  const path = window.location.pathname.replace(/\/$/, '');
+  const section = path.split('/')[2];
+  const validTabs: AdminTab[] = ['brands', 'models', 'categories', 'parts', 'schematics', 'orders', 'users', 'metrics'];
+  if (section && validTabs.includes(section as AdminTab)) {
+    return section as AdminTab;
+  }
+  return 'brands';
+};
+
 export const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<AdminTab>('brands');
+  const [activeTab, setActiveTabState] = useState<AdminTab>(() => getTabFromUrl());
+
+  const handleSetActiveTab = (tab: AdminTab) => {
+    setActiveTabState(tab);
+    if (typeof window !== 'undefined') {
+      const targetPath = `/admin/${tab}`;
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({ tab }, '', targetPath);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setActiveTabState(getTabFromUrl());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [searchQuery, setSearchQuery] = useState('');
 
   // Store States
@@ -82,6 +113,9 @@ export const AdminDashboard: React.FC = () => {
   const [isModelDrawerOpen, setIsModelDrawerOpen] = useState(false);
   const [modelToEdit, setModelToEdit] = useState<SuzukiModel | null>(null);
   const [modelDrawerInitialTab, setModelDrawerInitialTab] = useState<'data' | 'schematics'>('data');
+
+  const [isModelViewModalOpen, setIsModelViewModalOpen] = useState(false);
+  const [modelToView, setModelToView] = useState<SuzukiModel | null>(null);
 
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
@@ -477,7 +511,7 @@ export const AdminDashboard: React.FC = () => {
       {/* Sidebar */}
       <AdminSidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleSetActiveTab}
         brandsCount={brands.length}
         modelsCount={models.length}
         categoriesCount={categories.length}
@@ -559,6 +593,7 @@ export const AdminDashboard: React.FC = () => {
               searchQuery={searchQuery}
               onAddModel={() => { setModelToEdit(null); setModelDrawerInitialTab('data'); setIsModelDrawerOpen(true); }}
               onEditModel={(model) => { setModelToEdit(model); setModelDrawerInitialTab('data'); setIsModelDrawerOpen(true); }}
+              onViewModel={(model) => { setModelToView(model); setIsModelViewModalOpen(true); }}
               onManageSchematics={(model) => { setModelToEdit(model); setModelDrawerInitialTab('schematics'); setIsModelDrawerOpen(true); }}
               onDuplicateModel={handleDuplicateModel}
               onToggleActive={handleToggleModelActive}
@@ -638,7 +673,7 @@ export const AdminDashboard: React.FC = () => {
                 Este módulo está listo para enlazarse con los flujos de pedidos y métricas de ventas.
               </p>
               <button
-                onClick={() => setActiveTab('categories')}
+                onClick={() => handleSetActiveTab('categories')}
                 className="px-5 py-2.5 rounded-xl bg-[#E60012] hover:bg-[#b5000b] text-white text-xs font-bold uppercase tracking-wider transition-all shadow-xs"
               >
                 Ir a Categorías y Subcat
@@ -676,6 +711,25 @@ export const AdminDashboard: React.FC = () => {
           setIsSchematicViewModalOpen(true);
         }}
         initialTab={modelDrawerInitialTab}
+      />
+
+      <ModelViewModal
+        isOpen={isModelViewModalOpen}
+        onClose={() => setIsModelViewModalOpen(false)}
+        model={modelToView}
+        brands={brands}
+        schematics={schematics}
+        onEditModel={(model) => {
+          setIsModelViewModalOpen(false);
+          setModelToEdit(model);
+          setModelDrawerInitialTab('data');
+          setIsModelDrawerOpen(true);
+        }}
+        onViewSchematic={(sch) => {
+          setIsModelViewModalOpen(false);
+          setSchematicToView(sch);
+          setIsSchematicViewModalOpen(true);
+        }}
       />
 
       <CategoryModal

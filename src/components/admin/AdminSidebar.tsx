@@ -1,7 +1,6 @@
 import React from 'react';
 import { 
   Building2, 
-  Bike, 
   Package, 
   Layers, 
   FolderTree,
@@ -11,6 +10,7 @@ import {
   ArrowLeft,
   ChevronRight
 } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 
 export type AdminTab = 'brands' | 'models' | 'categories' | 'parts' | 'schematics' | 'orders' | 'users' | 'metrics';
 
@@ -48,7 +48,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     {
       id: 'models' as AdminTab,
       label: 'MODELOS DE MOTO',
-      icon: Bike,
+      icon: FaMotorcycle,
       count: modelsCount,
       badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
     },
@@ -128,10 +128,17 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
+            const href = `/admin/${item.id}`;
             return (
-              <button
+              <a
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                href={href}
+                onClick={(e) => {
+                  if (!e.metaKey && !e.ctrlKey) {
+                    e.preventDefault();
+                    setActiveTab(item.id);
+                  }
+                }}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 group border ${
                   isActive
                     ? 'bg-red-50 text-[#E60012] border-red-200 shadow-xs'
@@ -157,7 +164,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                     {item.count}
                   </span>
                 )}
-              </button>
+              </a>
             );
           })}
         </div>

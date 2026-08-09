@@ -56,7 +56,7 @@ export const BrandModal: React.FC<BrandModalProps> = ({
       id: brandId,
       name: name.trim(),
       country: country.trim() || 'Japón',
-      logo: logo.trim() || 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=120&auto=format&fit=crop&q=80',
+      logo: logo.trim() || 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/brands/logo.png',
       description: description.trim(),
       active
     };

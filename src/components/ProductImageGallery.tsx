@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
-import { Layers, ArrowUpRight } from 'lucide-react';
-import type { SuzukiPart } from '../types';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Layers, ArrowUpRight, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { BiLinkExternal } from 'react-icons/bi';
+import type { SuzukiPart, ExplodedDiagram } from '../types';
 import { shouldShowProductImages } from '../utils/config';
 import { ProductImageFallback } from './ProductImageFallback';
 import { DIAGRAM_SVGS } from '../data/svgAssets';
@@ -8,39 +9,121 @@ import { EXPLODED_DIAGRAMS } from '../data/suzukiData';
 
 interface ProductImageGalleryProps {
   part: SuzukiPart;
+  schematics?: ExplodedDiagram[];
   onViewSchematics?: (schematicId: string, partId: string) => void;
 }
 
 export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
   part,
+  schematics,
   onViewSchematics,
 }) => {
-  // Find schematic info by explicit schematicId or by matching category fallback
+  const [liveSchematics, setLiveSchematics] = useState<ExplodedDiagram[]>(schematics || []);
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+
+  // Drag to pan state for zoom
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoomLevel <= 1 || !containerRef.current) return;
+    setIsDragging(true);
+    setDragStart({
+      x: e.clientX,
+      y: e.clientY,
+      scrollLeft: containerRef.current.scrollLeft,
+      scrollTop: containerRef.current.scrollTop
+    });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !containerRef.current) return;
+    e.preventDefault();
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+    containerRef.current.scrollLeft = dragStart.scrollLeft - dx;
+    containerRef.current.scrollTop = dragStart.scrollTop - dy;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  useEffect(() => {
+    async function loadSchematics() {
+      try {
+        const res = await fetch('/api/schematics').then(r => r.json()).catch(() => ({ data: [] }));
+        if (res?.data?.length > 0) setLiveSchematics(res.data);
+      } catch (e) {
+        console.error('Error fetching schematics in ProductImageGallery:', e);
+      }
+    }
+    loadSchematics();
+  }, []);
+
+  useEffect(() => {
+    if (schematics && schematics.length > 0) {
+      setLiveSchematics(schematics);
+    }
+  }, [schematics]);
+
+  const allDiagrams = liveSchematics.length > 0 ? liveSchematics : EXPLODED_DIAGRAMS;
+
+  // Find schematic info by explicit hotspot match, schematicId or category fallback
   const diagramInfo = useMemo(() => {
-    let schematicId = part.schematicId;
-    
-    // Fallback: match category if explicit schematicId is not set
-    if (!schematicId) {
-      if (part.category === 'filtros' || part.category === 'admision') schematicId = 'diag-vstrom-intake';
-      else if (part.category === 'motor' || part.category === 'bujias') schematicId = 'diag-gixxer-engine';
-      else if (part.category === 'transmision') schematicId = 'diag-transmission';
-      else if (part.category === 'frenos') schematicId = 'diag-gsxr-brake';
+    // 1. Direct Hotspot Match: Find schematic where this part is pinned in hotspots
+    const hotspotMatch = allDiagrams.find(d =>
+      d.hotspots && Array.isArray(d.hotspots) && d.hotspots.some(h => h.partId === part.id)
+    );
+
+    if (hotspotMatch) {
+      const spot = hotspotMatch.hotspots.find(h => h.partId === part.id);
+      return {
+        id: hotspotMatch.id,
+        title: hotspotMatch.title,
+        section: hotspotMatch.section,
+        hotspot: spot ? { itemNumber: spot.itemNumber, x: spot.x, y: spot.y } : null,
+        image: hotspotMatch.diagramImage || (DIAGRAM_SVGS as Record<string, string>)[hotspotMatch.id] || ''
+      };
     }
 
-    if (!schematicId) return null;
-    const diagram = EXPLODED_DIAGRAMS.find(d => d.id === schematicId);
-    const svgImage = (DIAGRAM_SVGS as Record<string, string>)[schematicId];
-    
-    if (!diagram || !svgImage) return null;
+    // 2. Explicit part.schematicId Match
+    if (part.schematicId) {
+      const diagram = allDiagrams.find(d => d.id === part.schematicId);
+      if (diagram) {
+        return {
+          id: diagram.id,
+          title: diagram.title,
+          section: diagram.section,
+          hotspot: part.diagramHotspot ?? null,
+          image: diagram.diagramImage || (DIAGRAM_SVGS as Record<string, string>)[diagram.id] || ''
+        };
+      }
+    }
 
-    return {
-      id: schematicId,
-      title: diagram.title,
-      section: diagram.section,
-      hotspot: part.diagramHotspot ?? null,
-      image: svgImage
-    };
-  }, [part]);
+    // 3. Category Fallback
+    let categorySchematicId = '';
+    if (part.category === 'filtros' || part.category === 'admision') categorySchematicId = 'diag-vstrom-intake';
+    else if (part.category === 'motor' || part.category === 'bujias') categorySchematicId = 'diag-gixxer-engine';
+    else if (part.category === 'transmision') categorySchematicId = 'diag-transmission';
+    else if (part.category === 'frenos') categorySchematicId = 'diag-gsxr-brake';
+
+    if (categorySchematicId) {
+      const diagram = allDiagrams.find(d => d.id === categorySchematicId);
+      if (diagram) {
+        return {
+          id: diagram.id,
+          title: diagram.title,
+          section: diagram.section,
+          hotspot: part.diagramHotspot ?? null,
+          image: diagram.diagramImage || (DIAGRAM_SVGS as Record<string, string>)[diagram.id] || ''
+        };
+      }
+    }
+
+    return null;
+  }, [part, allDiagrams]);
 
   // ---------- CASE 1: Schematic Diagram Available — ALWAYS show the exploded view diagram image ----------
   if (diagramInfo) {
@@ -59,7 +142,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
 
     return (
       <div className="w-full space-y-2.5">
-        {/* Header — diagram title + section */}
+        {/* Header — diagram title + section + zoom controls */}
         <div className="flex items-center justify-between gap-2 px-1">
           <div className="flex items-center gap-1.5 min-w-0">
             <Layers className="w-3.5 h-3.5 text-[#E60012] shrink-0" aria-hidden="true" />
@@ -72,64 +155,137 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
               </div>
             </div>
           </div>
-          {diagramInfo.hotspot && (
-            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-red-50 border border-red-200 shrink-0">
-              <span className="text-[9px] font-mono font-extrabold uppercase tracking-wider text-[#E60012]">
-                Pieza
+
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Zoom Toolbar */}
+            <div className="flex items-center gap-1 bg-slate-100 border border-slate-200 p-0.5 rounded-lg shadow-2xs">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setZoomLevel(prev => Math.max(1, Number((prev - 0.25).toFixed(2))));
+                }}
+                disabled={zoomLevel <= 1}
+                className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
+                title="Alejar zoom (-)"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+
+              <span className="px-1 font-mono text-[10px] font-bold text-slate-800 min-w-[36px] text-center select-none">
+                {Math.round(zoomLevel * 100)}%
               </span>
-              <span className="text-xs font-mono font-black text-[#E60012]">
-                #{diagramInfo.hotspot.itemNumber}
-              </span>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setZoomLevel(prev => Math.min(2.5, Number((prev + 0.25).toFixed(2))));
+                }}
+                disabled={zoomLevel >= 2.5}
+                className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
+                title="Acercar zoom (+)"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+
+              {zoomLevel > 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setZoomLevel(1);
+                  }}
+                  className="p-1 rounded text-[#E60012] hover:bg-red-50 transition-all cursor-pointer"
+                  title="Restablecer zoom (100%)"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </button>
+              )}
             </div>
-          )}
+
+            {diagramInfo.hotspot && (
+              <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-red-50 border border-red-200 shrink-0">
+                <span className="text-[9px] font-mono font-extrabold uppercase tracking-wider text-[#E60012]">
+                  Pieza
+                </span>
+                <span className="text-xs font-mono font-black text-[#E60012]">
+                  #{diagramInfo.hotspot.itemNumber}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Clickable diagram image (ALWAYS SHOWN) */}
         <div
-          role="button"
-          tabIndex={0}
-          onClick={handleClick}
-          onKeyDown={handleKeyDown}
-          aria-label={`Ver despiece ${diagramInfo.title} en la vista completa`}
-          className="relative bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden aspect-16/10 cursor-pointer group shadow-xs transition-all hover:border-[#E60012] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+          className="relative bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden min-h-[260px] sm:min-h-[320px] max-h-[360px] group shadow-xs transition-all hover:border-[#E60012] hover:shadow-md flex items-center justify-center p-3 bg-white"
         >
-          <div className="w-full h-full p-4 flex items-center justify-center overflow-hidden bg-white">
-            <img
-              src={diagramInfo.image}
-              alt={`Despiece: ${diagramInfo.title}`}
-              referrerPolicy="no-referrer"
-              className="max-w-full max-h-full object-contain transition-transform duration-300 ease-out group-hover:scale-[1.02]"
-            />
+          <div
+            ref={containerRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            className={`w-full h-[260px] sm:h-[320px] custom-scrollbar bg-white select-none relative flex items-center justify-center ${
+              zoomLevel > 1
+                ? (isDragging ? 'overflow-auto cursor-grabbing' : 'overflow-auto cursor-grab')
+                : 'overflow-hidden cursor-pointer'
+            }`}
+            onClick={() => {
+              if (zoomLevel <= 1) handleClick();
+            }}
+          >
+            <div
+              className="relative max-w-full max-h-full flex items-center justify-center transition-transform duration-200"
+              style={{
+                transform: `scale(${zoomLevel})`,
+                transformOrigin: zoomLevel > 1 ? 'top left' : 'center center'
+              }}
+            >
+              <div className="relative inline-flex items-center justify-center max-w-full max-h-full">
+                <img
+                  src={diagramInfo.image}
+                  alt={`Despiece: ${diagramInfo.title}`}
+                  referrerPolicy="no-referrer"
+                  style={{ maxHeight: '290px', maxWidth: '100%', objectFit: 'contain' }}
+                  className="block pointer-events-none select-none"
+                />
+
+                {/* Hotspot pin — locked to exact image rendered bounds and kept small */}
+                {diagramInfo.hotspot && (
+                  <div
+                    className="absolute z-10 pointer-events-none"
+                    style={{
+                      left: `${diagramInfo.hotspot.x}%`,
+                      top: `${diagramInfo.hotspot.y}%`,
+                      transform: `translate(-50%, -50%) scale(${1 / zoomLevel})`
+                    }}
+                    aria-label={`Pieza #${diagramInfo.hotspot.itemNumber}`}
+                  >
+                    <span className="absolute inset-0 -m-0.5 rounded-full bg-[#E60012]/40 animate-ping" aria-hidden="true" />
+                    <span className="relative inline-flex items-center justify-center w-5 h-5 rounded-full font-mono font-black text-[10px] bg-[#E60012] text-white ring-2 ring-white shadow-md">
+                      {diagramInfo.hotspot.itemNumber}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Hotspot pin — pulsing red marker at the part's coordinate */}
-          {diagramInfo.hotspot && (
-            <div
-              className="absolute z-10 pointer-events-none"
-              style={{
-                left: `${diagramInfo.hotspot.x}%`,
-                top: `${diagramInfo.hotspot.y}%`,
-                transform: 'translate(-50%, -50%)'
-              }}
-              aria-label={`Pieza #${diagramInfo.hotspot.itemNumber}`}
-            >
-              <span className="absolute inset-0 -m-2 rounded-full bg-[#E60012]/25 animate-ping" aria-hidden="true" />
-              <span className="relative inline-flex items-center justify-center w-10 h-10 rounded-full font-mono font-black text-xs bg-[#E60012] text-white ring-4 ring-white shadow-xl">
-                {diagramInfo.hotspot.itemNumber}
-              </span>
-            </div>
-          )}
-
           {/* Hover CTA overlay */}
-          <div className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 bg-[#E60012] text-white text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-1.5 rounded-lg shadow-md opacity-90 group-hover:opacity-100 transition-opacity pointer-events-none">
-            <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Abrir despiece</span>
+          <div
+            onClick={handleClick}
+            className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 bg-[#E60012] text-white text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-1.5 rounded-lg shadow-md opacity-90 group-hover:opacity-100 transition-opacity cursor-pointer z-20"
+          >
+            <BiLinkExternal className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Abrir</span>
           </div>
         </div>
 
         {/* Footer hint */}
         <p className="text-[10px] text-slate-500 px-1 leading-relaxed">
-          Haz clic en la imagen del despiece para inspeccionar todos los componentes en la vista de diagramas.
+          Usa los botones <span className="font-bold text-slate-700">+ y -</span> para hacer zoom en el centro y arrastra con el ratón para desplazarte por la imagen.
         </p>
       </div>
     );
@@ -137,15 +293,70 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
 
   // ---------- CASE 2: Static product photo / fallback ----------
   return (
-    <div className="w-full">
+    <div className="w-full space-y-2">
+      <div className="flex items-center justify-end px-1">
+        {/* Zoom Toolbar for Static Photo */}
+        <div className="flex items-center gap-1 bg-slate-100 border border-slate-200 p-0.5 rounded-lg shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setZoomLevel(prev => Math.max(1, Number((prev - 0.25).toFixed(2))))}
+            disabled={zoomLevel <= 1}
+            className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
+            title="Alejar zoom (-)"
+          >
+            <ZoomOut className="w-3.5 h-3.5" />
+          </button>
+
+          <span className="px-1 font-mono text-[10px] font-bold text-slate-800 min-w-[36px] text-center select-none">
+            {Math.round(zoomLevel * 100)}%
+          </span>
+
+          <button
+            type="button"
+            onClick={() => setZoomLevel(prev => Math.min(2.5, Number((prev + 0.25).toFixed(2))))}
+            disabled={zoomLevel >= 2.5}
+            className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
+            title="Acercar zoom (+)"
+          >
+            <ZoomIn className="w-3.5 h-3.5" />
+          </button>
+
+          {zoomLevel > 1 && (
+            <button
+              type="button"
+              onClick={() => setZoomLevel(1)}
+              className="p-1 rounded text-[#E60012] hover:bg-red-50 transition-all cursor-pointer"
+              title="Restablecer zoom (100%)"
+            >
+              <RotateCcw className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      </div>
+
       {shouldShowProductImages() ? (
         <div className="relative bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden aspect-4/3 sm:aspect-16/10 shadow-xs">
-          <div className="w-full h-full p-6 flex items-center justify-center overflow-hidden">
+          <div
+            ref={containerRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            className={`w-full h-full p-4 flex items-center justify-center custom-scrollbar ${
+              zoomLevel > 1
+                ? (isDragging ? 'overflow-auto cursor-grabbing' : 'overflow-auto cursor-grab')
+                : 'overflow-hidden'
+            }`}
+          >
             <img
               src={part.image}
               alt={part.name}
               referrerPolicy="no-referrer"
-              className="max-w-full max-h-full object-contain"
+              className="max-w-full max-h-full object-contain transition-transform duration-200 origin-center select-none pointer-events-none"
+              style={{
+                transform: `scale(${zoomLevel})`,
+                transformOrigin: zoomLevel > 1 ? 'top left' : 'center center'
+              }}
             />
           </div>
         </div>

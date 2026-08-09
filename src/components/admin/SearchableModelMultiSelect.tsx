@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Search, ChevronDown, Check, X, Bike, Tag } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, ChevronDown, Check, X, Tag } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import type { SuzukiModel } from '../../types';
 
 interface SearchableModelMultiSelectProps {
@@ -73,7 +74,7 @@ export const SearchableModelMultiSelect: React.FC<SearchableModelMultiSelectProp
             key={m.id}
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-800 text-xs font-bold shadow-xs animate-in fade-in"
           >
-            <Bike className="w-3 h-3 text-[#E60012]" />
+            <FaMotorcycle className="w-3 h-3 text-[#E60012]" />
             <span>{m.name}</span>
             <button
               type="button"

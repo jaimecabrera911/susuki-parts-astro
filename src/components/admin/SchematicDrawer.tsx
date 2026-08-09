@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Layers, Plus, Trash2, AlertCircle, Image as ImageIcon, Crosshair, Package, CheckCircle2, Eye, Edit, Move } from 'lucide-react';
+import { X, Layers, Plus, Trash2, AlertCircle, Image as ImageIcon, Crosshair, Package, CheckCircle2, Eye, Edit, Move, UploadCloud, Check } from 'lucide-react';
 import type { ExplodedDiagram, SuzukiPart, SuzukiModel } from '../../types';
 import { DIAGRAM_SVGS } from '../../data/svgAssets';
 import { SearchableModelMultiSelect } from './SearchableModelMultiSelect';
@@ -14,13 +14,16 @@ interface SchematicDrawerProps {
   parts: SuzukiPart[];
 }
 
-const SECTION_OPTIONS = [
-  'Engine',
-  'Brakes',
-  'Air & Fuel',
-  'Drive & Transmission',
-  'Cooling System',
-  'Frame & Electrical'
+const DEFAULT_SECTION_OPTIONS = [
+  'Motor',
+  'Frenos',
+  'Admisión y Combustible',
+  'Transmisión y Kit de Arrastre',
+  'Sistema de Refrigeración',
+  'Chasis y Eléctrico',
+  'Sistema de Escape',
+  'Controles y Pedales',
+  'Tablero e Instrumentos'
 ];
 
 export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
@@ -35,7 +38,8 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Motor & Admisión');
-  const [section, setSection] = useState(SECTION_OPTIONS[0]);
+  const [section, setSection] = useState(DEFAULT_SECTION_OPTIONS[0]);
+  const [isCustomSection, setIsCustomSection] = useState(false);
   const [applicableModelIds, setApplicableModelIds] = useState<string[]>([]);
   const [modelTarget, setModelTarget] = useState('');
   const [diagramImage, setDiagramImage] = useState('');
@@ -55,6 +59,33 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
   const [partIdInput, setPartIdInput] = useState('');
 
   const [error, setError] = useState('');
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleFileSelect = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setError('Por favor selecciona un archivo de imagen válido (PNG, JPG, WEBP, SVG).');
+      return;
+    }
+    setError('');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        setDiagramImage(e.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileSelect(e.dataTransfer.files[0]);
+    }
+  };
+
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
@@ -62,7 +93,9 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
     if (schematicToEdit) {
       setTitle(schematicToEdit.title);
       setCategory(schematicToEdit.category);
-      setSection(schematicToEdit.section || SECTION_OPTIONS[0]);
+      const sec = schematicToEdit.section || DEFAULT_SECTION_OPTIONS[0];
+      setSection(sec);
+      setIsCustomSection(!DEFAULT_SECTION_OPTIONS.includes(sec));
       setApplicableModelIds(schematicToEdit.applicableModelIds || []);
       setModelTarget(schematicToEdit.modelTarget || '');
       setDiagramImage(schematicToEdit.diagramImage || DIAGRAM_SVGS['diag-gixxer-engine']);
@@ -71,7 +104,8 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
     } else {
       setTitle('');
       setCategory('Motor & Admisión');
-      setSection(SECTION_OPTIONS[0]);
+      setSection(DEFAULT_SECTION_OPTIONS[0]);
+      setIsCustomSection(false);
       setApplicableModelIds(models.slice(0, 1).map(m => m.id));
       setModelTarget('Suzuki GSX-R / V-Strom (2018-2024)');
       setDiagramImage(DIAGRAM_SVGS['diag-gixxer-engine']);
@@ -291,18 +325,50 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-mono">
-                    Sección Técnica *
-                  </label>
-                  <select
-                    value={section}
-                    onChange={(e) => setSection(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#E60012] focus:ring-2 focus:ring-[#E60012]/20 font-medium"
-                  >
-                    {SECTION_OPTIONS.map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider font-mono">
+                      Sección Técnica *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomSection(!isCustomSection);
+                        if (!isCustomSection) setSection('');
+                        else setSection(DEFAULT_SECTION_OPTIONS[0]);
+                      }}
+                      className="text-[11px] font-bold text-[#E60012] hover:underline flex items-center gap-1"
+                    >
+                      {isCustomSection ? '← Seleccionar de lista' : '+ Nueva Sección'}
+                    </button>
+                  </div>
+
+                  {isCustomSection ? (
+                    <input
+                      type="text"
+                      value={section}
+                      onChange={(e) => setSection(e.target.value)}
+                      placeholder="Ej. Suspensión & Dirección..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#E60012] focus:ring-2 focus:ring-[#E60012]/20 font-medium"
+                    />
+                  ) : (
+                    <select
+                      value={section}
+                      onChange={(e) => {
+                        if (e.target.value === '__NEW__') {
+                          setIsCustomSection(true);
+                          setSection('');
+                        } else {
+                          setSection(e.target.value);
+                        }
+                      }}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#E60012] focus:ring-2 focus:ring-[#E60012]/20 font-medium"
+                    >
+                      {DEFAULT_SECTION_OPTIONS.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                      <option value="__NEW__">+ Escribir nueva sección...</option>
+                    </select>
+                  )}
                 </div>
               </div>
 
@@ -344,21 +410,83 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
                 placeholder="Escribe para buscar entre todos los modelos registrados..."
               />
 
-              {/* Diagram Image / SVG Preset */}
+              {/* Diagram Image File Attachment Dropzone */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-mono">
-                  Imagen o SVG del Diagrama
+                  Imagen / Plano del Despiece
                 </label>
-                <div className="relative">
-                  <ImageIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={diagramImage}
-                    onChange={(e) => setDiagramImage(e.target.value)}
-                    placeholder="Data SVG URI o URL de imagen (https://...)"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#E60012] focus:ring-2 focus:ring-[#E60012]/20 font-mono text-[11px]"
-                  />
-                </div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      handleFileSelect(e.target.files[0]);
+                    }
+                  }}
+                  className="hidden"
+                />
+
+                {diagramImage ? (
+                  <div className="relative p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center gap-4">
+                    <div className="w-32 h-24 rounded-xl bg-white border border-slate-200 p-2 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+                      <img src={diagramImage} alt="Vista previa del diagrama" className="max-w-full max-h-full object-contain" />
+                    </div>
+                    <div className="flex-1 min-w-0 text-center sm:text-left">
+                      <p className="text-xs font-black text-slate-900 flex items-center gap-1.5 justify-center sm:justify-start">
+                        <Check className="w-4 h-4 text-emerald-600" />
+                        Plano Adjuntado Correctamente
+                      </p>
+                      <p className="text-[11px] text-slate-500 font-mono mt-0.5 truncate">
+                        {diagramImage.startsWith('data:') ? 'Archivo de plano local adjuntado (Data URL)' : diagramImage}
+                      </p>
+                      <div className="mt-2.5 flex items-center gap-2 justify-center sm:justify-start">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors"
+                        >
+                          Cambiar Plano
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDiagramImage('')}
+                          className="px-3 py-1.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Quitar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`cursor-pointer border-2 border-dashed rounded-2xl p-6 text-center transition-all flex flex-col items-center justify-center gap-2.5 ${
+                      isDragging
+                        ? 'border-[#E60012] bg-[#E60012]/5 scale-[0.99]'
+                        : 'border-slate-300 hover:border-[#E60012] hover:bg-slate-50/80 bg-slate-50/50'
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-xs text-slate-500 group-hover:text-[#E60012]">
+                      <UploadCloud className="w-6 h-6 text-[#E60012]" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-extrabold text-slate-900">
+                        Haz clic o arrastra la imagen o plano del despiece aquí
+                      </p>
+                      <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                        Formatos soportados: PNG, JPG, WEBP, SVG
+                      </p>
+                    </div>
+                    <span className="px-3 py-1.5 rounded-xl bg-[#E60012] text-white text-[11px] font-bold uppercase tracking-wider shadow-xs hover:bg-[#b5000b] transition-colors">
+                      Adjuntar Plano / Diagrama
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Description */}

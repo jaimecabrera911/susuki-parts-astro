@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Search, ChevronDown, Check, X, Bike } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, ChevronDown, Check, X } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import type { SuzukiModel } from '../types';
 
 interface SearchableModelSelectProps {
@@ -95,7 +96,7 @@ export const SearchableModelSelect: React.FC<SearchableModelSelectProps> = ({
         } ${disabled ? 'opacity-50 cursor-not-allowed bg-slate-100' : ''}`}
       >
         <div className="flex items-center gap-2 truncate pr-1">
-          <Bike className={`w-4 h-4 shrink-0 ${selectedModel ? 'text-[#E60012]' : 'text-slate-500'}`} />
+          <FaMotorcycle className={`w-4 h-4 shrink-0 ${selectedModel ? 'text-[#E60012]' : 'text-slate-500'}`} />
           {selectedModel ? (
             <span className="text-slate-900 font-extrabold text-xs truncate">
               {selectedModel.name}

@@ -4,8 +4,10 @@ import type { ExplodedDiagram, SuzukiPart, ActiveMotorcycle, AvailabilityStatus 
 import { getPrimaryOem, getAvailabilityStatus, AVAILABILITY_META } from '../types';
 import {
   Layers, ArrowLeft, Filter, Search, CheckCircle2, AlertTriangle,
-  ShoppingBag, Eye, Info, ChevronRight, X, Bike, ArrowRightLeft
+  ShoppingBag, Eye, Info, ChevronRight, X, ArrowRightLeft,
+  ZoomIn, ZoomOut, RotateCcw
 } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getMotorcyclePng } from '../data/motorcycleImages';
 
@@ -18,6 +20,7 @@ interface ExplodedViewProps {
   initialPartId?: string;
   schematicsList?: ExplodedDiagram[];
   partsList?: SuzukiPart[];
+  modelsList?: SuzukiModel[];
 }
 
 type ViewMode = 'catalog' | 'detail';
@@ -30,26 +33,38 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   initialSchematicId,
   initialPartId,
   schematicsList,
-  partsList
+  partsList,
+  modelsList
 }) => {
   const [dbSchematics, setDbSchematics] = useState<ExplodedDiagram[]>(schematicsList || []);
   const [dbParts, setDbParts] = useState<SuzukiPart[]>(partsList || []);
+  const [dbModels, setDbModels] = useState<SuzukiModel[]>(modelsList || []);
 
   useEffect(() => {
     async function loadDbData() {
       try {
-        const [schRes, partRes] = await Promise.all([
+        const [schRes, partRes, modRes] = await Promise.all([
           fetch('/api/schematics').then(r => r.json()).catch(() => ({ data: [] })),
-          fetch('/api/parts').then(r => r.json()).catch(() => ({ data: [] }))
+          fetch('/api/parts').then(r => r.json()).catch(() => ({ data: [] })),
+          fetch('/api/models').then(r => r.json()).catch(() => ({ data: [] }))
         ]);
         if (schRes?.data?.length > 0) setDbSchematics(schRes.data);
         if (partRes?.data?.length > 0) setDbParts(partRes.data);
+        if (modRes?.data?.length > 0) setDbModels(modRes.data);
       } catch (e) {
-        console.error('Error fetching schematics/parts from D1 database:', e);
+        console.error('Error fetching schematics/parts/models from Neon DB:', e);
       }
     }
     loadDbData();
   }, []);
+
+  useEffect(() => {
+    if (schematicsList && schematicsList.length > 0) setDbSchematics(schematicsList);
+    if (partsList && partsList.length > 0) setDbParts(partsList);
+    if (modelsList && modelsList.length > 0) setDbModels(modelsList);
+  }, [schematicsList, partsList, modelsList]);
+
+  const allModels = dbModels.length > 0 ? dbModels : SUZUKI_MODELS;
 
   const allDiagrams = dbSchematics.length > 0 ? dbSchematics : (schematicsList || EXPLODED_DIAGRAMS);
   const allParts = dbParts.length > 0 ? dbParts : (partsList || SUZUKI_PARTS);
@@ -64,8 +79,47 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [pinSize, setPinSize] = useState<'normal' | 'compact' | 'micro'>('compact');
 
+  // Drag to pan state for schematic viewport
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoomLevel <= 1 || !containerRef.current) return;
+    setIsDragging(true);
+    setDragStart({
+      x: e.clientX,
+      y: e.clientY,
+      scrollLeft: containerRef.current.scrollLeft,
+      scrollTop: containerRef.current.scrollTop
+    });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !containerRef.current) return;
+    e.preventDefault();
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+    containerRef.current.scrollLeft = dragStart.scrollLeft - dx;
+    containerRef.current.scrollTop = dragStart.scrollTop - dy;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
   // Ref to the selected row — used to scroll into view when arriving from a product page
   const selectedRowRef = useRef<HTMLTableRowElement | null>(null);
+
+  // Sync viewMode and selected diagram with initialSchematicId prop from URL route
+  useEffect(() => {
+    if (initialSchematicId) {
+      setSelectedDiagramId(initialSchematicId);
+      setViewMode('detail');
+    } else {
+      setViewMode('catalog');
+    }
+  }, [initialSchematicId]);
 
   // When opening directly with a pre-selected part, scroll its row into view smoothly
   useEffect(() => {
@@ -188,6 +242,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
               <ActiveGarageCard
                 activeMotorcycle={activeMotorcycle}
                 onOpenGarageModal={onOpenGarageModal}
+                models={allModels}
               />
 
               {/* Search */}
@@ -312,6 +367,10 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                             setSelectedDiagramId(diagram.id);
                             setSelectedPartId(null);
                             setViewMode('detail');
+                            if (window.location.pathname !== `/despieces/${diagram.id}`) {
+                              window.history.pushState(null, '', `/despieces/${diagram.id}`);
+                              window.dispatchEvent(new Event('popstate'));
+                            }
                           }}
                         />
                       ))}
@@ -337,6 +396,10 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
             onClick={() => {
               setViewMode('catalog');
               setSelectedPartId(null);
+              if (window.location.pathname !== '/despieces' && window.location.pathname !== '/despieces/catalogo') {
+                window.history.pushState(null, '', '/despieces');
+                window.dispatchEvent(new Event('popstate'));
+              }
             }}
             className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs uppercase rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
           >
@@ -369,30 +432,47 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3 text-white">
               <div className="min-w-0">
                 <span className="text-[9px] font-mono uppercase text-slate-400 block">Modelo objetivo</span>
-                <span className="text-xs font-extrabold truncate block">{currentDiagram.modelTarget}</span>
+                <span className="text-xs font-extrabold truncate block">{currentDiagram.modelTarget || 'Aplica a modelos Suzuki'}</span>
               </div>
 
-              <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-lg">
+              <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 p-1 rounded-xl shadow-inner">
                 <button
                   type="button"
-                  onClick={() => setZoomLevel(prev => Math.min(prev + 0.5, 2.5))}
-                  className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 hover:bg-slate-700 text-slate-200"
-                  title="Ampliar zoom"
+                  onClick={() => setZoomLevel(prev => Math.max(Number((prev - 0.25).toFixed(2)), 1))}
+                  disabled={zoomLevel <= 1}
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-40 transition-all cursor-pointer"
+                  title="Alejar zoom (-)"
                 >
-                  +{Math.round(zoomLevel * 100)}%
+                  <ZoomOut className="w-4 h-4" />
                 </button>
+
+                <span className="px-2 font-mono text-[11px] font-bold text-slate-200 min-w-[45px] text-center select-none">
+                  {Math.round(zoomLevel * 100)}%
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setZoomLevel(prev => Math.min(Number((prev + 0.25).toFixed(2)), 2.5))}
+                  disabled={zoomLevel >= 2.5}
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-40 transition-all cursor-pointer"
+                  title="Acercar zoom (hasta 250%)"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
+
                 {zoomLevel > 1 && (
                   <button
                     type="button"
                     onClick={() => setZoomLevel(1)}
-                    className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold text-slate-400 hover:text-white"
-                    title="Restablecer zoom"
+                    className="p-1.5 rounded-lg text-[#E60012] hover:bg-red-950/40 transition-all text-[10px] font-mono font-bold flex items-center gap-1"
+                    title="Restablecer zoom (100%)"
                   >
-                    Reset
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>100%</span>
                   </button>
                 )}
 
-                <div className="h-3 w-[1px] bg-slate-700 mx-0.5" />
+                <div className="h-4 w-[1px] bg-slate-700 mx-0.5" />
 
                 <button
                   type="button"
@@ -401,7 +481,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                     else if (pinSize === 'compact') setPinSize('micro');
                     else setPinSize('normal');
                   }}
-                  className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 hover:bg-slate-700 text-slate-200"
+                  className="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors"
                   title="Cambiar tamaño de puntos de piezas"
                 >
                   Puntos: {pinSize.toUpperCase()}
@@ -409,50 +489,79 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
               </div>
             </div>
 
-            {/* Viewport with Zoom Overflow Scroll */}
-            <div className="relative bg-white rounded-lg overflow-auto p-2 max-h-[520px] custom-scrollbar">
+            {/* Viewport with Zoom Overflow Scroll & Drag-to-Pan */}
+            <div className="relative bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
               <div
-                className="relative transition-transform duration-200 origin-top-left"
-                style={{ transform: `scale(${zoomLevel})`, width: zoomLevel > 1 ? `${zoomLevel * 100}%` : '100%' }}
+                ref={containerRef}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                className={`p-3 max-h-[520px] overflow-auto custom-scrollbar flex select-none ${
+                  zoomLevel > 1
+                    ? (isDragging ? 'items-start justify-start cursor-grabbing' : 'items-start justify-start cursor-grab')
+                    : 'items-center justify-center'
+                }`}
               >
-                <img
-                  src={currentDiagram.diagramImage}
-                  alt={currentDiagram.title}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-auto object-contain pointer-events-none select-none"
-                />
+                <div
+                  className="relative transition-all duration-200"
+                  style={{
+                    width: zoomLevel > 1 ? `${zoomLevel * 100}%` : '100%',
+                    minWidth: zoomLevel > 1 ? `${zoomLevel * 100}%` : '100%'
+                  }}
+                >
+                  <img
+                    src={currentDiagram.diagramImage}
+                    alt={currentDiagram.title}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-auto object-contain pointer-events-none select-none"
+                  />
 
-                {/* Hotspot pins with inverse zoom scale */}
-                {currentDiagram.hotspots.map(spot => {
-                  const isSelected = selectedPartId === spot.partId;
+                  {/* Hotspot pins with radar pulse effect */}
+                  {currentDiagram.hotspots.map(spot => {
+                    const isSelected = selectedPartId === spot.partId;
 
-                  // Dynamic pin sizes for small parts
-                  const pinClasses =
-                    pinSize === 'normal' ? 'w-8 h-8 font-mono text-xs font-black' :
-                    pinSize === 'compact' ? 'w-5 h-5 font-mono text-[10px] font-black' :
-                    'w-3.5 h-3.5 text-[0px] ring-2 ring-white shadow-lg';
+                    // Dynamic pin sizes for small parts
+                    const pinClasses =
+                      pinSize === 'normal' ? 'w-8 h-8 font-mono text-xs font-black' :
+                      pinSize === 'compact' ? 'w-5.5 h-5.5 font-mono text-[10px] font-black' :
+                      'w-3.5 h-3.5 text-[0px] ring-2 ring-white shadow-lg';
 
-                  return (
-                    <button
-                      key={spot.itemNumber}
-                      type="button"
-                      onClick={() => setSelectedPartId(spot.partId)}
-                      aria-label={`Punto #${spot.itemNumber} - ${spot.label}`}
-                      style={{
-                        left: `${spot.x}%`,
-                        top: `${spot.y}%`,
-                        transform: `translate(-50%, -50%) scale(${1 / Math.sqrt(zoomLevel)})`
-                      }}
-                      className={`absolute rounded-full flex items-center justify-center transition-all cursor-pointer focus-visible:outline-none ${pinClasses} ${
-                        isSelected
-                          ? 'bg-[#E60012] text-white ring-4 ring-red-400/50 z-20 scale-125'
-                          : 'bg-white text-slate-900 ring-2 ring-slate-900 hover:bg-[#E60012] hover:text-white z-10'
-                      }`}
-                    >
-                      {pinSize !== 'micro' && spot.itemNumber}
-                    </button>
-                  );
-                })}
+                    return (
+                      <button
+                        key={spot.itemNumber}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedPartId(spot.partId);
+                        }}
+                        aria-label={`Punto #${spot.itemNumber} - ${spot.label}`}
+                        style={{
+                          left: `${spot.x}%`,
+                          top: `${spot.y}%`,
+                          transform: `translate(-50%, -50%) scale(${1 / Math.sqrt(zoomLevel)})`
+                        }}
+                        className={`absolute rounded-full flex items-center justify-center transition-all cursor-pointer focus-visible:outline-none ${pinClasses} ${
+                          isSelected
+                            ? 'bg-[#E60012] text-white ring-4 ring-red-400/50 z-20 scale-110 shadow-xl'
+                            : 'bg-white text-slate-900 ring-2 ring-slate-900 hover:bg-[#E60012] hover:text-white z-10'
+                        }`}
+                      >
+                        {/* Radar pulse effect */}
+                        <span
+                          className={`absolute inset-0 rounded-full pointer-events-none ${
+                            isSelected
+                              ? '-m-2.5 bg-[#E60012]/40 animate-ping'
+                              : '-m-1 bg-red-500/25 animate-pulse'
+                          }`}
+                          aria-hidden="true"
+                        />
+
+                        <span className="relative z-10">{pinSize !== 'micro' && spot.itemNumber}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -469,7 +578,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
             <div className="flex items-center justify-between gap-2">
               <div>
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
-                  <Bike className="w-4 h-4 text-[#E60012]" aria-hidden="true" />
+                  <FaMotorcycle className="w-4 h-4 text-[#E60012]" aria-hidden="true" />
                   Piezas del despiece
                 </h3>
                 <p className="text-[11px] text-slate-500 mt-0.5">
@@ -592,7 +701,9 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
 const ActiveGarageCard: React.FC<{
   activeMotorcycle: ActiveMotorcycle | null;
   onOpenGarageModal: () => void;
-}> = ({ activeMotorcycle, onOpenGarageModal }) => {
+  models?: SuzukiModel[];
+}> = ({ activeMotorcycle, onOpenGarageModal, models }) => {
+  const availableModels = models && models.length > 0 ? models : SUZUKI_MODELS;
   return (
     <div className="group relative overflow-hidden rounded-2xl bg-[#0a1628] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.55)]">
       {/* Subtle ambient glow */}
@@ -604,11 +715,17 @@ const ActiveGarageCard: React.FC<{
             {/* Motorcycle image — full-width hero, no frame */}
             <div className="relative w-full h-36" aria-hidden="true">
               <div className="absolute inset-0 rounded-md bg-white" />
-              <img
-                src={getMotorcyclePng(activeMotorcycle.modelId)}
-                alt=""
-                className="absolute inset-0 h-full w-full object-contain p-2 transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-              />
+              {(() => {
+                const activeModelObj = availableModels.find(m => m.id === activeMotorcycle.modelId);
+                const activeMotoImage = activeModelObj?.image || getMotorcyclePng(activeMotorcycle.modelId);
+                return (
+                  <img
+                    src={activeMotoImage}
+                    alt={activeMotorcycle.modelName}
+                    className="absolute inset-0 h-full w-full object-contain p-2 transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+                  />
+                );
+              })()}
               {/* Red corner brackets */}
               <div className="absolute -top-0.5 -left-0.5 w-3 h-3 border-l-2 border-t-2 border-[#E60012]" />
               <div className="absolute -top-0.5 -right-0.5 w-3 h-3 border-r-2 border-t-2 border-[#E60012]" />
@@ -673,18 +790,6 @@ const DiagramCard: React.FC<{ diagram: ExplodedDiagram; onClick: () => void }> =
           className="w-full h-full object-contain p-3 group-hover:scale-105 transition-transform duration-500 ease-out"
         />
 
-        {/* Numbered hotspot pins (mini) */}
-        {diagram.hotspots.map(spot => (
-          <span
-            key={spot.itemNumber}
-            className="absolute -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white border-2 border-slate-900 text-slate-900 font-mono font-extrabold text-[9px] flex items-center justify-center pointer-events-none shadow-sm"
-            style={{ left: `${spot.x}%`, top: `${spot.y}%` }}
-            aria-hidden="true"
-          >
-            {spot.itemNumber}
-          </span>
-        ))}
-
         {/* Category badge */}
         <span className="absolute top-2 left-2 inline-flex items-center px-2 py-0.5 bg-slate-900/85 backdrop-blur-md text-white text-[9px] font-extrabold uppercase tracking-wider rounded-md border border-white/10">
           {diagram.category}
@@ -703,8 +808,8 @@ const DiagramCard: React.FC<{ diagram: ExplodedDiagram; onClick: () => void }> =
         </h3>
 
         <div className="mt-2 flex items-center gap-1.5 text-[10px] font-mono text-slate-500">
-          <Bike className="w-3 h-3 text-slate-400" aria-hidden="true" />
-          <span className="truncate">{diagram.modelTarget}</span>
+          <FaMotorcycle className="w-3 h-3 text-slate-400" aria-hidden="true" />
+          <span className="truncate">{diagram.modelTarget || 'Aplica a modelos Suzuki'}</span>
         </div>
 
         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[10px]">

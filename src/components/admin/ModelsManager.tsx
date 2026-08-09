@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Bike, Plus, Edit, Trash2, Copy, CheckCircle2, XCircle, Tag, Calendar, Layers } from 'lucide-react';
+import { Plus, Edit, Trash2, Copy, CheckCircle2, XCircle, Tag, Calendar, Layers, Eye } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import type { Brand, SuzukiModel, ExplodedDiagram } from '../../types';
 
 interface ModelsManagerProps {
@@ -9,6 +10,7 @@ interface ModelsManagerProps {
   searchQuery: string;
   onAddModel: () => void;
   onEditModel: (model: SuzukiModel) => void;
+  onViewModel?: (model: SuzukiModel) => void;
   onManageSchematics: (model: SuzukiModel) => void;
   onDuplicateModel: (model: SuzukiModel) => void;
   onToggleActive: (id: string) => void;
@@ -22,6 +24,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   searchQuery,
   onAddModel,
   onEditModel,
+  onViewModel,
   onManageSchematics,
   onDuplicateModel,
   onToggleActive,
@@ -159,7 +162,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                               }}
                             />
                           ) : (
-                            <Bike className="w-5 h-5 text-slate-400" />
+                            <FaMotorcycle className="w-5 h-5 text-slate-400" />
                           )}
                         </div>
                         <div>
@@ -253,6 +256,15 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                     {/* Actions */}
                     <td className="py-4 px-5 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {onViewModel && (
+                          <button
+                            onClick={() => onViewModel(model)}
+                            className="p-2 rounded-xl text-slate-500 hover:text-[#059669] hover:bg-emerald-50 transition-colors"
+                            title="Ver detalle del modelo"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => onManageSchematics(model)}
                           className="p-2 rounded-xl text-slate-500 hover:text-[#d97706] hover:bg-amber-50 transition-colors"
@@ -290,7 +302,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
               {filteredModels.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-500">
-                    <Bike className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                    <FaMotorcycle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                     <p className="font-bold text-slate-800">No se encontraron modelos</p>
                     <p className="text-xs text-slate-400 mt-0.5">Filtra por marca o categoría.</p>
                   </td>

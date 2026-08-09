@@ -7,7 +7,7 @@ export const DEFAULT_BRANDS: Brand[] = [
     name: 'Suzuki',
     country: 'Japón',
     active: true,
-    logo: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=120&auto=format&fit=crop&q=80',
+    logo: 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/brands/logo.png',
     description: 'Fabricante japonés de motocicletas de alta calidad, superdeportivas y aventura.'
   },
   {
@@ -15,7 +15,7 @@ export const DEFAULT_BRANDS: Brand[] = [
     name: 'Honda',
     country: 'Japón',
     active: true,
-    logo: 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=120&auto=format&fit=crop&q=80',
+    logo: 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/brands/logo.png',
     description: 'Líder mundial en fabricación de motocicletas urbanas, tourer y enduro.'
   },
   {
@@ -23,7 +23,7 @@ export const DEFAULT_BRANDS: Brand[] = [
     name: 'Yamaha',
     country: 'Japón',
     active: true,
-    logo: 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=120&auto=format&fit=crop&q=80',
+    logo: 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/brands/logo.png',
     description: 'Innovación técnica y rendimiento deportivo en la gama MT y YZF.'
   },
   {
@@ -31,7 +31,7 @@ export const DEFAULT_BRANDS: Brand[] = [
     name: 'Kawasaki',
     country: 'Japón',
     active: true,
-    logo: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=120&auto=format&fit=crop&q=80',
+    logo: 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/brands/logo.png',
     description: 'Especialista en alto rendimiento con las series Ninja y Z.'
   },
   {
@@ -39,7 +39,7 @@ export const DEFAULT_BRANDS: Brand[] = [
     name: 'KTM',
     country: 'Austria',
     active: false,
-    logo: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=120&auto=format&fit=crop&q=80',
+    logo: 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/brands/logo.png',
     description: 'Motocicletas Ready to Race para Off-Road y Naked de alto cilindraje.'
   }
 ];
@@ -260,7 +260,7 @@ export const DEFAULT_ORDERS: any[] = [
           category: 'filtros',
           price: 32000,
           stock: 45,
-          image: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=500&auto=format&fit=crop&q=80',
+          image: 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/parts/default.jpg',
           description: 'Filtro de aceite de alto rendimiento oficial.',
           specs: [],
           compatibility: []
@@ -282,7 +282,7 @@ export const DEFAULT_ORDERS: any[] = [
           category: 'frenos',
           price: 145000,
           stock: 18,
-          image: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=500&auto=format&fit=crop&q=80',
+          image: 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/parts/default.jpg',
           description: 'Pastillas de compuesto cerámico sinterizado.',
           specs: [],
           compatibility: []
@@ -332,7 +332,7 @@ export const DEFAULT_ORDERS: any[] = [
           category: 'transmision',
           price: 520000,
           stock: 8,
-          image: 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=500&auto=format&fit=crop&q=80',
+          image: 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/parts/default.jpg',
           description: 'Kit de tracción reforzado con relación original.',
           specs: [],
           compatibility: []
@@ -382,7 +382,7 @@ export const DEFAULT_ORDERS: any[] = [
           category: 'electrico',
           price: 58000,
           stock: 60,
-          image: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=500&auto=format&fit=crop&q=80',
+          image: 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/parts/default.jpg',
           description: 'Bujía de alto encendido iridium.',
           specs: [],
           compatibility: []
@@ -432,7 +432,7 @@ export const DEFAULT_ORDERS: any[] = [
           category: 'frenos',
           price: 890000,
           stock: 3,
-          image: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=500&auto=format&fit=crop&q=80',
+          image: 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/parts/default.jpg',
           description: 'Telescópicos delanteros originales Suzuki DR650 Dual Sport.',
           specs: [],
           compatibility: []
@@ -482,7 +482,7 @@ export const DEFAULT_ORDERS: any[] = [
           category: 'electrico',
           price: 310000,
           stock: 5,
-          image: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=500&auto=format&fit=crop&q=80',
+          image: 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/parts/default.jpg',
           description: 'Solenoide de partida original.',
           specs: [],
           compatibility: []
@@ -547,7 +547,7 @@ export const DEFAULT_USERS: any[] = [
     postalCode: '110221',
     favoritePartIds: ['part-01', 'part-02'],
     createdAt: '2026-01-15',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+    avatarUrl: 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/users/avatar.jpg',
     role: 'customer',
     active: true,
     notes: 'Cliente Frecuente. Propietario de Suzuki GSX-R150 2023.'
@@ -563,7 +563,7 @@ export const DEFAULT_USERS: any[] = [
     postalCode: '050021',
     favoritePartIds: ['part-03'],
     createdAt: '2026-02-10',
-    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80',
+    avatarUrl: 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/users/avatar.jpg',
     role: 'customer',
     active: true,
     notes: 'Viajera touring. Propietaria de V-Strom 650 XT.'
@@ -579,7 +579,7 @@ export const DEFAULT_USERS: any[] = [
     postalCode: '760001',
     favoritePartIds: ['part-04'],
     createdAt: '2026-03-22',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
+    avatarUrl: 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/users/avatar.jpg',
     role: 'customer',
     active: true,
     notes: 'Propietario de Gixxer 250 SF.'
@@ -595,7 +595,7 @@ export const DEFAULT_USERS: any[] = [
     postalCode: '680002',
     favoritePartIds: ['part-05'],
     createdAt: '2026-04-05',
-    avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80',
+    avatarUrl: 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/users/avatar.jpg',
     role: 'customer',
     active: true,
     notes: 'Cliente Off-Road. Propietaria de Suzuki DR650 SE.'
@@ -611,7 +611,7 @@ export const DEFAULT_USERS: any[] = [
     postalCode: '111321',
     favoritePartIds: [],
     createdAt: '2025-11-01',
-    avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=120&auto=format&fit=crop&q=80',
+    avatarUrl: 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/users/avatar.jpg',
     role: 'admin',
     active: true,
     notes: 'Administrador Master de la Plataforma.'

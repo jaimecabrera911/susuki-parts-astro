@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Package, Plus, Trash2, Layers, AlertCircle, Image as ImageIcon, Wrench, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Package, Plus, Trash2, Layers, AlertCircle, Image as ImageIcon, Wrench, CheckCircle2, UploadCloud, Check } from 'lucide-react';
 import type { SuzukiPart, SuzukiModel, AvailabilityStatus, TechnicalSpec, CompatibilityRule } from '../../types';
 import { SearchableModelSelect } from '../SearchableModelSelect';
 
@@ -50,6 +50,32 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
   const [versionNote, setVersionNote] = useState('');
 
   const [error, setError] = useState('');
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleFileSelect = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setError('Por favor selecciona un archivo de imagen válido (PNG, JPG, WEBP, SVG).');
+      return;
+    }
+    setError('');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        setImage(e.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileSelect(e.dataTransfer.files[0]);
+    }
+  };
 
   useEffect(() => {
     if (models.length > 0 && !selectedModelId) {
@@ -148,7 +174,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       price,
       stock,
       availability,
-      image: image.trim() || 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=500&auto=format&fit=crop&q=80',
+      image: image.trim() || 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/parts/default.jpg',
       description: description.trim(),
       specs,
       compatibility
@@ -301,21 +327,83 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
             </div>
           </div>
 
-          {/* Image URL & Description */}
+          {/* Image File Attachment Dropzone */}
           <div>
             <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-mono">
-              URL de Imagen o Ilustración SVG
+              Fotografía / Ilustración del Repuesto
             </label>
-            <div className="relative">
-              <ImageIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                placeholder="SVG data URI o https://..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#E60012] focus:ring-2 focus:ring-[#E60012]/20 font-mono text-[11px]"
-              />
-            </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  handleFileSelect(e.target.files[0]);
+                }
+              }}
+              className="hidden"
+            />
+
+            {image ? (
+              <div className="relative p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center gap-4">
+                <div className="w-32 h-24 rounded-xl bg-white border border-slate-200 p-2 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+                  <img src={image} alt="Vista previa del repuesto" className="max-w-full max-h-full object-contain" />
+                </div>
+                <div className="flex-1 min-w-0 text-center sm:text-left">
+                  <p className="text-xs font-black text-slate-900 flex items-center gap-1.5 justify-center sm:justify-start">
+                    <Check className="w-4 h-4 text-emerald-600" />
+                    Imagen Adjuntada Correctamente
+                  </p>
+                  <p className="text-[11px] text-slate-500 font-mono mt-0.5 truncate">
+                    {image.startsWith('data:') ? 'Archivo local adjuntado (Data URL)' : image}
+                  </p>
+                  <div className="mt-2.5 flex items-center gap-2 justify-center sm:justify-start">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors"
+                    >
+                      Cambiar Imagen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImage('')}
+                      className="px-3 py-1.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Quitar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`cursor-pointer border-2 border-dashed rounded-2xl p-6 text-center transition-all flex flex-col items-center justify-center gap-2.5 ${
+                  isDragging
+                    ? 'border-[#E60012] bg-[#E60012]/5 scale-[0.99]'
+                    : 'border-slate-300 hover:border-[#E60012] hover:bg-slate-50/80 bg-slate-50/50'
+                }`}
+              >
+                <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-xs text-slate-500 group-hover:text-[#E60012]">
+                  <UploadCloud className="w-6 h-6 text-[#E60012]" />
+                </div>
+                <div>
+                  <p className="text-xs font-extrabold text-slate-900">
+                    Haz clic o arrastra la foto del repuesto aquí
+                  </p>
+                  <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                    Formatos soportados: PNG, JPG, WEBP, SVG
+                  </p>
+                </div>
+                <span className="px-3 py-1.5 rounded-xl bg-[#E60012] text-white text-[11px] font-bold uppercase tracking-wider shadow-xs hover:bg-[#b5000b] transition-colors">
+                  Adjuntar Imagen
+                </span>
+              </div>
+            )}
           </div>
 
           <div>

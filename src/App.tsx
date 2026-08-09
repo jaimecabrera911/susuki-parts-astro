@@ -21,15 +21,49 @@ import { AuthModal } from './components/AuthModal';
 import { CatalogSidebarFilter } from './components/CatalogSidebarFilter';
 
 import { WhatsAppWidget } from './components/WhatsAppWidget';
-import { SUZUKI_PARTS } from './data/suzukiData';
-import type { ActiveMotorcycle, SuzukiPart, CartItem, AvailabilityStatus, UserProfile } from './types';
+import { SUZUKI_PARTS, SUZUKI_MODELS, EXPLODED_DIAGRAMS } from './data/suzukiData';
+import type { ActiveMotorcycle, SuzukiPart, CartItem, AvailabilityStatus, UserProfile, SuzukiModel, ExplodedDiagram } from './types';
 import { getAvailabilityStatus, AVAILABILITY_META, matchesOem, getPrimaryOem } from './types';
 import { ShieldCheck, Wrench, ArrowRight, Layers, FileSearch, Sparkles, CheckCircle2, ArrowUpDown, ShoppingBag } from 'lucide-react';
 
 
-import { fetchOrders, saveUserApi, saveGarageApi, deleteGarageApi, fetchGarages } from './services/api';
+import { fetchOrders, saveUserApi, saveGarageApi, deleteGarageApi, fetchGarages, fetchModels, fetchParts, fetchSchematics } from './services/api';
 
 export default function App() {
+  const [models, setModels] = useState<SuzukiModel[]>(() => SUZUKI_MODELS);
+  const [parts, setParts] = useState<SuzukiPart[]>(() => SUZUKI_PARTS);
+  const [schematics, setSchematics] = useState<ExplodedDiagram[]>(() => EXPLODED_DIAGRAMS);
+
+  // Dynamic Catalog Filter States
+  const [availabilityFilter, setAvailabilityFilter] = useState<Set<AvailabilityStatus>>(
+    () => new Set<AvailabilityStatus>(['in_stock', 'international', 'on_order'])
+  );
+  const [maxPriceFilter, setMaxPriceFilter] = useState(5000000);
+  const [minPriceFilter, setMinPriceFilter] = useState(0);
+  const [sortBy, setSortBy] = useState('relevance');
+
+  useEffect(() => {
+    async function loadStorefrontData() {
+      try {
+        const [liveModels, liveParts, liveSchematics] = await Promise.all([
+          fetchModels().catch(() => []),
+          fetchParts().catch(() => []),
+          fetchSchematics().catch(() => [])
+        ]);
+        if (liveModels && liveModels.length > 0) setModels(liveModels);
+        if (liveParts && liveParts.length > 0) {
+          setParts(liveParts);
+          const maxP = Math.max(...liveParts.map((p: any) => p.price), 5000000);
+          setMaxPriceFilter(maxP);
+        }
+        if (liveSchematics && liveSchematics.length > 0) setSchematics(liveSchematics);
+      } catch (err) {
+        console.error('Error loading live storefront data:', err);
+      }
+    }
+    loadStorefrontData();
+  }, []);
+
   // State for active motorcycle in garage
   const [activeMotorcycle, setActiveMotorcycle] = useState<ActiveMotorcycle | null>(() => {
     const saved = localStorage.getItem('sz_active_moto');
@@ -134,19 +168,12 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [onlyCompatible, setOnlyCompatible] = useState(true);
 
-  // Dynamic Catalog Filter States
-  const [availabilityFilter, setAvailabilityFilter] = useState<Set<AvailabilityStatus>>(
-    () => new Set<AvailabilityStatus>(['in_stock', 'international', 'on_order'])
-  );
-  const [maxPriceFilter, setMaxPriceFilter] = useState(1000000);
-  const [minPriceFilter, setMinPriceFilter] = useState(20000);
-  const [sortBy, setSortBy] = useState('relevance');
-
   const handleResetFilters = () => {
     setSelectedCategory('all');
     setAvailabilityFilter(new Set<AvailabilityStatus>(['in_stock', 'international', 'on_order']));
-    setMaxPriceFilter(1000000);
-    setMinPriceFilter(20000);
+    const maxP = Math.max(...parts.map(p => p.price), 5000000);
+    setMaxPriceFilter(maxP);
+    setMinPriceFilter(0);
     setSearchQuery('');
     setSortBy('relevance');
   };
@@ -169,6 +196,7 @@ export default function App() {
 
     if (window.location.pathname !== targetPath) {
       window.history.pushState(null, '', targetPath);
+      window.dispatchEvent(new Event('popstate'));
     }
   };
 
@@ -181,7 +209,7 @@ export default function App() {
       // Check product page route (/producto/REF or #producto=REF)
       if (pathname.startsWith('/producto/')) {
         const oem = decodeURIComponent(pathname.replace('/producto/', ''));
-        const found = SUZUKI_PARTS.find(
+        const found = parts.find(
           p => matchesOem(p, oem) || p.id === oem
         );
         if (found) {
@@ -191,7 +219,7 @@ export default function App() {
         }
       } else if (hash.startsWith('#producto=')) {
         const oem = decodeURIComponent(hash.replace('#producto=', ''));
-        const found = SUZUKI_PARTS.find(
+        const found = parts.find(
           p => matchesOem(p, oem) || p.id === oem
         );
         if (found) {
@@ -201,10 +229,32 @@ export default function App() {
         }
       }
 
+      // Check schematics detail route (/despieces/CODE or #despieces=CODE)
+      if (pathname.startsWith('/despieces/')) {
+        const code = decodeURIComponent(window.location.pathname.replace(/^\/despieces\//i, ''));
+        if (code && code !== 'catalogo' && code !== 'all') {
+          setSchematicTargetId(code);
+          setActiveTab('schematics');
+          return;
+        } else {
+          setSchematicTargetId(undefined);
+          setActiveTab('schematics');
+          return;
+        }
+      } else if (hash.startsWith('#despieces=')) {
+        const code = decodeURIComponent(hash.replace('#despieces=', ''));
+        if (code && code !== 'catalogo' && code !== 'all') {
+          setSchematicTargetId(code);
+          setActiveTab('schematics');
+          return;
+        }
+      }
+
       // Check clean path names
       if (pathname === '/catalogo' || hash === '#catalogo' || hash === '#catalog') {
         setActiveTab('catalog');
-      } else if (pathname === '/despieces' || hash === '#despieces' || hash === '#schematics') {
+      } else if (pathname === '/despieces' || pathname === '/despieces/catalogo' || hash === '#despieces' || hash === '#schematics') {
+        setSchematicTargetId(undefined);
         setActiveTab('schematics');
       } else if (pathname === '/pedidos' || hash === '#pedidos' || hash === '#orders') {
         setActiveTab('orders');
@@ -377,7 +427,7 @@ export default function App() {
   };
 
   // Filter Parts List
-  const filteredParts = SUZUKI_PARTS.filter(part => {
+  const filteredParts = parts.filter(part => {
     // Search query match
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -456,6 +506,7 @@ export default function App() {
               onSelectMotorcycle={handleSelectMotorcycle}
               onClearMotorcycle={handleClearMotorcycle}
               onGoToProducts={handleGoToProducts}
+              models={models}
             />
 
             {/* Technical Search & Tutorial Cards */}
@@ -490,7 +541,7 @@ export default function App() {
 
               {/* Grid of Parts */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {SUZUKI_PARTS.filter(part => {
+                {parts.filter(part => {
                   if (!activeMotorcycle) return true;
                   return part.compatibility.some(c => {
                     if (c.modelId !== activeMotorcycle.modelId) return false;
@@ -574,9 +625,10 @@ export default function App() {
                 setSearchQuery={setSearchQuery}
                 activeMotorcycle={activeMotorcycle}
                 onOpenGarageModal={() => setIsGarageModalOpen(true)}
-                allParts={SUZUKI_PARTS}
+                allParts={parts}
                 filteredCount={filteredParts.length}
                 onResetFilters={handleResetFilters}
+                models={models}
               />
 
               {/* Right Products Grid */}
@@ -628,6 +680,9 @@ export default function App() {
             onOpenGarageModal={() => setIsGarageModalOpen(true)}
             initialSchematicId={schematicTargetId}
             initialPartId={schematicTargetPartId}
+            schematicsList={schematics}
+            partsList={parts}
+            modelsList={models}
           />
         )}
 
@@ -652,7 +707,7 @@ export default function App() {
               deleteGarageApi(`${modelId}-${year}`).catch(err => console.error('Error eliminando garaje de BD:', err));
             }}
             orders={orders}
-            favoriteParts={SUZUKI_PARTS.filter(p => userProfile.favoritePartIds.includes(p.id))}
+            favoriteParts={parts.filter(p => userProfile.favoritePartIds.includes(p.id))}
             onToggleFavorite={handleToggleFavorite}
             onAddToCart={handleAddToCart}
             onNavigateToCatalog={() => navigateToTab('catalog')}
@@ -667,7 +722,8 @@ export default function App() {
           <ProductDetailPage
             part={selectedPagePart}
             activeMotorcycle={activeMotorcycle}
-            allParts={SUZUKI_PARTS}
+            allParts={parts}
+            schematics={schematics}
             onBack={handleBackFromProductPage}
             onAddToCart={handleAddToCart}
             onOpenGarageModal={() => setIsGarageModalOpen(true)}
@@ -702,7 +758,7 @@ export default function App() {
         {/* Tab 8: Dedicated Favorites Page (/favoritos) */}
         {activeTab === 'favorites' && (
           <FavoritesPage
-            favoriteParts={SUZUKI_PARTS.filter(p => userProfile.favoritePartIds.includes(p.id))}
+            favoriteParts={parts.filter(p => userProfile.favoritePartIds.includes(p.id))}
             activeMotorcycle={activeMotorcycle}
             onOpenDetail={(p) => setSelectedPartDetail(p)}
             onAddToCart={handleAddToCart}
@@ -729,6 +785,7 @@ export default function App() {
         onSelectMotorcycle={handleSelectMotorcycle}
         savedGarages={savedGarages}
         onRemoveFromGarage={handleRemoveFromGarage}
+        models={models}
       />
 
 
@@ -740,7 +797,8 @@ export default function App() {
       <ProductDetailModal
         part={selectedPartDetail}
         activeMotorcycle={activeMotorcycle}
-        allParts={SUZUKI_PARTS}
+        allParts={parts}
+        schematics={schematics}
         onClose={() => setSelectedPartDetail(null)}
         onAddToCart={handleAddToCart}
         onOpenGarageModal={() => setIsGarageModalOpen(true)}

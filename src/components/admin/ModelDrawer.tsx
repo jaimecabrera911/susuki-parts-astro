@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   X, 
-  Bike, 
   Layers, 
   Calendar, 
   Plus, 
@@ -20,8 +19,12 @@ import {
   ChevronRight,
   Tag,
   Edit,
-  Eye
+  Eye,
+  UploadCloud,
+  Trash2,
+  Check
 } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import type { Brand, SuzukiModel, ExplodedDiagram } from '../../types';
 
 interface ModelDrawerProps {
@@ -77,6 +80,32 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
   const [active, setActive] = useState(true);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleFileSelect = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setError('Por favor selecciona un archivo de imagen válido (PNG, JPG, WEBP, SVG).');
+      return;
+    }
+    setError('');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        setImage(e.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileSelect(e.dataTransfer.files[0]);
+    }
+  };
 
   const [schematicToLinkSelect, setSchematicToLinkSelect] = useState('');
 
@@ -198,7 +227,7 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
       brandId,
       name: name.trim(),
       category,
-      image: image.trim() || 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=500&auto=format&fit=crop&q=80',
+      image: image.trim() || 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/models/default.jpg',
       years: yearsArray,
       versions: versions.length > 0 ? versions : ['Standard'],
       active,
@@ -217,7 +246,7 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
         <div className="px-6 md:px-8 py-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/70 shrink-0">
           <div className="flex items-center gap-3.5">
             <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-[#059669] border border-emerald-200 flex items-center justify-center shadow-xs">
-              <Bike className="w-6 h-6" />
+              <FaMotorcycle className="w-6 h-6" />
             </div>
             <div>
               <h2 className="text-xl font-black text-slate-900 font-display tracking-tight">
@@ -400,21 +429,83 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
                 </div>
               </div>
 
-              {/* Image URL */}
+              {/* Image File Attachment Dropzone */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-mono">
-                  URL de Ilustración / SVG
+                  Imagen de la Motocicleta
                 </label>
-                <div className="relative">
-                  <ImageIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={image}
-                    onChange={(e) => setImage(e.target.value)}
-                    placeholder="SVG data URI o https://..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#E60012] focus:ring-2 focus:ring-[#E60012]/20 font-mono text-[11px]"
-                  />
-                </div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      handleFileSelect(e.target.files[0]);
+                    }
+                  }}
+                  className="hidden"
+                />
+
+                {image ? (
+                  <div className="relative p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center gap-4">
+                    <div className="w-32 h-24 rounded-xl bg-white border border-slate-200 p-2 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+                      <img src={image} alt="Vista previa del modelo" className="max-w-full max-h-full object-contain" />
+                    </div>
+                    <div className="flex-1 min-w-0 text-center sm:text-left">
+                      <p className="text-xs font-black text-slate-900 flex items-center gap-1.5 justify-center sm:justify-start">
+                        <Check className="w-4 h-4 text-emerald-600" />
+                        Imagen Adjuntada Correctamente
+                      </p>
+                      <p className="text-[11px] text-slate-500 font-mono mt-0.5 truncate">
+                        {image.startsWith('data:') ? 'Archivo local adjuntado (Data URL)' : image}
+                      </p>
+                      <div className="mt-2.5 flex items-center gap-2 justify-center sm:justify-start">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors"
+                        >
+                          Cambiar Imagen
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setImage('')}
+                          className="px-3 py-1.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Quitar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`cursor-pointer border-2 border-dashed rounded-2xl p-6 text-center transition-all flex flex-col items-center justify-center gap-2.5 ${
+                      isDragging
+                        ? 'border-[#E60012] bg-[#E60012]/5 scale-[0.99]'
+                        : 'border-slate-300 hover:border-[#E60012] hover:bg-slate-50/80 bg-slate-50/50'
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-xs text-slate-500 group-hover:text-[#E60012]">
+                      <UploadCloud className="w-6 h-6 text-[#E60012]" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-extrabold text-slate-900">
+                        Haz clic o arrastra la foto de la moto aquí
+                      </p>
+                      <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                        Formatos soportados: PNG, JPG, WEBP, SVG
+                      </p>
+                    </div>
+                    <span className="px-3 py-1.5 rounded-xl bg-[#E60012] text-white text-[11px] font-bold uppercase tracking-wider shadow-xs hover:bg-[#b5000b] transition-colors">
+                      Adjuntar Imagen
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Technical Notes */}

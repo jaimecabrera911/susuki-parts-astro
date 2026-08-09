@@ -54,7 +54,7 @@ export const SchematicViewModal: React.FC<SchematicViewModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-500 font-mono">
-                {schematic.category} • {schematic.section} • {schematic.modelTarget}
+                {schematic.category} • {schematic.section} • {schematic.modelTarget || 'Aplica a modelos Suzuki'}
               </p>
             </div>
           </div>
@@ -96,47 +96,47 @@ export const SchematicViewModal: React.FC<SchematicViewModalProps> = ({
                 Haz clic en cualquier punto para inspeccionar repuesto
               </span>
 
-              <div className="flex items-center gap-1.5 bg-white border border-slate-200 p-1 rounded-xl shadow-xs">
-                <span className="text-[10px] font-mono font-bold text-slate-500 px-1 uppercase">Zoom:</span>
+              <div className="flex items-center gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-xs">
                 <button
                   type="button"
-                  onClick={() => setZoomLevel(prev => Math.max(1, Number((prev - 0.5).toFixed(1))))}
+                  onClick={() => setZoomLevel(prev => Math.max(1, Number((prev - 0.25).toFixed(2))))}
                   disabled={zoomLevel <= 1}
-                  className="w-6 h-6 rounded-lg font-mono font-bold bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 flex items-center justify-center text-xs"
-                  title="Alejar zoom"
+                  className="p-1 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-40 transition-all cursor-pointer"
+                  title="Alejar zoom (-)"
                 >
-                  -
+                  <ZoomOut className="w-4 h-4" />
                 </button>
 
-                <span className="px-2 text-xs font-mono font-bold text-slate-900 min-w-[44px] text-center">
+                <span className="px-2 text-xs font-mono font-bold text-slate-900 min-w-[44px] text-center select-none">
                   {Math.round(zoomLevel * 100)}%
                 </span>
 
                 <button
                   type="button"
-                  onClick={() => setZoomLevel(prev => Math.min(2.5, Number((prev + 0.5).toFixed(1))))}
+                  onClick={() => setZoomLevel(prev => Math.min(2.5, Number((prev + 0.25).toFixed(2))))}
                   disabled={zoomLevel >= 2.5}
-                  className="w-6 h-6 rounded-lg font-mono font-bold bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 flex items-center justify-center text-xs"
+                  className="p-1 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-40 transition-all cursor-pointer"
                   title="Acercar zoom (hasta 250%)"
                 >
-                  +
+                  <ZoomIn className="w-4 h-4" />
                 </button>
 
                 {zoomLevel > 1 && (
                   <button
                     type="button"
                     onClick={() => setZoomLevel(1)}
-                    className="px-2 py-0.5 text-[10px] font-mono font-bold text-[#E60012] hover:underline"
+                    className="p-1.5 rounded-lg text-[#E60012] hover:bg-red-50 transition-all text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer"
                     title="Restablecer a 100%"
                   >
-                    Reset
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reset</span>
                   </button>
                 )}
               </div>
             </div>
 
             {/* Diagram Viewport Container */}
-            <div className="border border-slate-200 rounded-2xl overflow-auto bg-slate-50 shadow-xs max-h-[480px] custom-scrollbar flex items-center justify-center p-4">
+            <div className="relative border border-slate-200 rounded-2xl overflow-auto bg-slate-50 shadow-xs max-h-[480px] custom-scrollbar flex items-center justify-center p-4">
               <div
                 style={{
                   transform: `scale(${zoomLevel})`,

@@ -68,7 +68,7 @@ export const UserModal: React.FC<UserModalProps> = ({
       postalCode: postalCode.trim(),
       favoritePartIds: userToEdit?.favoritePartIds || [],
       createdAt: userToEdit?.createdAt || new Date().toISOString().split('T')[0],
-      avatarUrl: userToEdit?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+      avatarUrl: userToEdit?.avatarUrl || 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/users/avatar.jpg',
       role,
       active,
       notes: notes.trim()

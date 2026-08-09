@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, CheckCircle2, AlertTriangle, ShieldCheck, ArrowRight, ShoppingBag, Wrench, Factory, FileText, Bike, Maximize2, Copy, Check, Info, ChevronDown, ChevronUp, Package, HelpCircle } from 'lucide-react';
-import type { SuzukiPart, ActiveMotorcycle } from '../types';
+import { X, CheckCircle2, AlertTriangle, ShieldCheck, ArrowRight, ShoppingBag, Wrench, Factory, FileText, Maximize2, Copy, Check, Info, ChevronDown, ChevronUp, Package, HelpCircle } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
+import type { SuzukiPart, ActiveMotorcycle, ExplodedDiagram } from '../types';
 import { getPrimaryOem } from '../types';
 import { SUZUKI_MODELS } from '../data/suzukiData';
 import { formatCurrency } from '../utils/formatCurrency';
@@ -14,6 +15,7 @@ interface ProductDetailModalProps {
   part: SuzukiPart | null;
   activeMotorcycle: ActiveMotorcycle | null;
   allParts?: SuzukiPart[];
+  schematics?: ExplodedDiagram[];
   onClose: () => void;
   onAddToCart: (part: SuzukiPart) => void;
   onOpenGarageModal: () => void;
@@ -26,6 +28,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   part,
   activeMotorcycle,
   allParts = [],
+  schematics,
   onClose,
   onAddToCart,
   onOpenGarageModal,
@@ -203,6 +206,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           <div className="space-y-3">
             <ProductImageGallery
               part={part}
+              schematics={schematics}
               onViewSchematics={(sId: string, pId: string) => {
                 onClose();
                 onViewSchematics(sId, pId);
@@ -345,7 +349,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             {/* Applicability Range Badges / Table */}
             <div>
               <h4 className="text-xs font-extrabold uppercase text-slate-900 mb-2 flex items-center gap-1.5">
-                <Bike className="w-3.5 h-3.5 text-[#E60012]" aria-hidden="true" />
+                <FaMotorcycle className="w-3.5 h-3.5 text-[#E60012]" aria-hidden="true" />
                 Vehículos Asociados & Compatibilidad
               </h4>
               <div className="space-y-2 max-h-36 overflow-y-auto pr-1">

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Wrench, CheckCircle2, Plus, ShieldCheck, Trash2, ArrowRight } from 'lucide-react';
 import { SUZUKI_MODELS } from '../data/suzukiData';
-import type { ActiveMotorcycle } from '../types';
+import type { ActiveMotorcycle, SuzukiModel } from '../types';
 import { SearchableModelSelect } from './SearchableModelSelect';
 
 interface GarageModalProps {
@@ -11,6 +11,7 @@ interface GarageModalProps {
   onSelectMotorcycle: (moto: ActiveMotorcycle) => void;
   savedGarages: ActiveMotorcycle[];
   onRemoveFromGarage: (moto: ActiveMotorcycle) => void;
+  models?: SuzukiModel[];
 }
 
 export const GarageModal: React.FC<GarageModalProps> = ({
@@ -19,11 +20,14 @@ export const GarageModal: React.FC<GarageModalProps> = ({
   activeMotorcycle,
   onSelectMotorcycle,
   savedGarages,
-  onRemoveFromGarage
+  onRemoveFromGarage,
+  models
 }) => {
   const [selectedModelId, setSelectedModelId] = useState('');
   const [selectedYear, setSelectedYear] = useState<number | ''>('');
   const [selectedVersion, setSelectedVersion] = useState('');
+
+  const availableModels = models && models.length > 0 ? models : SUZUKI_MODELS;
 
   // Handle Escape key and body scroll lock
   React.useEffect(() => {
@@ -166,7 +170,7 @@ export const GarageModal: React.FC<GarageModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <SearchableModelSelect
-                models={SUZUKI_MODELS}
+                models={availableModels}
                 selectedModelId={selectedModelId}
                 onSelectModel={(id) => {
                   setSelectedModelId(id);

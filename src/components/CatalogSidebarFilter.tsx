@@ -19,7 +19,7 @@ import {
   Globe,
   Clock
 } from 'lucide-react';
-import type { ActiveMotorcycle, SuzukiPart, AvailabilityStatus } from '../types';
+import type { ActiveMotorcycle, SuzukiPart, AvailabilityStatus, SuzukiModel } from '../types';
 import { AVAILABILITY_META } from '../types';
 import { SUZUKI_MODELS } from '../data/suzukiData';
 import { getMotorcyclePng } from '../data/motorcycleImages';
@@ -45,6 +45,7 @@ interface CatalogSidebarFilterProps {
   allParts: SuzukiPart[];
   filteredCount: number;
   onResetFilters: () => void;
+  models?: SuzukiModel[];
 }
 
 export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
@@ -66,7 +67,8 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
   onOpenGarageModal,
   allParts,
   filteredCount,
-  onResetFilters
+  onResetFilters,
+  models
 }) => {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
@@ -94,9 +96,10 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
-  // Find max possible price in database
-  const maxDatabasePrice = Math.max(...allParts.map(p => p.price), 1000000);
-  const minDatabasePrice = Math.min(...allParts.map(p => p.price), 20000);
+  // Find max/min possible price in database
+  const highestPriceInParts = allParts.length > 0 ? Math.max(...allParts.map(p => p.price)) : 5000000;
+  const maxDatabasePrice = Math.max(highestPriceInParts, 5000000);
+  const minDatabasePrice = 0;
 
   // Histogram bins for price distribution
   const histogramBins = 8;
@@ -231,9 +234,11 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
     (minPriceFilter > minDatabasePrice || maxPriceFilter < maxDatabasePrice ? 1 : 0) +
     (searchQuery.trim() ? 1 : 0);
 
+  const availableModels = models && models.length > 0 ? models : SUZUKI_MODELS;
   const activeModelMeta = activeMotorcycle
-    ? SUZUKI_MODELS.find((m) => m.id === activeMotorcycle.modelId)
+    ? availableModels.find((m) => m.id === activeMotorcycle.modelId)
     : null;
+  const activeMotoImage = activeModelMeta?.image || (activeMotorcycle ? getMotorcyclePng(activeMotorcycle.modelId) : '');
 
   const FilterContent = () => (
     <div className="space-y-6">
@@ -250,8 +255,8 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
               <div className="relative w-full h-36" aria-hidden="true">
                 <div className="absolute inset-0 rounded-md bg-white" />
                 <img
-                  src={getMotorcyclePng(activeMotorcycle.modelId)}
-                  alt=""
+                  src={activeMotoImage}
+                  alt={activeMotorcycle.modelName}
                   className="absolute inset-0 h-full w-full object-contain p-2 transition-transform duration-500 ease-out group-hover:scale-[1.04]"
                 />
                 {/* Red corner brackets */}

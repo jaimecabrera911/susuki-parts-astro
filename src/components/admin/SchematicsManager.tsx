@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Layers, Plus, Edit, Trash2, Copy, Tag, Bike, Crosshair, Image as ImageIcon, Eye } from 'lucide-react';
+import { Layers, Plus, Edit, Trash2, Copy, Tag, Crosshair, Image as ImageIcon, Eye } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import type { ExplodedDiagram, SuzukiModel, SuzukiPart } from '../../types';
 
 interface SchematicsManagerProps {
@@ -13,16 +14,6 @@ interface SchematicsManagerProps {
   onDuplicateSchematic: (schematic: ExplodedDiagram) => void;
   onDeleteSchematic: (id: string) => void;
 }
-
-const SECTIONS = [
-  'all',
-  'Engine',
-  'Brakes',
-  'Air & Fuel',
-  'Drive & Transmission',
-  'Cooling System',
-  'Frame & Electrical'
-];
 
 export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
   schematics,
@@ -38,15 +29,56 @@ export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
   const [selectedSectionFilter, setSelectedSectionFilter] = useState<string>('all');
   const [selectedModelFilter, setSelectedModelFilter] = useState<string>('all');
 
+  const availableSections = useMemo(() => {
+    const defaults = [
+      'Motor',
+      'Frenos',
+      'Admisión y Combustible',
+      'Transmisión y Kit de Arrastre',
+      'Sistema de Refrigeración',
+      'Chasis y Eléctrico',
+      'Sistema de Escape',
+      'Controles y Pedales',
+      'Tablero e Instrumentos'
+    ];
+    const fromSchematics = schematics.map(s => s.section).filter(Boolean);
+    return Array.from(new Set([...defaults, ...fromSchematics]));
+  }, [schematics]);
+
+  const getModelTargetText = (schematic: ExplodedDiagram): string => {
+    if (schematic.modelTarget && schematic.modelTarget.trim()) {
+      return schematic.modelTarget;
+    }
+    const appIds = Array.isArray(schematic.applicableModelIds)
+      ? schematic.applicableModelIds
+      : (typeof schematic.applicableModelIds === 'string'
+          ? JSON.parse(schematic.applicableModelIds || '[]')
+          : []);
+
+    if (appIds.length > 0) {
+      const names = appIds.map(id => {
+        const found = models.find(m => m.id === id);
+        return found ? found.name : id;
+      });
+      return names.join(', ');
+    }
+
+    return 'Todos los modelos';
+  };
+
   const filteredSchematics = schematics.filter(s => {
+    const targetText = getModelTargetText(s).toLowerCase();
     const matchesSearch =
       s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (s.modelTarget && s.modelTarget.toLowerCase().includes(searchQuery.toLowerCase()));
+      targetText.includes(searchQuery.toLowerCase());
 
     const matchesSection = selectedSectionFilter === 'all' || s.section === selectedSectionFilter;
-    const matchesModel = selectedModelFilter === 'all' || (s.applicableModelIds && s.applicableModelIds.includes(selectedModelFilter));
+    const appIds = Array.isArray(s.applicableModelIds)
+      ? s.applicableModelIds
+      : (typeof s.applicableModelIds === 'string' ? JSON.parse(s.applicableModelIds || '[]') : []);
+    const matchesModel = selectedModelFilter === 'all' || appIds.includes(selectedModelFilter);
 
     return matchesSearch && matchesSection && matchesModel;
   });
@@ -65,7 +97,7 @@ export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
               className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#E60012] font-semibold"
             >
               <option value="all">Todas las Secciones</option>
-              {SECTIONS.filter(s => s !== 'all').map(s => (
+              {availableSections.map(s => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
@@ -156,9 +188,11 @@ export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
 
                   {/* Model Target */}
                   <td className="py-4 px-4 font-medium text-slate-700 text-xs">
-                    <div className="flex items-center gap-1.5 font-sans font-bold">
-                      <Bike className="w-3.5 h-3.5 text-[#059669]" />
-                      <span>{schematic.modelTarget}</span>
+                    <div className="flex items-center gap-2 font-sans font-bold">
+                      <div className="w-6 h-6 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
+                        <FaMotorcycle className="w-3.5 h-3.5 text-[#059669]" />
+                      </div>
+                      <span className="text-slate-800 font-bold">{getModelTargetText(schematic)}</span>
                     </div>
                   </td>
 

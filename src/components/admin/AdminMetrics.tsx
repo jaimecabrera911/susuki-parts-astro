@@ -1,5 +1,6 @@
 import React from 'react';
-import { Building2, Bike, CheckCircle2, XCircle, Tag, Layers } from 'lucide-react';
+import { Building2, CheckCircle2, XCircle, Tag, Layers } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import type { Brand, SuzukiModel } from '../../types';
 
 interface AdminMetricsProps {
@@ -26,7 +27,7 @@ export const AdminMetrics: React.FC<AdminMetricsProps> = ({ brands, models }) =>
       title: 'MODELOS DE MOTO',
       value: models.length,
       subtext: `${activeModels} modelos verificados`,
-      icon: Bike,
+      icon: FaMotorcycle,
       border: 'border-slate-200',
       badgeBg: 'bg-emerald-50 text-[#059669] border-emerald-200'
     },

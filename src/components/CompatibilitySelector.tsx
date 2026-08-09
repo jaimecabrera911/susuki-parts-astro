@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Bike, Check, ChevronRight, RefreshCw, ShieldCheck, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Check, ChevronRight, RefreshCw, ShieldCheck, AlertTriangle, ArrowRight } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import { SUZUKI_MODELS } from '../data/suzukiData';
 import type { ActiveMotorcycle, SuzukiModel } from '../types';
 import { SearchableModelSelect } from './SearchableModelSelect';
@@ -9,6 +10,7 @@ interface CompatibilitySelectorProps {
   onSelectMotorcycle: (moto: ActiveMotorcycle) => void;
   onClearMotorcycle: () => void;
   onGoToProducts?: () => void;
+  models?: SuzukiModel[];
 }
 
 export const CompatibilitySelector: React.FC<CompatibilitySelectorProps> = ({
@@ -16,14 +18,17 @@ export const CompatibilitySelector: React.FC<CompatibilitySelectorProps> = ({
   onSelectMotorcycle,
   onClearMotorcycle,
   onGoToProducts,
+  models
 }) => {
   const [selectedBrand] = useState('SUZUKI');
   const [selectedModelId, setSelectedModelId] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<number | ''>('');
   const [selectedVersion, setSelectedVersion] = useState<string>('');
 
+  const availableModels = models && models.length > 0 ? models : SUZUKI_MODELS;
+
   // Find currently chosen model object
-  const currentModelObj = SUZUKI_MODELS.find(m => m.id === selectedModelId);
+  const currentModelObj = availableModels.find(m => m.id === selectedModelId);
 
   // Sync state if activeMotorcycle changes
   useEffect(() => {
@@ -146,7 +151,7 @@ export const CompatibilitySelector: React.FC<CompatibilitySelectorProps> = ({
         {/* Step 2: Modelo Autocomplete */}
         <div className={`border rounded-xl p-2.5 transition-all ${selectedModelId ? 'border-slate-300 bg-white' : 'border-slate-200 bg-slate-50'}`}>
           <SearchableModelSelect
-            models={SUZUKI_MODELS}
+            models={availableModels}
             selectedModelId={selectedModelId}
             onSelectModel={(id) => {
               setSelectedModelId(id);

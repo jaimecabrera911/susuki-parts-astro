@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   ShieldCheck,
@@ -6,7 +5,6 @@ import {
   Wrench,
   Factory,
   FileText,
-  Bike,
   CheckCircle2,
   ShoppingBag,
   Share2,
@@ -18,7 +16,9 @@ import {
   Package,
   HelpCircle
 } from 'lucide-react';
-import type { SuzukiPart, ActiveMotorcycle } from '../types';
+import React, { useState, useEffect } from 'react';
+import { FaMotorcycle } from 'react-icons/fa';
+import type { SuzukiPart, ActiveMotorcycle, ExplodedDiagram } from '../types';
 import { getPrimaryOem } from '../types';
 import { SUZUKI_MODELS } from '../data/suzukiData';
 import { formatCurrency } from '../utils/formatCurrency';
@@ -32,6 +32,7 @@ interface ProductDetailPageProps {
   part: SuzukiPart;
   activeMotorcycle: ActiveMotorcycle | null;
   allParts: SuzukiPart[];
+  schematics?: ExplodedDiagram[];
   onBack: () => void;
   onAddToCart: (part: SuzukiPart) => void;
   onOpenGarageModal: () => void;
@@ -43,6 +44,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   part,
   activeMotorcycle,
   allParts,
+  schematics,
   onBack,
   onAddToCart,
   onOpenGarageModal,
@@ -219,7 +221,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           
           {/* Left Column: Interactive Product Gallery & OEM Info */}
           <div className="space-y-4">
-            <ProductImageGallery part={part} onViewSchematics={onViewSchematics} />
+            <ProductImageGallery part={part} schematics={schematics} onViewSchematics={onViewSchematics} />
 
             {/* OEM References Section — colapsable, light style */}
             <div className="bg-slate-50 border border-slate-200/80 p-5 rounded-xl">
@@ -362,7 +364,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               {/* Associated Vehicles & Compatibilities */}
               <div>
                 <h3 className="text-xs font-extrabold uppercase text-slate-900 mb-2 flex items-center gap-1.5">
-                  <Bike className="w-4 h-4 text-[#E60012]" aria-hidden="true" />
+                  <FaMotorcycle className="w-4 h-4 text-[#E60012]" aria-hidden="true" />
                   Vehículos Asociados & Compatibilidad Exacta
                 </h3>
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
