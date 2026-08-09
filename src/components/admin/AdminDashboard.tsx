@@ -7,12 +7,14 @@ import { ModelsManager } from './ModelsManager';
 import { CategoriesManager } from './CategoriesManager';
 import { PartsManager } from './PartsManager';
 import { SchematicsManager } from './SchematicsManager';
+import { OrdersManager } from './OrdersManager';
 import { BrandModal } from './BrandModal';
 import { ModelDrawer } from './ModelDrawer';
 import { CategoryModal } from './CategoryModal';
 import { PartDrawer } from './PartDrawer';
 import { SchematicDrawer } from './SchematicDrawer';
 import { SchematicViewModal } from './SchematicViewModal';
+import { OrderModal } from './OrderModal';
 import { 
   getStoredBrands, 
   saveStoredBrands, 
@@ -23,9 +25,11 @@ import {
   getStoredParts,
   saveStoredParts,
   getStoredSchematics,
-  saveStoredSchematics
+  saveStoredSchematics,
+  getStoredOrders,
+  saveStoredOrders
 } from '../../data/adminStore';
-import type { Brand, SuzukiModel, Category, SuzukiPart, AvailabilityStatus, ExplodedDiagram } from '../../types';
+import type { Brand, SuzukiModel, Category, SuzukiPart, AvailabilityStatus, ExplodedDiagram, Order } from '../../types';
 import { CheckCircle2, ShoppingCart, BarChart3 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -38,6 +42,7 @@ export const AdminDashboard: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>(() => getStoredCategories());
   const [parts, setParts] = useState<SuzukiPart[]>(() => getStoredParts());
   const [schematics, setSchematics] = useState<ExplodedDiagram[]>(() => getStoredSchematics());
+  const [orders, setOrders] = useState<Order[]>(() => getStoredOrders());
 
   // Toast notification state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
@@ -62,6 +67,9 @@ export const AdminDashboard: React.FC = () => {
   const [isSchematicViewModalOpen, setIsSchematicViewModalOpen] = useState(false);
   const [schematicToView, setSchematicToView] = useState<ExplodedDiagram | null>(null);
 
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [orderToEdit, setOrderToEdit] = useState<Order | null>(null);
+
   useEffect(() => {
     saveStoredBrands(brands);
   }, [brands]);
@@ -81,6 +89,10 @@ export const AdminDashboard: React.FC = () => {
   useEffect(() => {
     saveStoredSchematics(schematics);
   }, [schematics]);
+
+  useEffect(() => {
+    saveStoredOrders(orders);
+  }, [orders]);
 
   const showToast = (message: string, type: 'success' | 'info' = 'success') => {
     setToast({ message, type });
@@ -327,6 +339,11 @@ export const AdminDashboard: React.FC = () => {
     showToast(`Despiece "${sourceSchematic.title}" duplicado con éxito.`);
   };
 
+  const handleSaveOrder = (savedOrder: Order) => {
+    setOrders(orders.map(o => o.id === savedOrder.id ? savedOrder : o));
+    showToast(`Pedido ${savedOrder.id} actualizado con éxito.`);
+  };
+
   const handleDeleteSchematic = (id: string) => {
     const schematic = schematics.find(s => s.id === id);
     if (!schematic) return;
@@ -367,6 +384,7 @@ export const AdminDashboard: React.FC = () => {
         categoriesCount={categories.length}
         partsCount={parts.length}
         schematicsCount={schematics.length}
+        ordersCount={orders.length}
       />
 
       {/* Main Content Area */}
@@ -484,11 +502,19 @@ export const AdminDashboard: React.FC = () => {
             />
           )}
 
+          {activeTab === 'orders' && (
+            <OrdersManager
+              orders={orders}
+              searchQuery={searchQuery}
+              onEditOrder={(ord) => { setOrderToEdit(ord); setIsOrderModalOpen(true); }}
+              onViewOrder={(ord) => { setOrderToEdit(ord); setIsOrderModalOpen(true); }}
+            />
+          )}
+
           {/* Placeholder views for remaining modules */}
-          {activeTab !== 'brands' && activeTab !== 'models' && activeTab !== 'categories' && activeTab !== 'parts' && activeTab !== 'schematics' && (
+          {activeTab !== 'brands' && activeTab !== 'models' && activeTab !== 'categories' && activeTab !== 'parts' && activeTab !== 'schematics' && activeTab !== 'orders' && (
             <div className="p-12 rounded-2xl bg-white border border-slate-200 text-center max-w-xl mx-auto my-12 shadow-xs">
               <div className="w-16 h-16 rounded-2xl bg-red-50 text-[#E60012] border border-red-200 flex items-center justify-center mx-auto mb-4">
-                {activeTab === 'orders' && <ShoppingCart className="w-8 h-8" />}
                 {activeTab === 'metrics' && <BarChart3 className="w-8 h-8" />}
               </div>
               <h3 className="text-xl font-black text-slate-900 mb-2 uppercase tracking-tight font-display">
@@ -577,6 +603,13 @@ export const AdminDashboard: React.FC = () => {
           setPartToEdit(part);
           setIsPartDrawerOpen(true);
         }}
+      />
+
+      <OrderModal
+        isOpen={isOrderModalOpen}
+        onClose={() => setIsOrderModalOpen(false)}
+        order={orderToEdit}
+        onSaveOrder={handleSaveOrder}
       />
     </div>
   );

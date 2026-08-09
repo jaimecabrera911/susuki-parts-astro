@@ -21,6 +21,7 @@ interface AdminSidebarProps {
   categoriesCount: number;
   partsCount: number;
   schematicsCount: number;
+  ordersCount?: number;
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
@@ -30,7 +31,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   modelsCount,
   categoriesCount,
   partsCount,
-  schematicsCount
+  schematicsCount,
+  ordersCount = 0
 }) => {
   const menuItems = [
     {
@@ -72,8 +74,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       id: 'orders' as AdminTab,
       label: 'GESTIÓN DE PEDIDOS',
       icon: ShoppingCart,
-      count: 8,
-      badgeColor: 'bg-slate-100 text-slate-700 border-slate-200'
+      count: ordersCount,
+      badgeColor: 'bg-red-50 text-[#E60012] border-red-200 font-bold'
     },
     {
       id: 'metrics' as AdminTab,

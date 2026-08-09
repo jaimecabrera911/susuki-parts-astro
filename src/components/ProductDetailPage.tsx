@@ -226,14 +226,18 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Factory className="w-5 h-5 text-slate-500" aria-hidden="true" />
-                  <span className="text-xs uppercase font-extrabold tracking-wider text-slate-600">
-                    Referencia OEM
+                  <span className="text-[11px] uppercase font-extrabold tracking-wider text-slate-600">
+                    Referencias OEM & Cross-Reference
                   </span>
                 </div>
                 {part.oemNumbers.length > 1 && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-slate-200 rounded-md text-[11px] font-bold text-slate-500">
-                    {showAllOems ? `${part.oemNumbers.length} de ${part.oemNumbers.length}` : `1 de ${part.oemNumbers.length}`}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllOems(!showAllOems)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded-md text-[11px] font-bold text-slate-600 transition-colors"
+                  >
+                    {showAllOems ? 'Ver solo principal' : `Ver las ${part.oemNumbers.length} refs (Cross-Ref)`}
+                  </button>
                 )}
               </div>
 
@@ -244,48 +248,50 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   return (
                     <li
                       key={oem}
-                      className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border transition-colors ${
+                      className={`p-3 rounded-xl border transition-colors flex items-center justify-between gap-3 ${
                         isPrimary
-                          ? 'bg-emerald-50 border-emerald-200/80'
-                          : 'bg-white border-slate-200 hover:border-slate-300'
+                          ? 'bg-emerald-50/80 border-emerald-200'
+                          : 'bg-slate-50 border-slate-200'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        {isPrimary && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 border border-emerald-200 text-emerald-700 text-[10px] font-extrabold uppercase tracking-wider rounded shrink-0">
-                            <ShieldCheck className="w-3 h-3" />
-                            Principal
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono font-black text-slate-900 text-base tracking-wider select-all">
+                            {oem}
                           </span>
-                        )}
-                        <span
-                          className={`font-mono font-bold tracking-wide truncate ${
-                            isPrimary ? 'text-slate-900 text-base' : 'text-slate-700 text-sm'
-                          }`}
-                          title={oem}
-                        >
-                          {oem}
-                        </span>
+                          {isPrimary ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-100 border border-emerald-200 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wider rounded-md shrink-0">
+                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                              Principal Suzuki
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-blue-50 border border-blue-200 text-[#0A3088] text-[10px] font-bold uppercase tracking-wider rounded-md shrink-0" title="Referencia equivalente o número de parte descontinuado que fue reemplazado por la referencia principal">
+                              Cross-Ref (Reemplazada)
+                            </span>
+                          )}
+                        </div>
                       </div>
+
                       <button
                         type="button"
                         onClick={() => handleCopyOem(oem)}
                         aria-label={`Copiar referencia ${oem}`}
-                        title="Copiar referencia"
-                        className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                        title="Copiar referencia al portapapeles"
+                        className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
                           isCopied
-                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
-                            : 'bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-200'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs'
                         }`}
                       >
                         {isCopied ? (
                           <>
-                            <Check className="w-3.5 h-3.5" />
-                            Copiado
+                            <Check className="w-3.5 h-3.5 text-white" />
+                            <span>Copiado</span>
                           </>
                         ) : (
                           <>
-                            <Copy className="w-3.5 h-3.5" />
-                            Copiar
+                            <Copy className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Copiar</span>
                           </>
                         )}
                       </button>

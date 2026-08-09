@@ -218,6 +218,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
 ];
 
 const CATEGORIES_STORAGE_KEY = 'sz_admin_categories_v1';
+const ORDERS_STORAGE_KEY = 'sz_admin_orders_v1';
 
 export function getStoredCategories(): Category[] {
   if (typeof window === 'undefined') return DEFAULT_CATEGORIES;
@@ -236,6 +237,299 @@ export function saveStoredCategories(categories: Category[]): void {
     localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
   } catch (e) {
     console.error('Error saving categories to storage', e);
+  }
+}
+
+export const DEFAULT_ORDERS: any[] = [
+  {
+    id: 'ORD-2026-8941',
+    date: '2026-08-08 10:30 AM',
+    customerName: 'Carlos Alberto Mendoza',
+    email: 'carlos.mendoza@email.com',
+    phone: '+57 310 456 7890',
+    documentId: '1.098.765.432',
+    city: 'Bogotá D.C.',
+    shippingAddress: 'Carrera 15 # 93-47, Apto 502',
+    postalCode: '110221',
+    items: [
+      {
+        part: {
+          id: 'part-01',
+          oemNumbers: ['16510-05240', '16510-05240-000'],
+          name: 'Filtro de Aceite Original Suzuki Gixxer / GSX-R150',
+          category: 'filtros',
+          price: 32000,
+          stock: 45,
+          image: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=500&auto=format&fit=crop&q=80',
+          description: 'Filtro de aceite de alto rendimiento oficial.',
+          specs: [],
+          compatibility: []
+        },
+        quantity: 2,
+        motorcycle: {
+          brand: 'Suzuki',
+          modelId: 'gsx-r150',
+          modelName: 'GSX-R150 ABS',
+          year: 2023,
+          version: 'Full Injection'
+        }
+      },
+      {
+        part: {
+          id: 'part-02',
+          oemNumbers: ['59100-23820'],
+          name: 'Pastillas de Freno Delanteras Sinterizadas GSX-R150',
+          category: 'frenos',
+          price: 145000,
+          stock: 18,
+          image: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=500&auto=format&fit=crop&q=80',
+          description: 'Pastillas de compuesto cerámico sinterizado.',
+          specs: [],
+          compatibility: []
+        },
+        quantity: 1,
+        motorcycle: {
+          brand: 'Suzuki',
+          modelId: 'gsx-r150',
+          modelName: 'GSX-R150 ABS',
+          year: 2023,
+          version: 'Full Injection'
+        }
+      }
+    ],
+    totalPrice: 209000,
+    motorcycle: {
+      brand: 'Suzuki',
+      modelId: 'gsx-r150',
+      modelName: 'GSX-R150 ABS',
+      year: 2023,
+      version: 'Full Injection'
+    },
+    guaranteeCode: 'SZ-GAR-8941-OK',
+    paymentMethod: 'transferencia',
+    status: 'Pago confirmado',
+    paymentReference: 'WOMPI-TRX-998811',
+    trackingNumber: 'SE789456123CO',
+    shippingCarrier: 'Servientrega',
+    notes: 'Cliente solicita empacar con protección extra de espuma.'
+  },
+  {
+    id: 'ORD-2026-8942',
+    date: '2026-08-07 04:15 PM',
+    customerName: 'Ana María Restrepo',
+    email: 'ana.restrepo@gmail.com',
+    phone: '+57 300 891 2233',
+    documentId: '52.431.890',
+    city: 'Medellín',
+    shippingAddress: 'Calle 10 # 43E-12, Poblado',
+    postalCode: '050021',
+    items: [
+      {
+        part: {
+          id: 'part-03',
+          oemNumbers: ['27500-11810'],
+          name: 'Kit Arrastre Heavy Duty V-Strom 650 XT (Cadena DID 525)',
+          category: 'transmision',
+          price: 520000,
+          stock: 8,
+          image: 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=500&auto=format&fit=crop&q=80',
+          description: 'Kit de tracción reforzado con relación original.',
+          specs: [],
+          compatibility: []
+        },
+        quantity: 1,
+        motorcycle: {
+          brand: 'Suzuki',
+          modelId: 'v-strom-650',
+          modelName: 'V-Strom 650 XT',
+          year: 2022,
+          version: 'ABS'
+        }
+      }
+    ],
+    totalPrice: 520000,
+    motorcycle: {
+      brand: 'Suzuki',
+      modelId: 'v-strom-650',
+      modelName: 'V-Strom 650 XT',
+      year: 2022,
+      version: 'ABS'
+    },
+    guaranteeCode: 'SZ-GAR-8942-OK',
+    paymentMethod: 'transferencia',
+    status: 'Despachado en Bodega Central',
+    paymentReference: 'BOLD-PAY-445566',
+    trackingNumber: 'DP99881122CO',
+    shippingCarrier: 'Deprisa',
+    notes: 'Despachado desde la bodega principal en zona franca.'
+  },
+  {
+    id: 'ORD-2026-8943',
+    date: '2026-08-07 11:20 AM',
+    customerName: 'Jorge Eduardo Silva',
+    email: 'jorge.silva@hotmail.com',
+    phone: '+57 315 776 9900',
+    documentId: '79.876.543',
+    city: 'Cali',
+    shippingAddress: 'Av. 6N # 24N-08, Barrio Granada',
+    postalCode: '760001',
+    items: [
+      {
+        part: {
+          id: 'part-04',
+          oemNumbers: ['09482-00412', 'CPR8EA-9'],
+          name: 'Bujía Iridium IX NGK CPR8EA-9 Suzuki Gixxer 250',
+          category: 'electrico',
+          price: 58000,
+          stock: 60,
+          image: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=500&auto=format&fit=crop&q=80',
+          description: 'Bujía de alto encendido iridium.',
+          specs: [],
+          compatibility: []
+        },
+        quantity: 2,
+        motorcycle: {
+          brand: 'Suzuki',
+          modelId: 'gixxer-250',
+          modelName: 'Gixxer 250 SF',
+          year: 2024,
+          version: 'ABS'
+        }
+      }
+    ],
+    totalPrice: 116000,
+    motorcycle: {
+      brand: 'Suzuki',
+      modelId: 'gixxer-250',
+      modelName: 'Gixxer 250 SF',
+      year: 2024,
+      version: 'ABS'
+    },
+    guaranteeCode: 'SZ-GAR-8943-OK',
+    paymentMethod: 'transferencia',
+    status: 'En tránsito',
+    paymentReference: 'TRANSFER-BANCOLOMBIA-1122',
+    trackingNumber: 'EX44556677CO',
+    shippingCarrier: 'Encoexpress',
+    notes: 'Guía de transporte activa en ruta hacia Cali.'
+  },
+  {
+    id: 'ORD-2026-8944',
+    date: '2026-08-05 02:40 PM',
+    customerName: 'Luisa Fernanda Gómez',
+    email: 'luisa.gomez@empresa.com',
+    phone: '+57 318 221 4455',
+    documentId: '1.020.304.050',
+    city: 'Bucaramanga',
+    shippingAddress: 'Calle 36 # 21-45, Cabecera',
+    postalCode: '680002',
+    items: [
+      {
+        part: {
+          id: 'part-05',
+          oemNumbers: ['51110-38A00'],
+          name: 'Juego de Barras de Suspensión Delantera DR650',
+          category: 'frenos',
+          price: 890000,
+          stock: 3,
+          image: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=500&auto=format&fit=crop&q=80',
+          description: 'Telescópicos delanteros originales Suzuki DR650 Dual Sport.',
+          specs: [],
+          compatibility: []
+        },
+        quantity: 1,
+        motorcycle: {
+          brand: 'Suzuki',
+          modelId: 'dr650',
+          modelName: 'DR 650 SE',
+          year: 2021,
+          version: 'Dual Sport'
+        }
+      }
+    ],
+    totalPrice: 890000,
+    motorcycle: {
+      brand: 'Suzuki',
+      modelId: 'dr650',
+      modelName: 'DR 650 SE',
+      year: 2021,
+      version: 'Dual Sport'
+    },
+    guaranteeCode: 'SZ-GAR-8944-OK',
+    paymentMethod: 'transferencia',
+    status: 'Entregado',
+    paymentReference: 'WOMPI-TRX-554433',
+    trackingNumber: 'SE11223344CO',
+    shippingCarrier: 'Servientrega',
+    notes: 'Entregado satisfactoriamente. Cliente firmó recibo conforme.'
+  },
+  {
+    id: 'ORD-2026-8945',
+    date: '2026-08-08 12:10 PM',
+    customerName: 'Felipe Gutiérrez',
+    email: 'felipe.gutierrez@outlook.com',
+    phone: '+57 301 998 7766',
+    documentId: '80.112.334',
+    city: 'Pereira',
+    shippingAddress: 'Av. Circunvalar # 12-30',
+    postalCode: '660001',
+    items: [
+      {
+        part: {
+          id: 'part-06',
+          oemNumbers: ['31800-41G00'],
+          name: 'Relé de Arranque Solenoide V-Strom 1050',
+          category: 'electrico',
+          price: 310000,
+          stock: 5,
+          image: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=500&auto=format&fit=crop&q=80',
+          description: 'Solenoide de partida original.',
+          specs: [],
+          compatibility: []
+        },
+        quantity: 1,
+        motorcycle: {
+          brand: 'Suzuki',
+          modelId: 'v-strom-1050',
+          modelName: 'V-Strom 1050 DE',
+          year: 2024,
+          version: 'Adventure'
+        }
+      }
+    ],
+    totalPrice: 310000,
+    motorcycle: {
+      brand: 'Suzuki',
+      modelId: 'v-strom-1050',
+      modelName: 'V-Strom 1050 DE',
+      year: 2024,
+      version: 'Adventure'
+    },
+    guaranteeCode: 'SZ-GAR-8945-PENDING',
+    paymentMethod: 'transferencia',
+    status: 'Pendiente de pago',
+    paymentReference: 'PENDIENTE',
+    notes: 'Esperando soporte de transferencia bancaria por Nequi/Daviplata.'
+  }
+];
+
+export function getStoredOrders(): any[] {
+  if (typeof window === 'undefined') return DEFAULT_ORDERS;
+  try {
+    const data = localStorage.getItem(ORDERS_STORAGE_KEY);
+    if (data) return JSON.parse(data);
+  } catch (e) {
+    console.error('Error reading orders from storage', e);
+  }
+  return DEFAULT_ORDERS;
+}
+
+export function saveStoredOrders(orders: any[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+  } catch (e) {
+    console.error('Error saving orders to storage', e);
   }
 }
 

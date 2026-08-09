@@ -1,0 +1,261 @@
+import React, { useState } from 'react';
+import { ShoppingCart, Search, Filter, Eye, Edit, Truck, CheckCircle2, Clock, Package, AlertCircle, FileText, ChevronDown } from 'lucide-react';
+import type { Order, OrderStatus } from '../../types';
+import { formatCurrency } from '../../utils/formatCurrency';
+
+interface OrdersManagerProps {
+  orders: Order[];
+  searchQuery: string;
+  onEditOrder: (order: Order) => void;
+  onViewOrder: (order: Order) => void;
+}
+
+const STATUS_FILTERS: Array<{ id: string; label: string }> = [
+  { id: 'all', label: 'Todos los Pedidos' },
+  { id: 'Pendiente de pago', label: 'Pendiente de Pago' },
+  { id: 'Pago confirmado', label: 'Pago Confirmado' },
+  { id: 'Despachado en Bodega Central', label: 'Despachado' },
+  { id: 'En tránsito', label: 'En Tránsito' },
+  { id: 'Entregado', label: 'Entregados' },
+  { id: 'Cancelado', label: 'Cancelados' }
+];
+
+export const OrdersManager: React.FC<OrdersManagerProps> = ({
+  orders,
+  searchQuery,
+  onEditOrder,
+  onViewOrder
+}) => {
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
+  const [localSearch, setLocalSearch] = useState('');
+
+  const activeQuery = (searchQuery || localSearch).trim().toLowerCase();
+
+  const filteredOrders = orders.filter(ord => {
+    const matchesStatus = selectedStatusFilter === 'all' || ord.status === selectedStatusFilter;
+    if (!matchesStatus) return false;
+
+    if (!activeQuery) return true;
+
+    const matchesId = ord.id.toLowerCase().includes(activeQuery);
+    const matchesCustomer = ord.customerName.toLowerCase().includes(activeQuery);
+    const matchesDoc = ord.documentId?.toLowerCase().includes(activeQuery);
+    const matchesCity = ord.city?.toLowerCase().includes(activeQuery);
+    const matchesTracking = ord.trackingNumber?.toLowerCase().includes(activeQuery);
+
+    return matchesId || matchesCustomer || matchesDoc || matchesCity || matchesTracking;
+  });
+
+  const getStatusBadge = (st: OrderStatus) => {
+    switch (st) {
+      case 'Pendiente de pago':
+        return <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-amber-50 text-amber-700 border border-amber-200">Pendiente</span>;
+      case 'Pago confirmado':
+        return <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-blue-50 text-[#0A3088] border border-blue-200">Confirmado</span>;
+      case 'Despachado en Bodega Central':
+        return <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-purple-50 text-purple-700 border border-purple-200">Despachado</span>;
+      case 'En tránsito':
+        return <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">En Tránsito</span>;
+      case 'Entregado':
+        return <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Entregado</span>;
+      case 'Cancelado':
+        return <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-red-50 text-red-700 border border-red-200">Cancelado</span>;
+      default:
+        return <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-slate-100 text-slate-700 border border-slate-200">{st}</span>;
+    }
+  };
+
+  const totalRevenue = orders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+  const pendingCount = orders.filter(o => o.status === 'Pendiente de pago').length;
+  const inTransitCount = orders.filter(o => o.status === 'En tránsito' || o.status === 'Despachado en Bodega Central').length;
+  const deliveredCount = orders.filter(o => o.status === 'Entregado').length;
+
+  return (
+    <div className="space-y-6">
+      
+      {/* Metric Cards Summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-mono font-bold text-slate-500 uppercase">Total Pedidos</p>
+            <p className="text-2xl font-black text-slate-900 font-display mt-0.5">{orders.length}</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-red-50 text-[#E60012] border border-red-200 flex items-center justify-center">
+            <ShoppingCart className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-mono font-bold text-slate-500 uppercase">Pendientes de Pago</p>
+            <p className="text-2xl font-black text-amber-600 font-display mt-0.5">{pendingCount}</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center">
+            <Clock className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-mono font-bold text-slate-500 uppercase">En Despacho / Tránsito</p>
+            <p className="text-2xl font-black text-[#0A3088] font-display mt-0.5">{inTransitCount}</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0A3088] border border-blue-200 flex items-center justify-center">
+            <Truck className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-mono font-bold text-slate-500 uppercase">Facturación Total</p>
+            <p className="text-xl font-black text-emerald-600 font-mono mt-0.5">{formatCurrency(totalRevenue)}</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Tabs & Search Header */}
+      <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          
+          {/* Status Filters Pill Bar */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full custom-scrollbar">
+            {STATUS_FILTERS.map(filter => (
+              <button
+                key={filter.id}
+                onClick={() => setSelectedStatusFilter(filter.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono transition-all shrink-0 ${
+                  selectedStatusFilter === filter.id
+                    ? 'bg-[#E60012] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Local Search Input */}
+          <div className="relative min-w-[240px] sm:min-w-[280px]">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              placeholder="Buscar por ID, cliente, ciudad o guía..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#E60012] font-medium"
+            />
+          </div>
+
+        </div>
+      </div>
+
+      {/* Orders List Table */}
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50/80 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono">
+                <th className="py-3.5 px-5">ID Pedido / Fecha</th>
+                <th className="py-3.5 px-4">Cliente & Destino</th>
+                <th className="py-3.5 px-4">Repuestos</th>
+                <th className="py-3.5 px-4">Total (COP)</th>
+                <th className="py-3.5 px-4">Guía Transportadora</th>
+                <th className="py-3.5 px-4">Estado</th>
+                <th className="py-3.5 px-5 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 text-sm">
+              {filteredOrders.map((ord) => (
+                <tr key={ord.id} className="hover:bg-slate-50/70 transition-colors group">
+                  
+                  {/* Order ID & Date */}
+                  <td className="py-4 px-5">
+                    <div>
+                      <p className="font-extrabold text-slate-900 group-hover:text-[#E60012] transition-colors font-mono">
+                        {ord.id}
+                      </p>
+                      <p className="text-[11px] font-mono text-slate-400 font-bold">{ord.date}</p>
+                    </div>
+                  </td>
+
+                  {/* Customer Info */}
+                  <td className="py-4 px-4">
+                    <div>
+                      <p className="font-extrabold text-slate-900 text-xs font-display">{ord.customerName}</p>
+                      <p className="text-[11px] font-mono text-slate-500 font-bold">{ord.city} • CC: {ord.documentId}</p>
+                    </div>
+                  </td>
+
+                  {/* Items Count */}
+                  <td className="py-4 px-4">
+                    <span className="text-xs font-mono font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg">
+                      {ord.items.length} {ord.items.length === 1 ? 'ítem' : 'ítems'}
+                    </span>
+                  </td>
+
+                  {/* Total Price */}
+                  <td className="py-4 px-4">
+                    <span className="font-black font-mono text-xs text-[#E60012]">
+                      {formatCurrency(ord.totalPrice)}
+                    </span>
+                  </td>
+
+                  {/* Carrier & Tracking */}
+                  <td className="py-4 px-4 text-xs font-mono font-bold">
+                    {ord.trackingNumber ? (
+                      <div>
+                        <p className="text-slate-900">{ord.shippingCarrier || 'Envío'}</p>
+                        <p className="text-[10px] text-blue-700 font-bold">{ord.trackingNumber}</p>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 text-[11px]">Sin guía asignada</span>
+                    )}
+                  </td>
+
+                  {/* Order Status Badge */}
+                  <td className="py-4 px-4">
+                    {getStatusBadge(ord.status)}
+                  </td>
+
+                  {/* Actions (Icon Only) */}
+                  <td className="py-4 px-5 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => onViewOrder(ord)}
+                        className="p-2 text-slate-500 hover:text-[#059669] hover:bg-emerald-50 rounded-xl border border-slate-200 shadow-xs transition-colors"
+                        title="Ver detalles del pedido"
+                      >
+                        <Eye className="w-4 h-4 text-[#059669]" />
+                      </button>
+                      <button
+                        onClick={() => onEditOrder(ord)}
+                        className="p-2 text-slate-500 hover:text-[#0A3088] hover:bg-blue-50 rounded-xl border border-slate-200 shadow-xs transition-colors"
+                        title="Editar estado y transporte"
+                      >
+                        <Edit className="w-4 h-4 text-[#0A3088]" />
+                      </button>
+                    </div>
+                  </td>
+
+                </tr>
+              ))}
+
+              {filteredOrders.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400 font-medium">
+                    <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                    <p className="text-xs font-mono font-bold">No se encontraron pedidos con los filtros aplicados</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  );
+};
