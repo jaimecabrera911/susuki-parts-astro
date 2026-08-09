@@ -8,6 +8,7 @@ import { CategoriesManager } from './CategoriesManager';
 import { PartsManager } from './PartsManager';
 import { SchematicsManager } from './SchematicsManager';
 import { OrdersManager } from './OrdersManager';
+import { UsersManager } from './UsersManager';
 import { BrandModal } from './BrandModal';
 import { ModelDrawer } from './ModelDrawer';
 import { CategoryModal } from './CategoryModal';
@@ -15,6 +16,30 @@ import { PartDrawer } from './PartDrawer';
 import { SchematicDrawer } from './SchematicDrawer';
 import { SchematicViewModal } from './SchematicViewModal';
 import { OrderModal } from './OrderModal';
+import { UserModal } from './UserModal';
+import { 
+  fetchBrands,
+  fetchModels,
+  fetchCategories,
+  fetchParts,
+  fetchSchematics,
+  fetchOrders,
+  fetchUsers,
+  saveBrandApi,
+  deleteBrandApi,
+  saveModelApi,
+  deleteModelApi,
+  savePartApi,
+  deletePartApi,
+  saveSchematicApi,
+  deleteSchematicApi,
+  saveOrderApi,
+  deleteOrderApi,
+  saveCategoryApi,
+  deleteCategoryApi,
+  saveUserApi,
+  deleteUserApi
+} from '../../services/api';
 import { 
   getStoredBrands, 
   saveStoredBrands, 
@@ -27,10 +52,12 @@ import {
   getStoredSchematics,
   saveStoredSchematics,
   getStoredOrders,
-  saveStoredOrders
+  saveStoredOrders,
+  getStoredUsers,
+  saveStoredUsers
 } from '../../data/adminStore';
-import type { Brand, SuzukiModel, Category, SuzukiPart, AvailabilityStatus, ExplodedDiagram, Order } from '../../types';
-import { CheckCircle2, ShoppingCart, BarChart3 } from 'lucide-react';
+import type { Brand, SuzukiModel, Category, SuzukiPart, AvailabilityStatus, ExplodedDiagram, Order, UserProfile } from '../../types';
+import { CheckCircle2, ShoppingCart, BarChart3, Users } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>('brands');
@@ -43,6 +70,7 @@ export const AdminDashboard: React.FC = () => {
   const [parts, setParts] = useState<SuzukiPart[]>(() => getStoredParts());
   const [schematics, setSchematics] = useState<ExplodedDiagram[]>(() => getStoredSchematics());
   const [orders, setOrders] = useState<Order[]>(() => getStoredOrders());
+  const [users, setUsers] = useState<UserProfile[]>(() => getStoredUsers());
 
   // Toast notification state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
@@ -70,29 +98,65 @@ export const AdminDashboard: React.FC = () => {
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [orderToEdit, setOrderToEdit] = useState<Order | null>(null);
 
-  useEffect(() => {
-    saveStoredBrands(brands);
-  }, [brands]);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
 
+  // Initial Load from Neon DB Backend API
   useEffect(() => {
-    saveStoredModels(models);
-  }, [models]);
+    async function loadLiveData() {
+      try {
+        const [b, m, c, p, s, o, u] = await Promise.all([
+          fetchBrands().catch(() => []),
+          fetchModels().catch(() => []),
+          fetchCategories().catch(() => []),
+          fetchParts().catch(() => []),
+          fetchSchematics().catch(() => []),
+          fetchOrders().catch(() => []),
+          fetchUsers().catch(() => [])
+        ]);
+        if (b && b.length > 0) setBrands(b);
+        if (m && m.length > 0) setModels(m);
+        if (c && c.length > 0) setCategories(c);
+        if (p && p.length > 0) setParts(p);
+        if (s && s.length > 0) setSchematics(s);
+        if (o && o.length > 0) setOrders(o);
+        if (u && u.length > 0) setUsers(u);
+      } catch (err) {
+        console.error('Error loading live DB data from API:', err);
+      }
+    }
+    loadLiveData();
+  }, []);
 
-  useEffect(() => {
-    saveStoredCategories(categories);
-  }, [categories]);
+  useEffect(() => { saveStoredBrands(brands); }, [brands]);
+  useEffect(() => { saveStoredModels(models); }, [models]);
+  useEffect(() => { saveStoredCategories(categories); }, [categories]);
+  useEffect(() => { saveStoredParts(parts); }, [parts]);
+  useEffect(() => { saveStoredSchematics(schematics); }, [schematics]);
+  useEffect(() => { saveStoredOrders(orders); }, [orders]);
+  useEffect(() => { saveStoredUsers(users); }, [users]);
 
-  useEffect(() => {
-    saveStoredParts(parts);
-  }, [parts]);
+  const handleSaveUser = async (savedUser: UserProfile) => {
+    const exists = users.some(u => u.id === savedUser.id);
+    if (exists) {
+      setUsers(users.map(u => u.id === savedUser.id ? savedUser : u));
+      showToast(`Usuario "${savedUser.fullName}" actualizado.`);
+    } else {
+      setUsers([...users, savedUser]);
+      showToast(`Usuario "${savedUser.fullName}" creado con éxito.`);
+    }
+    await saveUserApi(savedUser, exists).catch(e => console.error('API Error:', e));
+  };
 
-  useEffect(() => {
-    saveStoredSchematics(schematics);
-  }, [schematics]);
-
-  useEffect(() => {
-    saveStoredOrders(orders);
-  }, [orders]);
+  const handleDeleteUser = async (id: string) => {
+    const user = users.find(u => u.id === id);
+    if (!user) return;
+    if (confirm(`¿Estás seguro de eliminar al usuario "${user.fullName}"?`)) {
+      setUsers(users.filter(u => u.id !== id));
+      showToast(`Usuario "${user.fullName}" eliminado.`, 'info');
+      await deleteUserApi(id).catch(e => console.error('API Error:', e));
+    }
+  };
 
   const showToast = (message: string, type: 'success' | 'info' = 'success') => {
     setToast({ message, type });
@@ -100,7 +164,7 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // --- BRAND HANDLERS ---
-  const handleSaveBrand = (savedBrand: Brand) => {
+  const handleSaveBrand = async (savedBrand: Brand) => {
     const exists = brands.some(b => b.id === savedBrand.id);
     if (exists) {
       setBrands(brands.map(b => b.id === savedBrand.id ? savedBrand : b));
@@ -109,30 +173,35 @@ export const AdminDashboard: React.FC = () => {
       setBrands([...brands, savedBrand]);
       showToast(`Marca "${savedBrand.name}" creada con éxito.`);
     }
+    await saveBrandApi(savedBrand, exists).catch(e => console.error('API Error:', e));
   };
 
-  const handleToggleBrandActive = (id: string) => {
+  const handleToggleBrandActive = async (id: string) => {
+    let target: Brand | undefined;
     setBrands(brands.map(b => {
       if (b.id === id) {
         const updated = { ...b, active: !b.active };
+        target = updated;
         showToast(`Marca "${b.name}" ${updated.active ? 'activada' : 'desactivada'}.`, 'info');
         return updated;
       }
       return b;
     }));
+    if (target) await saveBrandApi(target, true).catch(e => console.error('API Error:', e));
   };
 
-  const handleDeleteBrand = (id: string) => {
+  const handleDeleteBrand = async (id: string) => {
     const brand = brands.find(b => b.id === id);
     if (!brand) return;
     if (confirm(`¿Estás seguro de eliminar la marca "${brand.name}"? Los modelos asociados podrían quedar sin marca.`)) {
       setBrands(brands.filter(b => b.id !== id));
       showToast(`Marca "${brand.name}" eliminada.`, 'info');
+      await deleteBrandApi(id).catch(e => console.error('API Error:', e));
     }
   };
 
   // --- MODEL HANDLERS ---
-  const handleSaveModel = (savedModel: SuzukiModel) => {
+  const handleSaveModel = async (savedModel: SuzukiModel) => {
     const exists = models.some(m => m.id === savedModel.id);
     if (exists) {
       setModels(models.map(m => m.id === savedModel.id ? savedModel : m));
@@ -141,9 +210,10 @@ export const AdminDashboard: React.FC = () => {
       setModels([...models, savedModel]);
       showToast(`Modelo "${savedModel.name}" creado con éxito.`);
     }
+    await saveModelApi(savedModel, exists).catch(e => console.error('API Error:', e));
   };
 
-  const handleDuplicateModel = (sourceModel: SuzukiModel) => {
+  const handleDuplicateModel = async (sourceModel: SuzukiModel) => {
     const newId = `${sourceModel.id}-copy-${Date.now().toString().slice(-4)}`;
     const duplicated: SuzukiModel = {
       ...sourceModel,
@@ -153,30 +223,35 @@ export const AdminDashboard: React.FC = () => {
     };
     setModels([...models, duplicated]);
     showToast(`Modelo "${sourceModel.name}" duplicado con éxito.`);
+    await saveModelApi(duplicated, false).catch(e => console.error('API Error:', e));
   };
 
-  const handleToggleModelActive = (id: string) => {
+  const handleToggleModelActive = async (id: string) => {
+    let target: SuzukiModel | undefined;
     setModels(models.map(m => {
       if (m.id === id) {
         const updated = { ...m, active: m.active === false ? true : false };
+        target = updated;
         showToast(`Modelo "${m.name}" ${updated.active ? 'activado' : 'desactivado'}.`, 'info');
         return updated;
       }
       return m;
     }));
+    if (target) await saveModelApi(target, true).catch(e => console.error('API Error:', e));
   };
 
-  const handleDeleteModel = (id: string) => {
+  const handleDeleteModel = async (id: string) => {
     const model = models.find(m => m.id === id);
     if (!model) return;
     if (confirm(`¿Estás seguro de eliminar el modelo "${model.name}"?`)) {
       setModels(models.filter(m => m.id !== id));
       showToast(`Modelo "${model.name}" eliminado.`, 'info');
+      await deleteModelApi(id).catch(e => console.error('API Error:', e));
     }
   };
 
   // --- CATEGORY HANDLERS ---
-  const handleSaveCategory = (savedCategory: Category) => {
+  const handleSaveCategory = async (savedCategory: Category) => {
     const exists = categories.some(c => c.id === savedCategory.id);
     if (exists) {
       setCategories(categories.map(c => c.id === savedCategory.id ? savedCategory : c));
@@ -185,51 +260,62 @@ export const AdminDashboard: React.FC = () => {
       setCategories([...categories, savedCategory]);
       showToast(`Categoría "${savedCategory.name}" creada con éxito.`);
     }
+    await saveCategoryApi(savedCategory, exists).catch(e => console.error('API Error:', e));
   };
 
-  const handleToggleCategoryActive = (id: string) => {
+  const handleToggleCategoryActive = async (id: string) => {
+    let target: Category | undefined;
     setCategories(categories.map(c => {
       if (c.id === id) {
         const updated = { ...c, active: !c.active };
+        target = updated;
         showToast(`Categoría "${c.name}" ${updated.active ? 'activada' : 'desactivada'}.`, 'info');
         return updated;
       }
       return c;
     }));
+    if (target) await saveCategoryApi(target, true).catch(e => console.error('API Error:', e));
   };
 
-  const handleDeleteCategory = (id: string) => {
+  const handleDeleteCategory = async (id: string) => {
     const cat = categories.find(c => c.id === id);
     if (!cat) return;
     if (confirm(`¿Estás seguro de eliminar la categoría "${cat.name}" y sus subcategorías?`)) {
       setCategories(categories.filter(c => c.id !== id));
       showToast(`Categoría "${cat.name}" eliminada.`, 'info');
+      await deleteCategoryApi(id).catch(e => console.error('API Error:', e));
     }
   };
 
   // --- SCHEMATIC-TO-MODEL LINKING HANDLERS ---
-  const handleLinkSchematicToModel = (schematicId: string, modelId: string) => {
+  const handleLinkSchematicToModel = async (schematicId: string, modelId: string) => {
+    let target: ExplodedDiagram | undefined;
     setSchematics(schematics.map(s => {
       if (s.id === schematicId) {
         const existingIds = s.applicableModelIds || [];
         if (!existingIds.includes(modelId)) {
           showToast(`Despiece "${s.title}" vinculado al modelo.`, 'info');
-          return { ...s, applicableModelIds: [...existingIds, modelId] };
+          target = { ...s, applicableModelIds: [...existingIds, modelId] };
+          return target;
         }
       }
       return s;
     }));
+    if (target) await saveSchematicApi(target, true).catch(e => console.error('API Error:', e));
   };
 
-  const handleUnlinkSchematicFromModel = (schematicId: string, modelId: string) => {
+  const handleUnlinkSchematicFromModel = async (schematicId: string, modelId: string) => {
+    let target: ExplodedDiagram | undefined;
     setSchematics(schematics.map(s => {
       if (s.id === schematicId) {
         const updatedIds = (s.applicableModelIds || []).filter(id => id !== modelId);
         showToast(`Despiece "${s.title}" desvinculado del modelo.`, 'info');
-        return { ...s, applicableModelIds: updatedIds };
+        target = { ...s, applicableModelIds: updatedIds };
+        return target;
       }
       return s;
     }));
+    if (target) await saveSchematicApi(target, true).catch(e => console.error('API Error:', e));
   };
 
   const handleCreateSchematicForModel = (model: SuzukiModel, presetCategory?: string) => {
@@ -264,7 +350,7 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // --- PART HANDLERS ---
-  const handleSavePart = (savedPart: SuzukiPart) => {
+  const handleSavePart = async (savedPart: SuzukiPart) => {
     const exists = parts.some(p => p.id === savedPart.id);
     if (exists) {
       setParts(parts.map(p => p.id === savedPart.id ? savedPart : p));
@@ -273,9 +359,10 @@ export const AdminDashboard: React.FC = () => {
       setParts([...parts, savedPart]);
       showToast(`Repuesto "${savedPart.name}" creado con éxito.`);
     }
+    await savePartApi(savedPart, exists).catch(e => console.error('API Error:', e));
   };
 
-  const handleDuplicatePart = (sourcePart: SuzukiPart) => {
+  const handleDuplicatePart = async (sourcePart: SuzukiPart) => {
     const newId = `part-${Date.now().toString().slice(-6)}`;
     const duplicated: SuzukiPart = {
       ...sourcePart,
@@ -288,9 +375,11 @@ export const AdminDashboard: React.FC = () => {
     };
     setParts([...parts, duplicated]);
     showToast(`Repuesto "${sourcePart.name}" duplicado con éxito.`);
+    await savePartApi(duplicated, false).catch(e => console.error('API Error:', e));
   };
 
-  const handleTogglePartAvailability = (id: string) => {
+  const handleTogglePartAvailability = async (id: string) => {
+    let target: SuzukiPart | undefined;
     setParts(parts.map(p => {
       if (p.id === id) {
         const current = p.availability || (p.stock > 0 ? 'in_stock' : 'on_order');
@@ -300,24 +389,27 @@ export const AdminDashboard: React.FC = () => {
         else nextStatus = 'in_stock';
 
         const updated = { ...p, availability: nextStatus };
+        target = updated;
         showToast(`Disponibilidad de "${p.name}" cambiada a ${nextStatus}.`, 'info');
         return updated;
       }
       return p;
     }));
+    if (target) await savePartApi(target, true).catch(e => console.error('API Error:', e));
   };
 
-  const handleDeletePart = (id: string) => {
+  const handleDeletePart = async (id: string) => {
     const part = parts.find(p => p.id === id);
     if (!part) return;
     if (confirm(`¿Estás seguro de eliminar el repuesto "${part.name}"?`)) {
       setParts(parts.filter(p => p.id !== id));
       showToast(`Repuesto "${part.name}" eliminado del catálogo.`, 'info');
+      await deletePartApi(id).catch(e => console.error('API Error:', e));
     }
   };
 
   // --- SCHEMATIC HANDLERS ---
-  const handleSaveSchematic = (savedSchematic: ExplodedDiagram) => {
+  const handleSaveSchematic = async (savedSchematic: ExplodedDiagram) => {
     const exists = schematics.some(s => s.id === savedSchematic.id);
     if (exists) {
       setSchematics(schematics.map(s => s.id === savedSchematic.id ? savedSchematic : s));
@@ -326,9 +418,10 @@ export const AdminDashboard: React.FC = () => {
       setSchematics([...schematics, savedSchematic]);
       showToast(`Despiece "${savedSchematic.title}" creado con éxito.`);
     }
+    await saveSchematicApi(savedSchematic, exists).catch(e => console.error('API Error:', e));
   };
 
-  const handleDuplicateSchematic = (sourceSchematic: ExplodedDiagram) => {
+  const handleDuplicateSchematic = async (sourceSchematic: ExplodedDiagram) => {
     const newId = `diag-${Date.now().toString().slice(-6)}`;
     const duplicated: ExplodedDiagram = {
       ...sourceSchematic,
@@ -337,19 +430,22 @@ export const AdminDashboard: React.FC = () => {
     };
     setSchematics([...schematics, duplicated]);
     showToast(`Despiece "${sourceSchematic.title}" duplicado con éxito.`);
+    await saveSchematicApi(duplicated, false).catch(e => console.error('API Error:', e));
   };
 
-  const handleSaveOrder = (savedOrder: Order) => {
+  const handleSaveOrder = async (savedOrder: Order) => {
     setOrders(orders.map(o => o.id === savedOrder.id ? savedOrder : o));
     showToast(`Pedido ${savedOrder.id} actualizado con éxito.`);
+    await saveOrderApi(savedOrder, true).catch(e => console.error('API Error:', e));
   };
 
-  const handleDeleteSchematic = (id: string) => {
+  const handleDeleteSchematic = async (id: string) => {
     const schematic = schematics.find(s => s.id === id);
     if (!schematic) return;
     if (confirm(`¿Estás seguro de eliminar el despiece "${schematic.title}"?`)) {
       setSchematics(schematics.filter(s => s.id !== id));
       showToast(`Despiece "${schematic.title}" eliminado.`, 'info');
+      await deleteSchematicApi(id).catch(e => console.error('API Error:', e));
     }
   };
 
@@ -370,6 +466,9 @@ export const AdminDashboard: React.FC = () => {
     } else if (activeTab === 'schematics') {
       setSchematicToEdit(null);
       setIsSchematicDrawerOpen(true);
+    } else if (activeTab === 'users') {
+      setUserToEdit(null);
+      setIsUserModalOpen(true);
     }
   };
 
@@ -385,6 +484,7 @@ export const AdminDashboard: React.FC = () => {
         partsCount={parts.length}
         schematicsCount={schematics.length}
         ordersCount={orders.length}
+        usersCount={users.length}
       />
 
       {/* Main Content Area */}
@@ -397,7 +497,8 @@ export const AdminDashboard: React.FC = () => {
             activeTab === 'categories' ? 'Gestión de Categorías & Subcategorías' :
             activeTab === 'parts' ? 'Catálogo de Repuestos' :
             activeTab === 'schematics' ? 'Despieces Explosión' :
-            activeTab === 'orders' ? 'Gestión de Pedidos' : 'Métricas & Informes'
+            activeTab === 'orders' ? 'Gestión de Pedidos' :
+            activeTab === 'users' ? 'Gestión de Usuarios' : 'Métricas & Informes'
           }
           subtitle={
             activeTab === 'brands' ? 'Administra las marcas de motocicletas y sus configuraciones en el catálogo Suzuki Parts' :
@@ -405,18 +506,21 @@ export const AdminDashboard: React.FC = () => {
             activeTab === 'categories' ? 'Administra la estructura jerárquica de categorías principales y subcategorías de repuestos' :
             activeTab === 'parts' ? 'Administra el catálogo oficial de repuestos OEM, precios, existencias y matriz de compatibilidad' :
             activeTab === 'schematics' ? 'Administra diagramas exploded-view y puntos hotspots interactivos vinculados a repuestos' :
+            activeTab === 'orders' ? 'Administra el procesamiento de pedidos, guías de envío y estados de logística' :
+            activeTab === 'users' ? 'Administra las cuentas de usuarios registrados, roles y permisos de acceso' :
             'Sistema administrativo Suzuki Parts Expert'
           }
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onPrimaryAction={
-            activeTab === 'brands' || activeTab === 'models' || activeTab === 'categories' || activeTab === 'parts' || activeTab === 'schematics' ? handlePrimaryAction : undefined
+            activeTab === 'brands' || activeTab === 'models' || activeTab === 'categories' || activeTab === 'parts' || activeTab === 'schematics' || activeTab === 'users' ? handlePrimaryAction : undefined
           }
           primaryActionLabel={
             activeTab === 'brands' ? 'Nueva Marca' :
             activeTab === 'models' ? 'Nuevo Modelo' :
             activeTab === 'categories' ? 'Nueva Categoría' :
-            activeTab === 'parts' ? 'Nuevo Repuesto' : 'Nuevo Despiece'
+            activeTab === 'parts' ? 'Nuevo Repuesto' :
+            activeTab === 'users' ? 'Nuevo Usuario' : 'Nuevo Despiece'
           }
         />
 
@@ -511,8 +615,18 @@ export const AdminDashboard: React.FC = () => {
             />
           )}
 
+          {activeTab === 'users' && (
+            <UsersManager
+              users={users}
+              searchQuery={searchQuery}
+              onAddUser={() => { setUserToEdit(null); setIsUserModalOpen(true); }}
+              onEditUser={(usr) => { setUserToEdit(usr); setIsUserModalOpen(true); }}
+              onDeleteUser={handleDeleteUser}
+            />
+          )}
+
           {/* Placeholder views for remaining modules */}
-          {activeTab !== 'brands' && activeTab !== 'models' && activeTab !== 'categories' && activeTab !== 'parts' && activeTab !== 'schematics' && activeTab !== 'orders' && (
+          {activeTab !== 'brands' && activeTab !== 'models' && activeTab !== 'categories' && activeTab !== 'parts' && activeTab !== 'schematics' && activeTab !== 'orders' && activeTab !== 'users' && (
             <div className="p-12 rounded-2xl bg-white border border-slate-200 text-center max-w-xl mx-auto my-12 shadow-xs">
               <div className="w-16 h-16 rounded-2xl bg-red-50 text-[#E60012] border border-red-200 flex items-center justify-center mx-auto mb-4">
                 {activeTab === 'metrics' && <BarChart3 className="w-8 h-8" />}
@@ -610,6 +724,13 @@ export const AdminDashboard: React.FC = () => {
         onClose={() => setIsOrderModalOpen(false)}
         order={orderToEdit}
         onSaveOrder={handleSaveOrder}
+      />
+
+      <UserModal
+        isOpen={isUserModalOpen}
+        onClose={() => setIsUserModalOpen(false)}
+        userToEdit={userToEdit}
+        onSaveUser={handleSaveUser}
       />
     </div>
   );

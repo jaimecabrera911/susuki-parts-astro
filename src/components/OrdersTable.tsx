@@ -16,7 +16,9 @@ import {
 import { OrderDetailModal } from './OrderDetailModal';
 import { getPrimaryOem } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
+import { formatOrderDate } from '../utils/formatDate';
 import { SUZUKI_PARTS } from '../data/suzukiData';
+
 
 interface OrdersTableProps {
   orders: any[];
@@ -256,7 +258,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({ orders, onNavigateToCa
                       </td>
 
                       <td className="py-4 px-4 text-slate-600 font-medium whitespace-nowrap">
-                        {order.date}
+                        {formatOrderDate(order.date)}
                       </td>
 
                       <td className="py-4 px-4">

@@ -533,3 +533,108 @@ export function saveStoredOrders(orders: any[]): void {
   }
 }
 
+const USERS_STORAGE_KEY = 'sz_admin_users_v1';
+
+export const DEFAULT_USERS: any[] = [
+  {
+    id: 'usr-101',
+    fullName: 'Carlos Alberto Mendoza',
+    email: 'carlos.mendoza@email.com',
+    phone: '+57 310 456 7890',
+    documentId: '1.098.765.432',
+    city: 'Bogotá D.C.',
+    address: 'Carrera 15 # 93-47, Apto 502',
+    postalCode: '110221',
+    favoritePartIds: ['part-01', 'part-02'],
+    createdAt: '2026-01-15',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+    role: 'customer',
+    active: true,
+    notes: 'Cliente Frecuente. Propietario de Suzuki GSX-R150 2023.'
+  },
+  {
+    id: 'usr-102',
+    fullName: 'Ana María Restrepo',
+    email: 'ana.restrepo@gmail.com',
+    phone: '+57 300 891 2233',
+    documentId: '52.431.890',
+    city: 'Medellín',
+    address: 'Calle 10 # 43E-12, Poblado',
+    postalCode: '050021',
+    favoritePartIds: ['part-03'],
+    createdAt: '2026-02-10',
+    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80',
+    role: 'customer',
+    active: true,
+    notes: 'Viajera touring. Propietaria de V-Strom 650 XT.'
+  },
+  {
+    id: 'usr-103',
+    fullName: 'Jorge Eduardo Silva',
+    email: 'jorge.silva@hotmail.com',
+    phone: '+57 315 776 9900',
+    documentId: '79.876.543',
+    city: 'Cali',
+    address: 'Av. 6N # 24N-08, Barrio Granada',
+    postalCode: '760001',
+    favoritePartIds: ['part-04'],
+    createdAt: '2026-03-22',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
+    role: 'customer',
+    active: true,
+    notes: 'Propietario de Gixxer 250 SF.'
+  },
+  {
+    id: 'usr-104',
+    fullName: 'Luisa Fernanda Gómez',
+    email: 'luisa.gomez@empresa.com',
+    phone: '+57 318 221 4455',
+    documentId: '1.020.304.050',
+    city: 'Bucaramanga',
+    address: 'Calle 36 # 21-45, Cabecera',
+    postalCode: '680002',
+    favoritePartIds: ['part-05'],
+    createdAt: '2026-04-05',
+    avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80',
+    role: 'customer',
+    active: true,
+    notes: 'Cliente Off-Road. Propietaria de Suzuki DR650 SE.'
+  },
+  {
+    id: 'usr-105',
+    fullName: 'Administrador Suzuki Parts',
+    email: 'admin@suzukiparts.com.co',
+    phone: '+57 601 744 0000',
+    documentId: '800.123.456-9',
+    city: 'Bogotá D.C.',
+    address: 'Av. Las Américas # 50-15',
+    postalCode: '111321',
+    favoritePartIds: [],
+    createdAt: '2025-11-01',
+    avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=120&auto=format&fit=crop&q=80',
+    role: 'admin',
+    active: true,
+    notes: 'Administrador Master de la Plataforma.'
+  }
+];
+
+export function getStoredUsers(): any[] {
+  if (typeof window === 'undefined') return DEFAULT_USERS;
+  try {
+    const data = localStorage.getItem(USERS_STORAGE_KEY);
+    if (data) return JSON.parse(data);
+  } catch (e) {
+    console.error('Error reading users from storage', e);
+  }
+  return DEFAULT_USERS;
+}
+
+export function saveStoredUsers(users: any[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+  } catch (e) {
+    console.error('Error saving users to storage', e);
+  }
+}
+

@@ -25,6 +25,7 @@ import { formatCurrency } from '../utils/formatCurrency';
 import { BANK_DETAILS } from '../data/bankDetails';
 import { shouldShowProductImages } from '../utils/config';
 import { ProductImageFallback } from './ProductImageFallback';
+import { saveOrderApi } from '../services/api';
 
 
 interface CheckoutPageProps {
@@ -95,7 +96,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
   const totalAmount = cartItems.reduce((acc, item) => acc + (item.part.price * item.quantity), 0);
 
-  const handleSubmitOrder = (e: React.FormEvent) => {
+  const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.fullName || !formData.email || !formData.phone || !formData.documentId || !formData.city || !formData.address) {
@@ -105,41 +106,51 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const orderId = 'SZ-ORD-' + Math.floor(100000 + Math.random() * 900000);
-      const guaranteeCode = 'SZ-CERT-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-      const orderDate = new Date().toLocaleDateString('es-ES', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric', 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
+    const orderId = 'SZ-ORD-' + Math.floor(100000 + Math.random() * 900000);
+    const guaranteeCode = 'SZ-CERT-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    const orderDate = new Date().toLocaleString('es-CO', { 
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
 
-      const newOrder: Order = {
-        id: orderId,
-        date: orderDate,
-        customerName: formData.fullName,
-        email: formData.email,
-        phone: formData.phone,
-        documentId: formData.documentId,
-        city: formData.city,
-        shippingAddress: `${formData.address}, ${formData.city}`,
-        postalCode: formData.postalCode,
-        items: [...cartItems],
-        totalPrice: totalAmount,
-        motorcycle: activeMotorcycle,
-        guaranteeCode,
-        paymentMethod: 'transferencia',
-        status: 'Pendiente de pago',
-        paymentReference: orderId
-      };
+    const newOrder: Order = {
+      id: orderId,
+      date: orderDate,
+      customerName: formData.fullName,
+      email: formData.email,
+      phone: formData.phone,
+      documentId: formData.documentId,
+      city: formData.city,
+      shippingAddress: `${formData.address}, ${formData.city}`,
+      postalCode: formData.postalCode,
+      items: [...cartItems],
+      totalPrice: totalAmount,
+      motorcycle: activeMotorcycle,
+      guaranteeCode,
+      paymentMethod: 'transferencia',
+      status: 'Pendiente de pago',
+      paymentReference: orderId
+    };
 
-      setCompletedOrder(newOrder);
-      onOrderComplete(newOrder);
-      onClearCart();
-      setIsSubmitting(false);
-    }, 1000);
+    try {
+      // 1. Save to Neon DB via API
+      await saveOrderApi(newOrder);
+
+      // 2. Save to localStorage as immediate client backup
+      const stored = JSON.parse(localStorage.getItem('sz_user_orders') || '[]');
+      localStorage.setItem('sz_user_orders', JSON.stringify([newOrder, ...stored]));
+    } catch (err) {
+      console.error('Error guardando pedido en D1:', err);
+    }
+
+    setCompletedOrder(newOrder);
+    onOrderComplete(newOrder);
+    onClearCart();
+    setIsSubmitting(false);
   };
 
   // 1. EMPTY CART STATE

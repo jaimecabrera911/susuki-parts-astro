@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { X, ShieldCheck, Printer, Calendar, MapPin, User, Phone, Package, CheckCircle2, Truck } from 'lucide-react';
 import { getPrimaryOem } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
+import { formatOrderDate } from '../utils/formatDate';
 import { shouldShowProductImages } from '../utils/config';
 import { ProductImageFallback } from './ProductImageFallback';
 
@@ -81,7 +82,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               </div>
               <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                <span>Fecha de Emisión: {order.date}</span>
+                <span>Fecha de Emisión: {formatOrderDate(order.date)}</span>
               </p>
             </div>
 

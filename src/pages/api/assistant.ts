@@ -1,12 +1,31 @@
 import type { APIRoute } from 'astro';
 import { GoogleGenAI } from '@google/genai';
-import { SUZUKI_PARTS } from '../../data/suzukiData';
+import { getDb } from '../../db/client';
+import { parts as partsTable } from '../../db/schema';
+import { INITIAL_ADMIN_PARTS } from '../../data/adminStore';
 
 export const POST: APIRoute = async ({ request }) => {
   let motorcycle: any = null;
   let prompt: string = '';
 
   try {
+    const db = getDb();
+    let activeParts: any[] = INITIAL_ADMIN_PARTS;
+
+    try {
+      const rawDbParts = await db.select().from(partsTable);
+      if (rawDbParts && rawDbParts.length > 0) {
+        activeParts = rawDbParts.map(p => ({
+          ...p,
+          oemNumbers: typeof p.oemNumbers === 'string' ? JSON.parse(p.oemNumbers || '[]') : (p.oemNumbers || []),
+          compatibility: typeof p.compatibility === 'string' ? JSON.parse(p.compatibility || '[]') : (p.compatibility || []),
+          specs: typeof p.specs === 'string' ? JSON.parse(p.specs || '[]') : (p.specs || [])
+        }));
+      }
+    } catch (e) {
+      console.warn('Fallback to local parts store:', e);
+    }
+
     const body = await request.json().catch(() => ({}));
     prompt = body.prompt || '';
     motorcycle = body.motorcycle || null;
@@ -44,7 +63,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (!apiKey) {
       // Find compatible parts for fallback recommendation matching targetModelId
-      const fallbackParts = SUZUKI_PARTS.filter(p => {
+      const fallbackParts = activeParts.filter(p => {
         const matchesMoto = isPartCompatibleWithTarget(p, targetModelId);
         if (!matchesMoto) return false;
 
@@ -73,7 +92,7 @@ export const POST: APIRoute = async ({ request }) => {
       else if (targetModelId === 'dr-650') targetModelLabel = 'Suzuki DR 650';
 
       return new Response(JSON.stringify({
-        text: `**Asistente Técnico Suzuki (Modo Mantenimiento)**\n\nNo se detectó la clave de API de Gemini en el servidor, pero con gusto te muestro los repuestos verificados del catálogo para **${targetModelLabel || 'tu motocicleta'}**:`,
+        text: `**Asistente Técnico Suzuki (Modo Mantenimiento)**\n\nNo se detectó la clave de API de Gemini en el servidor, pero con gusto te muestro los repuestos verificados de la base de datos D1 para **${targetModelLabel || 'tu motocicleta'}**:`,
         recommendedOems: fallbackOems.length > 0 ? fallbackOems : ['13780-06G00', '16510-05240']
       }), {
         status: 200,
@@ -96,14 +115,14 @@ export const POST: APIRoute = async ({ request }) => {
         ? `Motocicleta activa en el Garaje: ${motorcycle.brand} ${motorcycle.modelName} (Año ${motorcycle.year}, Versión: ${motorcycle.version}).`
         : 'El usuario aún no ha seleccionado una motocicleta específica en su Garaje.';
 
-    const compatiblePartsForContext = SUZUKI_PARTS.filter(p => isPartCompatibleWithTarget(p, targetModelId));
+    const compatiblePartsForContext = activeParts.filter(p => isPartCompatibleWithTarget(p, targetModelId));
 
     const systemInstruction = `Eres "Suzuki Master Technical AI", un ingeniero especialista y jefe de taller oficial de repuestos Suzuki Genuine Parts.
 Tu objetivo es responder de manera técnica, precisa y profesional en ESPAÑOL a las consultas de mecánicos y propietarios sobre piezas, compatibilidades, pares de apriete (torque), mantenimiento y códigos OEM de motocicletas Suzuki.
 
 Contexto actual del vehículo: ${contextMotorcycle}
 
-Catálogo disponible compatible:
+Catálogo disponible compatible de la Base de Datos Neon DB:
 ${compatiblePartsForContext.map(p => `- OEM: ${p.oemNumbers.join(' / ')} | ${p.name} | $${p.price} | Categ: ${p.category}`).join("\n")}
 
 Directrices de respuesta:
@@ -146,7 +165,7 @@ Directrices de respuesta:
     }
 
     // Secondary scanner: Find mentioned OEM numbers or match prompt keywords to catalog
-    SUZUKI_PARTS.forEach(part => {
+    activeParts.forEach(part => {
       // Check strict model compatibility if a target model is specified
       if (!isPartCompatibleWithTarget(part, targetModelId)) return;
 
@@ -176,7 +195,7 @@ Directrices de respuesta:
     // Enforce strict model filtering for returned OEM codes if targetModelId is present
     if (targetModelId) {
       recommendedOems = recommendedOems.filter(oem => {
-        const part = SUZUKI_PARTS.find(p => p.oemNumbers.includes(oem) || p.id === oem);
+        const part = activeParts.find(p => p.oemNumbers.includes(oem) || p.id === oem);
         return part ? isPartCompatibleWithTarget(part, targetModelId) : true;
       });
     }
@@ -192,56 +211,9 @@ Directrices de respuesta:
   } catch (error: any) {
     console.error("Gemini assistant error:", error);
 
-    const lowerPrompt = prompt.toLowerCase();
-    let targetModelId: string | null = motorcycle ? motorcycle.modelId : null;
-    if (lowerPrompt.includes('v-strom') || lowerPrompt.includes('vstrom') || lowerPrompt.includes('dl650')) {
-      targetModelId = 'vstrom-650';
-    } else if (lowerPrompt.includes('gixxer 250')) {
-      targetModelId = 'gixxer-250';
-    } else if (lowerPrompt.includes('gixxer')) {
-      targetModelId = 'gixxer-150-fi';
-    } else if (lowerPrompt.includes('gn125') || lowerPrompt.includes('gn 125')) {
-      targetModelId = 'gn-125';
-    } else if (lowerPrompt.includes('dr650') || lowerPrompt.includes('dr 650')) {
-      targetModelId = 'dr-650';
-    }
-
-    const isPartCompatibleWithTarget = (part: any, modelId: string | null) => {
-      if (!modelId) return true;
-      return (part.compatibility || []).some((cm: any) => cm.modelId === modelId || cm.modelId === 'all');
-    };
-
-    const fallbackParts = SUZUKI_PARTS.filter(p => {
-      const matchesMoto = isPartCompatibleWithTarget(p, targetModelId);
-      if (!matchesMoto) return false;
-
-      const lowerName = p.name.toLowerCase();
-      const lowerCategory = p.category.toLowerCase();
-
-      if (lowerPrompt.includes('filtro') || lowerPrompt.includes('aire')) {
-        return lowerCategory === 'filtros';
-      }
-      if (lowerPrompt.includes('bujia')) {
-        return lowerCategory === 'bujias';
-      }
-      if (lowerPrompt.includes('freno')) {
-        return lowerCategory === 'frenos';
-      }
-      return true;
-    }).slice(0, 4);
-
-    const fallbackOems = fallbackParts.map(p => p.oemNumbers[0]);
-
-    let targetModelLabel = motorcycle ? `${motorcycle.brand} ${motorcycle.modelName} (${motorcycle.year})` : '';
-    if (targetModelId === 'vstrom-650') targetModelLabel = 'Suzuki V-Strom 650';
-    else if (targetModelId === 'gixxer-150-fi') targetModelLabel = 'Suzuki Gixxer 150 FI';
-    else if (targetModelId === 'gixxer-250') targetModelLabel = 'Suzuki Gixxer 250 SF';
-    else if (targetModelId === 'gn-125') targetModelLabel = 'Suzuki GN 125';
-    else if (targetModelId === 'dr-650') targetModelLabel = 'Suzuki DR 650';
-
     return new Response(JSON.stringify({
-      text: `**Asistente Técnico Suzuki (Catálogo Certificado)**\n\nHe verificado el catálogo para tu consulta **"${prompt}"**${targetModelLabel ? ` y tu **${targetModelLabel}**` : ''}:\n- **Repuestos Certificados:** A continuación te presento los componentes originales con garantía de ajuste OEM:`,
-      recommendedOems: fallbackOems.length > 0 ? fallbackOems : ['13780-06G00', '16510-05240']
+      text: `**Asistente Técnico Suzuki (Catálogo Certificado)**\n\nHe verificado el catálogo para tu consulta **"${prompt}"**:\n- **Repuestos Certificados:** A continuación te presento los componentes originales con garantía de ajuste OEM:`,
+      recommendedOems: ['13780-06G00', '16510-05240']
     }), {
       status: 200,
       headers: { "Content-Type": "application/json" }

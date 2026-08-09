@@ -6,12 +6,13 @@ import {
   Layers, 
   FolderTree,
   ShoppingCart, 
+  Users,
   BarChart3, 
   ArrowLeft,
   ChevronRight
 } from 'lucide-react';
 
-export type AdminTab = 'brands' | 'models' | 'categories' | 'parts' | 'schematics' | 'orders' | 'metrics';
+export type AdminTab = 'brands' | 'models' | 'categories' | 'parts' | 'schematics' | 'orders' | 'users' | 'metrics';
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -22,6 +23,7 @@ interface AdminSidebarProps {
   partsCount: number;
   schematicsCount: number;
   ordersCount?: number;
+  usersCount?: number;
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
@@ -32,7 +34,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   categoriesCount,
   partsCount,
   schematicsCount,
-  ordersCount = 0
+  ordersCount = 0,
+  usersCount = 0
 }) => {
   const menuItems = [
     {
@@ -76,6 +79,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       icon: ShoppingCart,
       count: ordersCount,
       badgeColor: 'bg-red-50 text-[#E60012] border-red-200 font-bold'
+    },
+    {
+      id: 'users' as AdminTab,
+      label: 'GESTIÓN DE USUARIOS',
+      icon: Users,
+      count: usersCount,
+      badgeColor: 'bg-purple-50 text-purple-700 border-purple-200 font-bold'
     },
     {
       id: 'metrics' as AdminTab,

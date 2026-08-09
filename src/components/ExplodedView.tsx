@@ -16,6 +16,8 @@ interface ExplodedViewProps {
   onOpenGarageModal: () => void;
   initialSchematicId?: string;
   initialPartId?: string;
+  schematicsList?: ExplodedDiagram[];
+  partsList?: SuzukiPart[];
 }
 
 type ViewMode = 'catalog' | 'detail';
@@ -26,15 +28,41 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   onOpenPartDetail,
   onOpenGarageModal,
   initialSchematicId,
-  initialPartId
+  initialPartId,
+  schematicsList,
+  partsList
 }) => {
+  const [dbSchematics, setDbSchematics] = useState<ExplodedDiagram[]>(schematicsList || []);
+  const [dbParts, setDbParts] = useState<SuzukiPart[]>(partsList || []);
+
+  useEffect(() => {
+    async function loadDbData() {
+      try {
+        const [schRes, partRes] = await Promise.all([
+          fetch('/api/schematics').then(r => r.json()).catch(() => ({ data: [] })),
+          fetch('/api/parts').then(r => r.json()).catch(() => ({ data: [] }))
+        ]);
+        if (schRes?.data?.length > 0) setDbSchematics(schRes.data);
+        if (partRes?.data?.length > 0) setDbParts(partRes.data);
+      } catch (e) {
+        console.error('Error fetching schematics/parts from D1 database:', e);
+      }
+    }
+    loadDbData();
+  }, []);
+
+  const allDiagrams = dbSchematics.length > 0 ? dbSchematics : (schematicsList || EXPLODED_DIAGRAMS);
+  const allParts = dbParts.length > 0 ? dbParts : (partsList || SUZUKI_PARTS);
+
   const [viewMode, setViewMode] = useState<ViewMode>(initialSchematicId ? 'detail' : 'catalog');
   const [selectedDiagramId, setSelectedDiagramId] = useState<string>(
-    initialSchematicId || EXPLODED_DIAGRAMS[0].id
+    initialSchematicId || (allDiagrams[0]?.id || 'diag-01')
   );
   const [selectedPartId, setSelectedPartId] = useState<string | null>(initialPartId ?? null);
   const [activeSection, setActiveSection] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [pinSize, setPinSize] = useState<'normal' | 'compact' | 'micro'>('compact');
 
   // Ref to the selected row — used to scroll into view when arriving from a product page
   const selectedRowRef = useRef<HTMLTableRowElement | null>(null);
@@ -42,7 +70,6 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   // When opening directly with a pre-selected part, scroll its row into view smoothly
   useEffect(() => {
     if (initialPartId && viewMode === 'detail' && selectedRowRef.current) {
-      // Defer to next tick so the row is rendered before scrolling
       const t = window.setTimeout(() => {
         selectedRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 120);
@@ -53,15 +80,15 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   // Build sections that actually have at least one diagram (for the sidebar)
   const availableSections = useMemo(() => {
     const set = new Set<string>();
-    EXPLODED_DIAGRAMS.forEach(d => set.add(d.section));
+    allDiagrams.forEach(d => set.add(d.section));
     return MOTORCYCLE_SECTION_ORDER.filter(s => set.has(s));
-  }, []);
+  }, [allDiagrams]);
 
   // Apply motorcycle filter first, then section filter, then search
   const filteredDiagrams = useMemo(() => {
-    return EXPLODED_DIAGRAMS.filter(d => {
+    return allDiagrams.filter(d => {
       // Motorcycle model filter — only diagrams applicable to the active model
-      if (activeMotorcycle && d.applicableModelIds.length > 0 && !d.applicableModelIds.includes(activeMotorcycle.modelId)) {
+      if (activeMotorcycle && d.applicableModelIds && d.applicableModelIds.length > 0 && !d.applicableModelIds.includes(activeMotorcycle.modelId)) {
         return false;
       }
       // Section filter
@@ -70,14 +97,14 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const match = d.title.toLowerCase().includes(q)
-          || d.modelTarget.toLowerCase().includes(q)
+          || (d.modelTarget && d.modelTarget.toLowerCase().includes(q))
           || d.category.toLowerCase().includes(q)
           || d.section.toLowerCase().includes(q);
         if (!match) return false;
       }
       return true;
     });
-  }, [activeMotorcycle, activeSection, searchQuery]);
+  }, [allDiagrams, activeMotorcycle, activeSection, searchQuery]);
 
   // Group filtered diagrams by section in canonical order
   const groupedBySection = useMemo(() => {
@@ -94,18 +121,19 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
     return groups;
   }, [filteredDiagrams, activeSection, availableSections]);
 
-  const currentDiagram = EXPLODED_DIAGRAMS.find(d => d.id === selectedDiagramId) || EXPLODED_DIAGRAMS[0];
+  const currentDiagram = allDiagrams.find(d => d.id === selectedDiagramId) || allDiagrams[0] || EXPLODED_DIAGRAMS[0];
 
   // Get parts for the current diagram (in order of item number)
   const diagramParts = useMemo(() => {
+    if (!currentDiagram || !currentDiagram.hotspots) return [];
     return currentDiagram.hotspots
       .map(spot => {
-        const part = SUZUKI_PARTS.find(p => p.id === spot.partId);
+        const part = allParts.find(p => p.id === spot.partId);
         return part ? { spot, part } : null;
       })
       .filter((x): x is { spot: typeof currentDiagram.hotspots[0]; part: SuzukiPart } => x !== null)
       .sort((a, b) => a.spot.itemNumber - b.spot.itemNumber);
-  }, [currentDiagram]);
+  }, [currentDiagram, allParts]);
 
   const selectedPart = diagramParts.find(dp => dp.part.id === selectedPartId)?.part;
 
@@ -141,7 +169,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
 
             <div className="flex items-center gap-2 self-start md:self-auto">
               <span className="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200">
-                {filteredDiagrams.length} / {EXPLODED_DIAGRAMS.length} Diagramas
+                {filteredDiagrams.length} / {allDiagrams.length} Diagramas
               </span>
             </div>
           </div>
@@ -209,16 +237,16 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                     <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold shrink-0 ${
                       activeSection === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
                     }`}>
-                      {EXPLODED_DIAGRAMS.filter(d =>
+                      {allDiagrams.filter(d =>
                         !activeMotorcycle || d.applicableModelIds.length === 0 || d.applicableModelIds.includes(activeMotorcycle.modelId)
                       ).length}
                     </span>
                   </button>
                   {availableSections.map(sec => {
                     const isSelected = activeSection === sec;
-                    const count = EXPLODED_DIAGRAMS.filter(d =>
+                    const count = allDiagrams.filter(d =>
                       d.section === sec &&
-                      (!activeMotorcycle || d.applicableModelIds.length === 0 || d.applicableModelIds.includes(activeMotorcycle.modelId))
+                      (!activeMotorcycle || !d.applicableModelIds || d.applicableModelIds.length === 0 || d.applicableModelIds.includes(activeMotorcycle.modelId))
                     ).length;
                     return (
                       <button
@@ -299,10 +327,6 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   }
 
   // ============ DETAIL MODE ============
-  // Zoom & Pin Size State for small parts readability
-  const [zoomLevel, setZoomLevel] = useState<number>(1);
-  const [pinSize, setPinSize] = useState<'normal' | 'compact' | 'micro'>('compact');
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Breadcrumb / Back Bar */}

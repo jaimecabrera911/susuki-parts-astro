@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, ShieldCheck, Mail, Lock, User, Phone, CheckCircle2, Sparkles, LogIn, ArrowRight, Zap } from 'lucide-react';
 import type { UserProfile } from '../types';
+import { saveUserApi } from '../services/api';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -67,7 +68,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }, 800);
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!registerName || !registerEmail || !registerPassword) {
       setErrorMsg('Por favor completa todos los campos requeridos.');
@@ -76,23 +77,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setErrorMsg('');
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      setIsSubmitting(false);
-      const newUser: UserProfile = {
-        id: 'USR-' + Math.floor(1000 + Math.random() * 9000),
-        fullName: registerName,
-        email: registerEmail,
-        phone: registerPhone || '+57 300 000 0000',
-        documentId: 'No registrado',
-        city: 'Bogotá D.C.',
-        address: 'Dirección por definir',
-        postalCode: '110111',
-        favoritePartIds: [],
-        createdAt: 'Hoy'
-      };
-      onLoginSuccess(newUser);
-      onClose();
-    }, 900);
+    const newUser: UserProfile = {
+      id: 'USR-' + Math.floor(1000 + Math.random() * 9000),
+      fullName: registerName,
+      email: registerEmail,
+      phone: registerPhone || '+57 300 000 0000',
+      documentId: 'No registrado',
+      city: 'Bogotá D.C.',
+      address: 'Dirección por definir',
+      postalCode: '110111',
+      favoritePartIds: [],
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      await saveUserApi(newUser);
+    } catch (err) {
+      console.error('Error registrando usuario en BD:', err);
+    }
+
+    setIsSubmitting(false);
+    onLoginSuccess(newUser);
+    onClose();
   };
 
   const handleQuickDemoLogin = () => {

@@ -157,6 +157,9 @@ export interface UserProfile {
   favoritePartIds: string[];
   createdAt: string;
   avatarUrl?: string;
+  role?: 'customer' | 'admin';
+  active?: boolean;
+  notes?: string;
 }
 
 export type PaymentMethod = 'transferencia';

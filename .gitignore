@@ -4,6 +4,9 @@ dist/
 # generated types
 .astro/
 
+# cloudflare wrangler local state
+.wrangler/
+
 # dependencies
 node_modules/
 
@@ -22,3 +25,8 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# local database dumps & temporary migration scripts
+*.sql.bak
+drizzle/*_dump*.sql
+scripts/

@@ -9,15 +9,19 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@astrojs/node": "^11.0.3",
     "@astrojs/react": "^6.0.2",
     "@google/genai": "^2.15.0",
+    "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/vite": "^4.3.3",
-    "astro": "^7.1.6",
+    "astro": "^7.2.0",
     "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.28.0",
     "motion": "^12.43.0",
     "react": "^19.2.8",
@@ -26,6 +30,9 @@
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
+    "@types/pg": "^8.21.0",
+    "drizzle-kit": "^0.31.10",
+    "pg": "^8.23.0",
     "typescript": "^5.6.3"
   }
 }

@@ -27,6 +27,8 @@ import { getAvailabilityStatus, AVAILABILITY_META, matchesOem, getPrimaryOem } f
 import { ShieldCheck, Wrench, ArrowRight, Layers, FileSearch, Sparkles, CheckCircle2, ArrowUpDown, ShoppingBag } from 'lucide-react';
 
 
+import { fetchOrders, saveUserApi, saveGarageApi, deleteGarageApi, fetchGarages } from './services/api';
+
 export default function App() {
   // State for active motorcycle in garage
   const [activeMotorcycle, setActiveMotorcycle] = useState<ActiveMotorcycle | null>(() => {
@@ -108,9 +110,21 @@ export default function App() {
       const updatedFavorites = exists
         ? prev.favoritePartIds.filter(id => id !== partId)
         : [...prev.favoritePartIds, partId];
-      return { ...prev, favoritePartIds: updatedFavorites };
+      const updatedProfile = { ...prev, favoritePartIds: updatedFavorites };
+      saveUserApi(updatedProfile, true).catch(err => console.error('Error guardando favoritos en BD:', err));
+      return updatedProfile;
     });
   };
+
+  const handleUpdateProfile = async (updated: UserProfile) => {
+    setUserProfile(updated);
+    try {
+      await saveUserApi(updated, true);
+    } catch (err) {
+      console.error('Error guardando perfil en BD:', err);
+    }
+  };
+
 
   // App Navigation & Modal States
   const [activeTab, setActiveTab] = useState<'garage' | 'catalog' | 'schematics' | 'orders' | 'product-page' | 'account' | 'checkout' | 'favorites'>('garage');
@@ -233,6 +247,28 @@ export default function App() {
   // Cart & Orders State
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
+
+  // Load orders from Neon DB API + localStorage on mount
+  useEffect(() => {
+    const loadAllOrders = async () => {
+      try {
+        const fetched = await fetchOrders();
+        const stored = JSON.parse(localStorage.getItem('sz_user_orders') || '[]');
+        const combined = [...fetched];
+        for (const s of stored) {
+          if (!combined.some(o => o.id === s.id)) {
+            combined.push(s);
+          }
+        }
+        setOrders(combined);
+      } catch (err) {
+        console.error('Error cargando órdenes:', err);
+        const stored = JSON.parse(localStorage.getItem('sz_user_orders') || '[]');
+        setOrders(stored);
+      }
+    };
+    loadAllOrders();
+  }, []);
 
   // Modals
   const [isGarageModalOpen, setIsGarageModalOpen] = useState(false);
@@ -604,7 +640,7 @@ export default function App() {
         {activeTab === 'account' && (
           <UserProfilePage
             userProfile={userProfile}
-            onUpdateProfile={(updated) => setUserProfile(updated)}
+            onUpdateProfile={handleUpdateProfile}
             savedGarages={savedGarages}
             activeMotorcycle={activeMotorcycle}
             onSelectActiveBike={handleSelectMotorcycle}
@@ -613,6 +649,7 @@ export default function App() {
               const updated = savedGarages.filter(m => !(m.modelId === modelId && m.year === year));
               setSavedGarages(updated);
               localStorage.setItem('sz_saved_garages', JSON.stringify(updated));
+              deleteGarageApi(`${modelId}-${year}`).catch(err => console.error('Error eliminando garaje de BD:', err));
             }}
             orders={orders}
             favoriteParts={SUZUKI_PARTS.filter(p => userProfile.favoritePartIds.includes(p.id))}

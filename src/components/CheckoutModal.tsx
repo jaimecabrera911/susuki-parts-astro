@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ShieldCheck, CheckCircle2, Printer } from 'lucide-react';
 import type { CartItem, ActiveMotorcycle } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
+import { saveOrderApi } from '../services/api';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -42,28 +43,32 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const total = cartItems.reduce((acc, item) => acc + (item.part.price * item.quantity), 0);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const order = {
-        id: 'SZ-ORD-' + Math.floor(100000 + Math.random() * 900000),
-        date: new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-        customerName: name,
-        shippingAddress: address,
-        phone,
-        items: [...cartItems],
-        totalPrice: total,
-        motorcycle: activeMotorcycle,
-        guaranteeCode: 'SZ-CERT-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
-        status: 'Despachado en Bodega Central'
-      };
+    const order = {
+      id: 'SZ-ORD-' + Math.floor(100000 + Math.random() * 900000),
+      date: new Date().toISOString(),
+      customerName: name,
+      shippingAddress: address,
+      phone,
+      items: [...cartItems],
+      totalPrice: total,
+      motorcycle: activeMotorcycle,
+      guaranteeCode: 'SZ-CERT-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+      status: 'Despachado en Bodega Central'
+    };
 
-      setCompletedOrder(order);
-      onOrderComplete(order);
-      setIsSubmitting(false);
-    }, 1200);
+    try {
+      await saveOrderApi(order);
+    } catch (err) {
+      console.error('Error guardando orden en BD:', err);
+    }
+
+    setCompletedOrder(order);
+    onOrderComplete(order);
+    setIsSubmitting(false);
   };
 
   return (
