@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
 import { orders, orderItems } from '../../db/schema';
 import { eq, like, or } from 'drizzle-orm';
-import { DEFAULT_ORDERS } from '../../data/adminStore';
+import { upsertOrder } from '../../db/writers';
 
 export const GET: APIRoute = async ({ url }) => {
   try {
@@ -28,12 +28,22 @@ export const GET: APIRoute = async ({ url }) => {
       rawData = await db.select().from(orders);
     }
 
-    const result = (rawData && rawData.length > 0) ? rawData : DEFAULT_ORDERS;
+    const itemsAll = await db.select().from(orderItems);
+    const itemsByOrder = new Map<string, typeof itemsAll>();
+    for (const it of itemsAll) {
+      const arr = itemsByOrder.get(it.orderId) || [];
+      arr.push(it);
+      itemsByOrder.set(it.orderId, arr);
+    }
 
-    const formatted = result.map(o => ({
+    const formatted = rawData.map(o => ({
       ...o,
-      items: typeof o.items === 'string' ? JSON.parse(o.items || '[]') : (o.items || []),
-      motorcycle: typeof o.motorcycle === 'string' ? (o.motorcycle ? JSON.parse(o.motorcycle) : null) : (o.motorcycle || null)
+      motorcycle: o.motorcycle ?? null,
+      items: (itemsByOrder.get(o.id) || []).map(it => ({
+        part: it.part,
+        quantity: it.quantity,
+        motorcycle: it.motorcycle ?? null
+      }))
     }));
 
     return new Response(JSON.stringify({ success: true, count: formatted.length, data: formatted }), {
@@ -51,64 +61,9 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const db = getDb();
     const body = await request.json();
+    const data = await upsertOrder(db, body);
 
-    const orderId = body.id || `SZ-ORD-${Math.floor(100000 + Math.random() * 900000)}`;
-    let orderDate = new Date();
-    if (body.date) {
-      const parsed = new Date(body.date);
-      if (!isNaN(parsed.getTime())) {
-        orderDate = parsed;
-      }
-    }
-
-    const newOrder = {
-      id: orderId,
-      date: orderDate,
-      customerName: body.customerName || 'Cliente Suzuki',
-      email: body.email || 'cliente@suzukiparts.com.co',
-      phone: body.phone || '',
-      documentId: body.documentId || '',
-      city: body.city || '',
-      shippingAddress: body.shippingAddress || '',
-      postalCode: body.postalCode || '',
-      items: typeof body.items === 'string' ? body.items : JSON.stringify(body.items || []),
-      totalPrice: Number(body.totalPrice || 0),
-      motorcycle: typeof body.motorcycle === 'string' ? body.motorcycle : (body.motorcycle ? JSON.stringify(body.motorcycle) : null),
-      guaranteeCode: body.guaranteeCode || `SZ-GAR-${Math.floor(1000 + Math.random() * 9000)}-PENDING`,
-      paymentMethod: body.paymentMethod || 'transferencia',
-      status: body.status || 'Pendiente de pago',
-      paymentReference: body.paymentReference || orderId,
-      trackingNumber: body.trackingNumber || null,
-      shippingCarrier: body.shippingCarrier || null,
-      notes: body.notes || ''
-    };
-
-    await db.insert(orders).values(newOrder).onConflictDoUpdate({
-      target: orders.id,
-      set: newOrder
-    });
-
-    // Also populate order_items for relational queries
-    const itemsList = Array.isArray(body.items) ? body.items : (typeof body.items === 'string' ? JSON.parse(body.items) : []);
-    if (Array.isArray(itemsList)) {
-      for (const item of itemsList) {
-        if (item.part) {
-          const primaryOem = Array.isArray(item.part.oemNumbers) ? item.part.oemNumbers[0] : (item.part.oemNumbers || '');
-          await db.insert(orderItems).values({
-            id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-            orderId,
-            partId: item.part.id,
-            partName: item.part.name,
-            oemNumber: primaryOem,
-            quantity: Number(item.quantity || 1),
-            unitPrice: Number(item.part.price || 0),
-            lineTotal: Number((item.part.price || 0) * (item.quantity || 1))
-          }).onConflictDoNothing();
-        }
-      }
-    }
-
-    return new Response(JSON.stringify({ success: true, data: newOrder }), {
+    return new Response(JSON.stringify({ success: true, data }), {
       status: 201,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -126,13 +81,15 @@ export const PUT: APIRoute = async ({ request }) => {
     const body = await request.json();
     if (!body.id) throw new Error('ID del pedido es requerido');
 
-    await db.update(orders).set({
+    const updatedFields = {
       status: body.status,
       paymentReference: body.paymentReference,
       trackingNumber: body.trackingNumber,
       shippingCarrier: body.shippingCarrier,
       notes: body.notes
-    }).where(eq(orders.id, body.id));
+    };
+
+    await db.update(orders).set(updatedFields).where(eq(orders.id, body.id));
 
     return new Response(JSON.stringify({ success: true, message: `Pedido ${body.id} actualizado exitosamente` }), {
       headers: { 'Content-Type': 'application/json' }
@@ -151,7 +108,6 @@ export const DELETE: APIRoute = async ({ url }) => {
     const id = url.searchParams.get('id');
     if (!id) throw new Error('Parámetro "id" es requerido');
 
-    await db.delete(orderItems).where(eq(orderItems.orderId, id));
     await db.delete(orders).where(eq(orders.id, id));
 
     return new Response(JSON.stringify({ success: true, message: `Pedido ${id} eliminado` }), {

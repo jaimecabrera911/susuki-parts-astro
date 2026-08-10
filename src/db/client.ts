@@ -1,5 +1,5 @@
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
 import * as schema from './schema';
 
 const getConnectionString = () => {
@@ -8,8 +8,8 @@ const getConnectionString = () => {
   return 'postgresql://neondb_owner:npg_vXi1yZC0FkSW@ep-young-sun-ay6bvrv0-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require';
 };
 
-const sql = neon(getConnectionString());
-export const db = drizzle(sql, { schema });
+const pool = new Pool({ connectionString: getConnectionString() });
+export const db = drizzle(pool, { schema });
 
 export function getDb() {
   return db;

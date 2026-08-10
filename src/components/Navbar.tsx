@@ -54,7 +54,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleTabClick = (tab: 'catalog' | 'garage' | 'schematics' | 'orders' | 'product-page' | 'account') => {
+  const handleTabClick = (tab: 'catalog' | 'garage' | 'schematics' | 'orders' | 'product-page' | 'account' | 'favorites') => {
     if (tab === 'account' && !isLoggedIn && onOpenAuthModal) {
       onOpenAuthModal();
       return;

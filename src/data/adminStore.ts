@@ -1,4 +1,4 @@
-import type { Brand, SuzukiModel, SuzukiPart, ExplodedDiagram } from '../types';
+import type { Brand, Category, SuzukiModel, SuzukiPart, ExplodedDiagram } from '../types';
 import { SUZUKI_MODELS, SUZUKI_PARTS, EXPLODED_DIAGRAMS } from './suzukiData';
 
 export const DEFAULT_BRANDS: Brand[] = [

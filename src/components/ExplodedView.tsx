@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { EXPLODED_DIAGRAMS, SUZUKI_PARTS, MOTORCYCLE_SECTION_ORDER, SUZUKI_MODELS } from '../data/suzukiData';
-import type { ExplodedDiagram, SuzukiPart, ActiveMotorcycle, AvailabilityStatus } from '../types';
+import type { ExplodedDiagram, SuzukiPart, SuzukiModel, ActiveMotorcycle, AvailabilityStatus } from '../types';
 import { getPrimaryOem, getAvailabilityStatus, AVAILABILITY_META } from '../types';
 import {
   Layers, ArrowLeft, Filter, Search, CheckCircle2, AlertTriangle,

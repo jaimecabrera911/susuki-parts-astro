@@ -104,8 +104,8 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
 
     // 3. Category Fallback
     let categorySchematicId = '';
-    if (part.category === 'filtros' || part.category === 'admision') categorySchematicId = 'diag-vstrom-intake';
-    else if (part.category === 'motor' || part.category === 'bujias') categorySchematicId = 'diag-gixxer-engine';
+    if (part.category === 'filtros') categorySchematicId = 'diag-vstrom-intake';
+    else if (part.category === 'motor') categorySchematicId = 'diag-gixxer-engine';
     else if (part.category === 'transmision') categorySchematicId = 'diag-transmission';
     else if (part.category === 'frenos') categorySchematicId = 'diag-gsxr-brake';
 

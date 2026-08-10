@@ -1,28 +1,31 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
-import { models } from '../../db/schema';
+import { models, modelYears } from '../../db/schema';
 import { eq } from 'drizzle-orm';
-import { INITIAL_ADMIN_MODELS } from '../../data/adminStore';
+import { upsertModel } from '../../db/writers';
 
 export const GET: APIRoute = async ({ url }) => {
   try {
     const db = getDb();
     const brandId = url.searchParams.get('brandId');
 
-    let data;
-    if (brandId) {
-      data = await db.select().from(models).where(eq(models.brandId, brandId));
-    } else {
-      data = await db.select().from(models);
+    const data = brandId
+      ? await db.select().from(models).where(eq(models.brandId, brandId))
+      : await db.select().from(models);
+
+    const allYears = await db.select().from(modelYears);
+    const yearsByModel = new Map<string, number[]>();
+    for (const r of allYears) {
+      const arr = yearsByModel.get(r.modelId) || [];
+      arr.push(r.year);
+      yearsByModel.set(r.modelId, arr);
     }
 
-    let formatted = (data && data.length > 0)
-      ? data.map(m => ({
-          ...m,
-          years: typeof m.years === 'string' ? JSON.parse(m.years || '[]') : m.years,
-          versions: typeof m.versions === 'string' ? JSON.parse(m.versions || '[]') : m.versions
-        }))
-      : (brandId ? INITIAL_ADMIN_MODELS.filter(m => m.brandId === brandId) : INITIAL_ADMIN_MODELS);
+    const formatted = data.map(m => ({
+      ...m,
+      years: (yearsByModel.get(m.id) || []).sort((a, b) => a - b),
+      versions: m.versions
+    }));
 
     return new Response(JSON.stringify({ success: true, count: formatted.length, data: formatted }), {
       headers: { 'Content-Type': 'application/json' }
@@ -39,22 +42,9 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const db = getDb();
     const body = await request.json();
-    const newModel = {
-      id: body.id || `model-${Date.now()}`,
-      brandId: body.brandId || 'suzuki',
-      name: body.name,
-      category: body.category,
-      image: body.image,
-      years: JSON.stringify(body.years || []),
-      versions: JSON.stringify(body.versions || []),
-      active: body.active !== undefined ? body.active : true,
-      notes: body.notes || ''
-    };
-    await db.insert(models).values(newModel).onConflictDoUpdate({
-      target: models.id,
-      set: newModel
-    });
-    return new Response(JSON.stringify({ success: true, data: newModel }), {
+    const data = await upsertModel(db, body);
+
+    return new Response(JSON.stringify({ success: true, data }), {
       status: 201,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -72,16 +62,7 @@ export const PUT: APIRoute = async ({ request }) => {
     const body = await request.json();
     if (!body.id) throw new Error('ID del modelo es requerido');
 
-    await db.update(models).set({
-      brandId: body.brandId,
-      name: body.name,
-      category: body.category,
-      image: body.image,
-      years: JSON.stringify(body.years || []),
-      versions: JSON.stringify(body.versions || []),
-      active: body.active,
-      notes: body.notes
-    }).where(eq(models.id, body.id));
+    await upsertModel(db, body);
 
     return new Response(JSON.stringify({ success: true, message: 'Modelo actualizado exitosamente' }), {
       headers: { 'Content-Type': 'application/json' }
@@ -101,6 +82,7 @@ export const DELETE: APIRoute = async ({ url }) => {
     if (!id) throw new Error('Parámetro "id" es requerido');
 
     await db.delete(models).where(eq(models.id, id));
+
     return new Response(JSON.stringify({ success: true, message: `Modelo ${id} eliminado` }), {
       headers: { 'Content-Type': 'application/json' }
     });

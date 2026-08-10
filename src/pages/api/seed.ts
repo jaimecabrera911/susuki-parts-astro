@@ -1,7 +1,8 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
-import { brands, models, categories, subcategories, parts, schematics, orders, users } from '../../db/schema';
+import { brands, categories, subcategories } from '../../db/schema';
 import { DEFAULT_BRANDS, INITIAL_ADMIN_MODELS, DEFAULT_CATEGORIES, INITIAL_ADMIN_PARTS, INITIAL_ADMIN_SCHEMATICS, DEFAULT_ORDERS, DEFAULT_USERS } from '../../data/adminStore';
+import { upsertModel, upsertPart, upsertSchematic, upsertOrder, upsertUser } from '../../db/writers';
 
 export const POST: APIRoute = async () => {
   try {
@@ -54,126 +55,32 @@ export const POST: APIRoute = async () => {
       }
     }
 
-    // 3. Models
+    // 3. Models (+ model_years)
     for (const m of INITIAL_ADMIN_MODELS) {
-      await db.insert(models).values({
-        id: m.id,
-        brandId: m.brandId || 'suzuki',
-        name: m.name,
-        category: m.category,
-        image: m.image,
-        years: JSON.stringify(m.years || []),
-        versions: JSON.stringify(m.versions || []),
-        active: m.active !== undefined ? m.active : true,
-        notes: m.notes || ''
-      }).onConflictDoUpdate({
-        target: models.id,
-        set: { name: m.name }
-      });
+      await upsertModel(db, m);
     }
 
-    // 4. Parts
+    // 4. Parts (+ part_oem_numbers, part_compatibilities)
     for (const p of INITIAL_ADMIN_PARTS) {
-      await db.insert(parts).values({
-        id: p.id,
-        oemNumbers: JSON.stringify(p.oemNumbers || []),
-        name: p.name,
-        category: p.category,
-        price: Number(p.price),
-        stock: Number(p.stock || 0),
-        image: p.image,
-        images: JSON.stringify(p.images || []),
-        description: p.description || '',
-        specs: JSON.stringify(p.specs || []),
-        compatibility: JSON.stringify(p.compatibility || []),
-        schematicId: p.schematicId || null,
-        diagramHotspot: p.diagramHotspot ? JSON.stringify(p.diagramHotspot) : null,
-        availability: p.availability || 'in_stock'
-      }).onConflictDoUpdate({
-        target: parts.id,
-        set: { name: p.name, price: p.price }
-      });
+      await upsertPart(db, p);
     }
 
-    // 5. Schematics
+    // 5. Schematics (+ schematic_hotspots, schematic_applicable_models)
     for (const s of INITIAL_ADMIN_SCHEMATICS) {
-      await db.insert(schematics).values({
-        id: s.id,
-        title: s.title,
-        category: s.category,
-        section: s.section,
-        applicableModelIds: JSON.stringify(s.applicableModelIds || []),
-        diagramImage: s.diagramImage,
-        description: s.description || '',
-        hotspots: JSON.stringify(s.hotspots || [])
-      }).onConflictDoUpdate({
-        target: schematics.id,
-        set: { title: s.title }
-      });
+      await upsertSchematic(db, s);
     }
 
-    // 6. Orders
+    // 6. Orders (+ order_items)
     for (const o of DEFAULT_ORDERS) {
-      let orderDate = new Date();
-      if (o.date) {
-        const parsed = new Date(o.date);
-        if (!isNaN(parsed.getTime())) orderDate = parsed;
-      }
-      await db.insert(orders).values({
-        id: o.id,
-        date: orderDate,
-        customerName: o.customerName,
-        email: o.email,
-        phone: o.phone,
-        documentId: o.documentId,
-        city: o.city,
-        shippingAddress: o.shippingAddress,
-        postalCode: o.postalCode || '',
-        items: JSON.stringify(o.items || []),
-        totalPrice: Number(o.totalPrice),
-        motorcycle: o.motorcycle ? JSON.stringify(o.motorcycle) : null,
-        guaranteeCode: o.guaranteeCode,
-        paymentMethod: o.paymentMethod || 'transferencia',
-        status: o.status || 'Pendiente de pago',
-        paymentReference: o.paymentReference || 'PENDIENTE',
-        trackingNumber: o.trackingNumber || null,
-        shippingCarrier: o.shippingCarrier || null,
-        notes: o.notes || ''
-      }).onConflictDoUpdate({
-        target: orders.id,
-        set: { status: o.status }
-      });
+      await upsertOrder(db, o);
     }
 
-    // 7. Users
+    // 7. Users (+ user_favorites)
     for (const u of DEFAULT_USERS) {
-      let userCreatedAt = new Date();
-      if (u.createdAt) {
-        const parsed = new Date(u.createdAt);
-        if (!isNaN(parsed.getTime())) userCreatedAt = parsed;
-      }
-      await db.insert(users).values({
-        id: u.id,
-        fullName: u.fullName,
-        email: u.email,
-        phone: u.phone,
-        documentId: u.documentId,
-        city: u.city,
-        address: u.address,
-        postalCode: u.postalCode || '',
-        favoritePartIds: JSON.stringify(u.favoritePartIds || []),
-        createdAt: userCreatedAt,
-        avatarUrl: u.avatarUrl || null,
-        role: u.role || 'customer',
-        active: u.active !== undefined ? u.active : true,
-        notes: u.notes || ''
-      }).onConflictDoUpdate({
-        target: users.id,
-        set: { fullName: u.fullName }
-      });
+      await upsertUser(db, u);
     }
 
-    return new Response(JSON.stringify({ success: true, message: 'Base de datos Neon DB sembrada con éxito.' }), {
+    return new Response(JSON.stringify({ success: true, message: 'Base de datos sembrada con datos normalizados.' }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });

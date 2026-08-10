@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Layers, Plus, Edit, Trash2, Copy, Tag, Crosshair, Image as ImageIcon, Eye } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 import type { ExplodedDiagram, SuzukiModel, SuzukiPart } from '../../types';
@@ -56,7 +56,7 @@ export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
           : []);
 
     if (appIds.length > 0) {
-      const names = appIds.map(id => {
+      const names = appIds.map((id: string) => {
         const found = models.find(m => m.id === id);
         return found ? found.name : id;
       });

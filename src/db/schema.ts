@@ -1,4 +1,4 @@
-import { pgTable, text, integer, doublePrecision, boolean, timestamp, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, doublePrecision, boolean, timestamp, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core';
 
 // 1. Brands Table
 export const brands = pgTable('brands', {
@@ -13,12 +13,11 @@ export const brands = pgTable('brands', {
 // 2. Models Table
 export const models = pgTable('models', {
   id: text('id').primaryKey(),
-  brandId: text('brand_id').references(() => brands.id),
+  brandId: text('brand_id').references(() => brands.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   category: text('category').notNull(),
   image: text('image').notNull(),
-  years: text('years').notNull(), // JSON fallback
-  versions: text('versions').notNull(), // JSON fallback
+  versions: text('versions').array().notNull(),
   active: boolean('active').notNull().default(true),
   notes: text('notes')
 }, (table) => ({
@@ -32,16 +31,8 @@ export const modelYears = pgTable('model_years', {
   modelId: text('model_id').notNull().references(() => models.id, { onDelete: 'cascade' }),
   year: integer('year').notNull()
 }, (table) => ({
-  modelYearIdx: index('idx_model_years_lookup').on(table.modelId, table.year)
-}));
-
-// 2c. Model Versions Table (3NF Normalized)
-export const modelVersions = pgTable('model_versions', {
-  id: text('id').primaryKey(),
-  modelId: text('model_id').notNull().references(() => models.id, { onDelete: 'cascade' }),
-  versionName: text('version_name').notNull()
-}, (table) => ({
-  modelVersionIdx: index('idx_model_versions_lookup').on(table.modelId)
+  modelYearIdx: index('idx_model_years_lookup').on(table.modelId, table.year),
+  uniqueModelYear: uniqueIndex('idx_model_years_unique').on(table.modelId, table.year)
 }));
 
 // 3. Categories Table
@@ -58,7 +49,7 @@ export const categories = pgTable('categories', {
 // 4. Subcategories Table
 export const subcategories = pgTable('subcategories', {
   id: text('id').primaryKey(),
-  categoryId: text('category_id').notNull().references(() => categories.id),
+  categoryId: text('category_id').notNull().references(() => categories.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   slug: text('slug').notNull(),
   description: text('description'),
@@ -70,18 +61,16 @@ export const subcategories = pgTable('subcategories', {
 // 5. OEM Spare Parts Table
 export const parts = pgTable('parts', {
   id: text('id').primaryKey(),
-  oemNumbers: text('oem_numbers').notNull(), // JSON fallback
   name: text('name').notNull(),
   category: text('category').notNull(),
   price: doublePrecision('price').notNull(),
   stock: integer('stock').notNull().default(0),
   image: text('image').notNull(),
-  images: text('images'), // JSON fallback
+  images: jsonb('images'),
   description: text('description').notNull(),
-  specs: text('specs').notNull(), // JSON fallback
-  compatibility: text('compatibility').notNull(), // JSON fallback
+  specs: jsonb('specs').notNull(),
   schematicId: text('schematic_id'),
-  diagramHotspot: text('diagram_hotspot'), // JSON fallback
+  diagramHotspot: jsonb('diagram_hotspot'),
   availability: text('availability').notNull().default('in_stock')
 }, (table) => ({
   categoryIdx: index('idx_parts_category').on(table.category),
@@ -94,31 +83,12 @@ export const partOemNumbers = pgTable('part_oem_numbers', {
   id: text('id').primaryKey(),
   partId: text('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
   oemNumber: text('oem_number').notNull(),
-  isPrimary: boolean('is_primary').notNull().default(false)
+  isPrimary: boolean('is_primary').notNull().default(false),
+  position: integer('position').notNull().default(0)
 }, (table) => ({
   oemLookupIdx: index('idx_part_oem_lookup').on(table.oemNumber),
-  partIdx: index('idx_part_oem_part_id').on(table.partId)
-}));
-
-// 5c. OEM Part Technical Specs Table (3NF Normalized)
-export const partSpecs = pgTable('part_specs', {
-  id: text('id').primaryKey(),
-  partId: text('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
-  label: text('label').notNull(),
-  value: text('value').notNull()
-}, (table) => ({
-  partIdx: index('idx_part_specs_part_id').on(table.partId),
-  labelValIdx: index('idx_part_specs_lookup').on(table.label, table.value)
-}));
-
-// 5d. OEM Part Gallery Images Table (3NF Normalized)
-export const partImages = pgTable('part_images', {
-  id: text('id').primaryKey(),
-  partId: text('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
-  imageUrl: text('image_url').notNull(),
-  displayOrder: integer('display_order').notNull().default(0)
-}, (table) => ({
-  partIdx: index('idx_part_images_part_id').on(table.partId)
+  partIdx: index('idx_part_oem_part_id').on(table.partId),
+  uniquePartOem: uniqueIndex('idx_part_oem_unique').on(table.partId, table.oemNumber)
 }));
 
 // 6. Exploded Diagrams / Schematics Table
@@ -127,10 +97,8 @@ export const schematics = pgTable('schematics', {
   title: text('title').notNull(),
   category: text('category').notNull(),
   section: text('section').notNull(),
-  applicableModelIds: text('applicable_model_ids').notNull(), // JSON fallback
   diagramImage: text('diagram_image').notNull(),
-  description: text('description').notNull(),
-  hotspots: text('hotspots') // JSON fallback
+  description: text('description').notNull()
 }, (table) => ({
   sectionIdx: index('idx_schematics_section').on(table.section)
 }));
@@ -139,7 +107,7 @@ export const schematics = pgTable('schematics', {
 export const schematicHotspots = pgTable('schematic_hotspots', {
   id: text('id').primaryKey(),
   schematicId: text('schematic_id').notNull().references(() => schematics.id, { onDelete: 'cascade' }),
-  partId: text('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
+  partId: text('part_id').references(() => parts.id, { onDelete: 'cascade' }),
   itemNumber: integer('item_number').notNull(),
   x: doublePrecision('x').notNull(),
   y: doublePrecision('y').notNull(),
@@ -155,7 +123,8 @@ export const schematicApplicableModels = pgTable('schematic_applicable_models', 
   schematicId: text('schematic_id').notNull().references(() => schematics.id, { onDelete: 'cascade' }),
   modelId: text('model_id').notNull().references(() => models.id, { onDelete: 'cascade' })
 }, (table) => ({
-  schematicModelIdx: index('idx_schematic_models_lookup').on(table.schematicId, table.modelId)
+  schematicModelIdx: index('idx_schematic_models_lookup').on(table.schematicId, table.modelId),
+  uniqueSchematicModel: uniqueIndex('idx_schematic_models_unique').on(table.schematicId, table.modelId)
 }));
 
 // 7. Customer Orders Table
@@ -169,9 +138,8 @@ export const orders = pgTable('orders', {
   city: text('city').notNull(),
   shippingAddress: text('shipping_address').notNull(),
   postalCode: text('postal_code').notNull(),
-  items: text('items').notNull(), // JSON fallback
   totalPrice: doublePrecision('total_price').notNull(),
-  motorcycle: text('motorcycle'), // JSON fallback
+  motorcycle: jsonb('motorcycle'),
   guaranteeCode: text('guarantee_code').notNull(),
   paymentMethod: text('payment_method').notNull(),
   status: text('status').notNull(),
@@ -185,19 +153,6 @@ export const orders = pgTable('orders', {
   docIdx: index('idx_orders_document_id').on(table.documentId)
 }));
 
-// 7b. Order Motorcycle Details Table (3NF Normalized)
-export const orderMotorcycles = pgTable('order_motorcycles', {
-  id: text('id').primaryKey(),
-  orderId: text('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
-  brandName: text('brand_name').notNull(),
-  modelId: text('model_id'),
-  modelName: text('model_name').notNull(),
-  year: integer('year').notNull(),
-  version: text('version')
-}, (table) => ({
-  orderIdx: index('idx_order_moto_order_id').on(table.orderId)
-}));
-
 // 8. Users / Customers Table
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -208,7 +163,6 @@ export const users = pgTable('users', {
   city: text('city').notNull(),
   address: text('address').notNull(),
   postalCode: text('postal_code').notNull(),
-  favoritePartIds: text('favorite_part_ids').notNull().default('[]'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   avatarUrl: text('avatar_url'),
   role: text('role').notNull().default('customer'),
@@ -222,9 +176,9 @@ export const users = pgTable('users', {
 // 9. Customer Garages Table
 export const userGarages = pgTable('user_garages', {
   id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id),
-  brandId: text('brand_id').notNull(),
-  modelId: text('model_id').notNull().references(() => models.id),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  brandId: text('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
+  modelId: text('model_id').notNull().references(() => models.id, { onDelete: 'cascade' }),
   modelName: text('model_name').notNull(),
   year: integer('year').notNull(),
   version: text('version').notNull(),
@@ -239,18 +193,19 @@ export const userGarages = pgTable('user_garages', {
 // 10. Customer Favorites Table
 export const userFavorites = pgTable('user_favorites', {
   id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id),
-  partId: text('part_id').notNull().references(() => parts.id),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  partId: text('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').defaultNow().notNull()
 }, (table) => ({
-  userPartIdx: index('idx_user_favorites_user_part').on(table.userId, table.partId)
+  userPartIdx: index('idx_user_favorites_user_part').on(table.userId, table.partId),
+  uniqueUserFavorite: uniqueIndex('idx_user_favorites_unique').on(table.userId, table.partId)
 }));
 
 // 11. Product Reviews Table
 export const reviews = pgTable('reviews', {
   id: text('id').primaryKey(),
-  partId: text('part_id').notNull().references(() => parts.id),
-  userId: text('user_id').notNull().references(() => users.id),
+  partId: text('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   userName: text('user_name').notNull(),
   rating: integer('rating').notNull(),
   title: text('title').notNull(),
@@ -262,29 +217,29 @@ export const reviews = pgTable('reviews', {
   userIdx: index('idx_reviews_user_id').on(table.userId)
 }));
 
-// 12. Direct Part Compatibility Table
+// 12. Direct Part Compatibility Table (3NF Normalized)
 export const partCompatibilities = pgTable('part_compatibilities', {
   id: text('id').primaryKey(),
-  partId: text('part_id').notNull().references(() => parts.id),
-  modelId: text('model_id').notNull().references(() => models.id),
-  yearStart: integer('year_start').notNull(),
-  yearEnd: integer('year_end').notNull(),
+  partId: text('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
+  modelId: text('model_id').notNull().references(() => models.id, { onDelete: 'cascade' }),
+  yearStart: integer('year_start'),
+  yearEnd: integer('year_end'),
   version: text('version'),
   note: text('note')
 }, (table) => ({
   lookupIdx: index('idx_part_compat_lookup').on(table.partId, table.modelId, table.yearStart, table.yearEnd)
 }));
 
-// 13. Order Line Items Table
+// 13. Order Line Items Table (3NF Normalized)
 export const orderItems = pgTable('order_items', {
   id: text('id').primaryKey(),
-  orderId: text('order_id').notNull().references(() => orders.id),
-  partId: text('part_id').notNull().references(() => parts.id),
-  partName: text('part_name').notNull(),
-  oemNumber: text('oem_number').notNull(),
+  orderId: text('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  partId: text('part_id'),
+  part: jsonb('part').notNull(), // snapshot of the part at purchase time
   quantity: integer('quantity').notNull(),
   unitPrice: doublePrecision('unit_price').notNull(),
-  lineTotal: doublePrecision('line_total').notNull()
+  lineTotal: doublePrecision('line_total').notNull(),
+  motorcycle: jsonb('motorcycle') // snapshot of the item-level motorcycle
 }, (table) => ({
   orderIdx: index('idx_order_items_order_id').on(table.orderId),
   partIdx: index('idx_order_items_part_id').on(table.partId)

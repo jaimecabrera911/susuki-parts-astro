@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { GoogleGenAI } from '@google/genai';
 import { getDb } from '../../db/client';
 import { parts as partsTable } from '../../db/schema';
-import { INITIAL_ADMIN_PARTS } from '../../data/adminStore';
+import { formatParts } from '../../db/writers';
 
 export const POST: APIRoute = async ({ request }) => {
   let motorcycle: any = null;
@@ -10,20 +10,15 @@ export const POST: APIRoute = async ({ request }) => {
 
   try {
     const db = getDb();
-    let activeParts: any[] = INITIAL_ADMIN_PARTS;
+    let activeParts: any[] = [];
 
     try {
       const rawDbParts = await db.select().from(partsTable);
       if (rawDbParts && rawDbParts.length > 0) {
-        activeParts = rawDbParts.map(p => ({
-          ...p,
-          oemNumbers: typeof p.oemNumbers === 'string' ? JSON.parse(p.oemNumbers || '[]') : (p.oemNumbers || []),
-          compatibility: typeof p.compatibility === 'string' ? JSON.parse(p.compatibility || '[]') : (p.compatibility || []),
-          specs: typeof p.specs === 'string' ? JSON.parse(p.specs || '[]') : (p.specs || [])
-        }));
+        activeParts = await formatParts(db, rawDbParts);
       }
     } catch (e) {
-      console.warn('Fallback to local parts store:', e);
+      console.warn('No se pudieron cargar los repuestos de la base de datos:', e);
     }
 
     const body = await request.json().catch(() => ({}));
@@ -169,7 +164,7 @@ Directrices de respuesta:
       // Check strict model compatibility if a target model is specified
       if (!isPartCompatibleWithTarget(part, targetModelId)) return;
 
-      part.oemNumbers.forEach(oem => {
+      part.oemNumbers.forEach((oem: string) => {
         if (rawText.includes(oem) && !recommendedOems.includes(oem)) {
           recommendedOems.push(oem);
         }

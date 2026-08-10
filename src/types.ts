@@ -189,6 +189,9 @@ export interface Order {
   paymentMethod: PaymentMethod;
   status: OrderStatus;
   paymentReference?: string;
+  shippingCarrier?: string;
+  trackingNumber?: string;
+  notes?: string;
 }
 
 

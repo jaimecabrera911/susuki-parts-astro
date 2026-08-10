@@ -1,8 +1,8 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
-import { users } from '../../db/schema';
+import { users, userFavorites } from '../../db/schema';
 import { eq, like, or } from 'drizzle-orm';
-import { DEFAULT_USERS } from '../../data/adminStore';
+import { upsertUser } from '../../db/writers';
 
 export const GET: APIRoute = async ({ url }) => {
   try {
@@ -27,11 +27,17 @@ export const GET: APIRoute = async ({ url }) => {
       rawData = await db.select().from(users);
     }
 
-    const result = (rawData && rawData.length > 0) ? rawData : DEFAULT_USERS;
+    const allFavorites = await db.select().from(userFavorites);
+    const favoritesByUser = new Map<string, string[]>();
+    for (const f of allFavorites) {
+      const arr = favoritesByUser.get(f.userId) || [];
+      arr.push(f.partId);
+      favoritesByUser.set(f.userId, arr);
+    }
 
-    const formatted = result.map(u => ({
+    const formatted = rawData.map(u => ({
       ...u,
-      favoritePartIds: typeof u.favoritePartIds === 'string' ? JSON.parse(u.favoritePartIds || '[]') : (u.favoritePartIds || [])
+      favoritePartIds: favoritesByUser.get(u.id) || []
     }));
 
     return new Response(JSON.stringify({ success: true, count: formatted.length, data: formatted }), {
@@ -49,36 +55,9 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const db = getDb();
     const body = await request.json();
+    const data = await upsertUser(db, body);
 
-    let userCreatedAt = new Date();
-    if (body.createdAt) {
-      const parsed = new Date(body.createdAt);
-      if (!isNaN(parsed.getTime())) userCreatedAt = parsed;
-    }
-
-    const newUser = {
-      id: body.id || `usr-${Date.now()}`,
-      fullName: body.fullName,
-      email: body.email,
-      phone: body.phone,
-      documentId: body.documentId,
-      city: body.city,
-      address: body.address,
-      postalCode: body.postalCode || '',
-      favoritePartIds: JSON.stringify(body.favoritePartIds || []),
-      createdAt: userCreatedAt,
-      avatarUrl: body.avatarUrl || null,
-      role: body.role || 'customer',
-      active: body.active !== undefined ? body.active : true,
-      notes: body.notes || ''
-    };
-
-    await db.insert(users).values(newUser).onConflictDoUpdate({
-      target: users.id,
-      set: newUser
-    });
-
-    return new Response(JSON.stringify({ success: true, data: newUser }), {
+    return new Response(JSON.stringify({ success: true, data }), {
       status: 201,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -96,20 +75,7 @@ export const PUT: APIRoute = async ({ request }) => {
     const body = await request.json();
     if (!body.id) throw new Error('ID del usuario es requerido');
 
-    await db.update(users).set({
-      fullName: body.fullName,
-      email: body.email,
-      phone: body.phone,
-      documentId: body.documentId,
-      city: body.city,
-      address: body.address,
-      postalCode: body.postalCode,
-      favoritePartIds: JSON.stringify(body.favoritePartIds || []),
-      avatarUrl: body.avatarUrl,
-      role: body.role,
-      active: body.active,
-      notes: body.notes
-    }).where(eq(users.id, body.id));
+    await upsertUser(db, body);
 
     return new Response(JSON.stringify({ success: true, message: `Usuario ${body.id} actualizado exitosamente` }), {
       headers: { 'Content-Type': 'application/json' }
