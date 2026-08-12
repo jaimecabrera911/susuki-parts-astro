@@ -29,7 +29,12 @@ import { formatOrderDate } from "../utils/formatDate";
 import { shouldShowProductImages } from "../utils/config";
 import { ProductImageFallback } from "./ProductImageFallback";
 import { BANK_DETAILS } from "../data/bankDetails";
-import { fetchDefaultCarrierName, fetchReturns, saveReturnApi, sendOrderMessageApi } from "../services/api";
+import {
+  fetchDefaultCarrierName,
+  fetchReturns,
+  saveReturnApi,
+  sendOrderMessageApi,
+} from "../services/api";
 import { parseReturnNotes, formatMessageTime } from "../utils/returnNotes";
 import { parseOrderNotes, formatOrderMessageTime } from "../utils/orderNotes";
 
@@ -71,7 +76,13 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
     setIsSendingOrderMsg(true);
     try {
-      const res = await sendOrderMessageApi(order.id, trimmed, 'customer', order.customerName, false);
+      const res = await sendOrderMessageApi(
+        order.id,
+        trimmed,
+        "customer",
+        order.customerName,
+        false,
+      );
       if (res.success && Array.isArray(res.data)) {
         setOrderMessages(res.data);
         setOrderInputText("");
@@ -118,7 +129,10 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
     setIsSendingMessage(true);
     try {
-      const existingNotes = parseReturnNotes(activeReturn.notes, order?.customerName || "Cliente");
+      const existingNotes = parseReturnNotes(
+        activeReturn.notes,
+        order?.customerName || "Cliente",
+      );
       const newMsg = {
         id: `msg-${Date.now()}`,
         sender: "customer",
@@ -173,6 +187,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
   return (
     <div
+      id="order-detail-modal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="order-detail-title"
@@ -232,7 +247,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               className="flex items-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer"
             >
               <Printer className="w-4 h-4 text-slate-600" />
-              <span>Imprimir Certificado</span>
+              <span>Imprimir Pedido</span>
             </button>
           </div>
         </div>
@@ -246,7 +261,11 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 DESTINATARIO / CLIENTE
               </span>
               <div className="font-extrabold text-slate-900 flex items-center gap-2 font-display text-sm">
-                <UserAvatar fullName={order.customerName} className="w-6 h-6" textClassName="text-[10px]" />
+                <UserAvatar
+                  fullName={order.customerName}
+                  className="w-6 h-6"
+                  textClassName="text-[10px]"
+                />
                 <span>{order.customerName || "Cliente no registrado"}</span>
               </div>
               {order.phone && (
@@ -502,41 +521,89 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                         Trámite de Devolución {activeReturn.id}
                       </span>
                     </div>
-                    <span className={`text-[10px] font-mono font-extrabold uppercase px-3 py-1 rounded-full border ${
-                      activeReturn.status === 'Pendiente' ? 'bg-amber-50 text-amber-900 border-amber-300' :
-                      activeReturn.status === 'Aprobada' || activeReturn.status === 'En tránsito' ? 'bg-sky-50 text-sky-900 border-sky-300' :
-                      activeReturn.status === 'Reembolsada' ? 'bg-emerald-50 text-emerald-900 border-emerald-300' :
-                      'bg-red-50 text-red-900 border-red-300'
-                    }`}>
+                    <span
+                      className={`text-[10px] font-mono font-extrabold uppercase px-3 py-1 rounded-full border ${
+                        activeReturn.status === "Pendiente"
+                          ? "bg-amber-50 text-amber-900 border-amber-300"
+                          : activeReturn.status === "Aprobada" ||
+                              activeReturn.status === "En tránsito"
+                            ? "bg-sky-50 text-sky-900 border-sky-300"
+                            : activeReturn.status === "Reembolsada"
+                              ? "bg-emerald-50 text-emerald-900 border-emerald-300"
+                              : "bg-red-50 text-red-900 border-red-300"
+                      }`}
+                    >
                       {activeReturn.status}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-4 gap-1.5 text-center py-1 font-mono text-[9px]">
-                    <div className={`p-1.5 rounded-xl font-bold transition-all ${activeReturn.status === 'Pendiente' ? 'bg-amber-500 text-slate-950 font-black shadow-xs' : 'bg-slate-200/80 text-slate-500 border border-slate-300'}`}>1. Solicitada</div>
-                    <div className={`p-1.5 rounded-xl font-bold transition-all ${activeReturn.status === 'Aprobada' ? 'bg-sky-600 text-white font-black shadow-xs' : 'bg-slate-200/80 text-slate-500 border border-slate-300'}`}>2. Aprobada</div>
-                    <div className={`p-1.5 rounded-xl font-bold transition-all ${activeReturn.status === 'En tránsito' || activeReturn.status === 'Pieza recibida' ? 'bg-indigo-600 text-white font-black shadow-xs' : 'bg-slate-200/80 text-slate-500 border border-slate-300'}`}>3. En Tránsito</div>
-                    <div className={`p-1.5 rounded-xl font-bold transition-all ${activeReturn.status === 'Reembolsada' ? 'bg-emerald-600 text-white font-black shadow-xs' : (activeReturn.status === 'Rechazada' ? 'bg-red-600 text-white font-black' : 'bg-slate-200/80 text-slate-500 border border-slate-300')}`}>
-                      {activeReturn.status === 'Rechazada' ? 'Rechazada' : '4. Reembolsada'}
+                    <div
+                      className={`p-1.5 rounded-xl font-bold transition-all ${activeReturn.status === "Pendiente" ? "bg-amber-500 text-slate-950 font-black shadow-xs" : "bg-slate-200/80 text-slate-500 border border-slate-300"}`}
+                    >
+                      1. Solicitada
+                    </div>
+                    <div
+                      className={`p-1.5 rounded-xl font-bold transition-all ${activeReturn.status === "Aprobada" ? "bg-sky-600 text-white font-black shadow-xs" : "bg-slate-200/80 text-slate-500 border border-slate-300"}`}
+                    >
+                      2. Aprobada
+                    </div>
+                    <div
+                      className={`p-1.5 rounded-xl font-bold transition-all ${activeReturn.status === "En tránsito" || activeReturn.status === "Pieza recibida" ? "bg-indigo-600 text-white font-black shadow-xs" : "bg-slate-200/80 text-slate-500 border border-slate-300"}`}
+                    >
+                      3. En Tránsito
+                    </div>
+                    <div
+                      className={`p-1.5 rounded-xl font-bold transition-all ${activeReturn.status === "Reembolsada" ? "bg-emerald-600 text-white font-black shadow-xs" : activeReturn.status === "Rechazada" ? "bg-red-600 text-white font-black" : "bg-slate-200/80 text-slate-500 border border-slate-300"}`}
+                    >
+                      {activeReturn.status === "Rechazada"
+                        ? "Rechazada"
+                        : "4. Reembolsada"}
                     </div>
                   </div>
 
                   <div className="text-xs space-y-1.5 text-slate-700 font-sans">
-                    <p><strong>Motivo:</strong> {activeReturn.reason}</p>
-                    <p><strong>Solución Solicitada:</strong> <span className="font-bold text-slate-900">{
-                      activeReturn.isUnpaidCancel || order?.paymentStatus === 'pending' || order?.status === 'Pendiente' ? '🚫 Anulación sin Desembolso ($0 COP)' :
-                      activeReturn.resolutionType === 'exchange' ? '🔄 Cambio de Repuesto' :
-                      activeReturn.resolutionType === 'store_credit' ? '🏷️ Bono de Tienda' :
-                      '💵 Reembolso de Dinero'
-                    }</span></p>
+                    <p>
+                      <strong>Motivo:</strong> {activeReturn.reason}
+                    </p>
+                    <p>
+                      <strong>Solución Solicitada:</strong>{" "}
+                      <span className="font-bold text-slate-900">
+                        {activeReturn.isUnpaidCancel ||
+                        order?.paymentStatus === "pending" ||
+                        order?.status === "Pendiente"
+                          ? "🚫 Anulación sin Desembolso ($0 COP)"
+                          : activeReturn.resolutionType === "exchange"
+                            ? "🔄 Cambio de Repuesto"
+                            : activeReturn.resolutionType === "store_credit"
+                              ? "🏷️ Bono de Tienda"
+                              : "💵 Reembolso de Dinero"}
+                      </span>
+                    </p>
                     {activeReturn.returnTrackingNumber && (
-                      <p><strong>Guía de Envío Retorno:</strong> <span className="font-bold text-slate-900">{activeReturn.returnCarrier} #{activeReturn.returnTrackingNumber}</span></p>
+                      <p>
+                        <strong>Guía de Envío Retorno:</strong>{" "}
+                        <span className="font-bold text-slate-900">
+                          {activeReturn.returnCarrier} #
+                          {activeReturn.returnTrackingNumber}
+                        </span>
+                      </p>
                     )}
                     {activeReturn.refundAmount > 0 && (
-                      <p><strong>Monto Reembolso:</strong> <span className="text-emerald-700 font-mono font-black text-sm">{formatCurrency(activeReturn.refundAmount)}</span> {activeReturn.refundMethod ? `(${activeReturn.refundMethod})` : ''}</p>
+                      <p>
+                        <strong>Monto Reembolso:</strong>{" "}
+                        <span className="text-emerald-700 font-mono font-black text-sm">
+                          {formatCurrency(activeReturn.refundAmount)}
+                        </span>{" "}
+                        {activeReturn.refundMethod
+                          ? `(${activeReturn.refundMethod})`
+                          : ""}
+                      </p>
                     )}
                     {activeReturn.refundReference && (
-                      <p className="text-[11px] font-mono text-slate-500">Ref. Pago: {activeReturn.refundReference}</p>
+                      <p className="text-[11px] font-mono text-slate-500">
+                        Ref. Pago: {activeReturn.refundReference}
+                      </p>
                     )}
                   </div>
 
@@ -547,32 +614,45 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       HISTORIAL DE CONVERSACIÓN & NOTAS DE SOPORTE
                     </p>
                     <div className="space-y-2 max-h-48 overflow-y-auto pr-1 bg-white p-3 rounded-2xl border border-slate-200">
-                      {parseReturnNotes(activeReturn.notes, activeReturn.customerName || order?.customerName).length === 0 ? (
+                      {parseReturnNotes(
+                        activeReturn.notes,
+                        activeReturn.customerName || order?.customerName,
+                      ).length === 0 ? (
                         <p className="text-slate-400 text-center py-3 font-mono text-[11px]">
                           Sin mensajes en la conversación.
                         </p>
                       ) : (
-                        parseReturnNotes(activeReturn.notes, activeReturn.customerName || order?.customerName).map((msg, idx) => (
+                        parseReturnNotes(
+                          activeReturn.notes,
+                          activeReturn.customerName || order?.customerName,
+                        ).map((msg, idx) => (
                           <div
                             key={idx}
-                            className={`flex flex-col ${msg.sender === 'admin' ? 'items-start' : 'items-end'}`}
+                            className={`flex flex-col ${msg.sender === "admin" ? "items-start" : "items-end"}`}
                           >
                             <div className="flex items-center gap-1.5 mb-1 text-[10px] font-mono text-slate-500">
-                              <span className={`font-bold px-1.5 py-0.5 rounded text-[9px] uppercase ${msg.sender === 'admin' ? 'bg-red-100 text-[#E60012] border border-red-200' : 'bg-slate-200 text-slate-800'}`}>
-                                {msg.senderName || (msg.sender === 'admin' ? 'Soporte Suzuki' : 'Tú')}
+                              <span
+                                className={`font-bold px-1.5 py-0.5 rounded text-[9px] uppercase ${msg.sender === "admin" ? "bg-red-100 text-[#E60012] border border-red-200" : "bg-slate-200 text-slate-800"}`}
+                              >
+                                {msg.senderName ||
+                                  (msg.sender === "admin"
+                                    ? "Soporte Suzuki"
+                                    : "Tú")}
                               </span>
                               {msg.timestamp && (
                                 <>
                                   <span>•</span>
-                                  <span className="text-[10px] text-slate-400 font-medium">{formatMessageTime(msg.timestamp)}</span>
+                                  <span className="text-[10px] text-slate-400 font-medium">
+                                    {formatMessageTime(msg.timestamp)}
+                                  </span>
                                 </>
                               )}
                             </div>
                             <div
                               className={`p-2.5 rounded-2xl text-xs font-sans leading-relaxed shadow-2xs max-w-[85%] ${
-                                msg.sender === 'admin'
-                                  ? 'bg-slate-900 text-white rounded-tl-none'
-                                  : 'bg-slate-100 text-slate-900 border border-slate-200 rounded-tr-none'
+                                msg.sender === "admin"
+                                  ? "bg-slate-900 text-white rounded-tl-none"
+                                  : "bg-slate-100 text-slate-900 border border-slate-200 rounded-tr-none"
                               }`}
                             >
                               {msg.text}
@@ -583,7 +663,10 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     </div>
 
                     {/* Customer Message Input Box */}
-                    <form onSubmit={handleSendCustomerMessage} className="flex gap-2 pt-1">
+                    <form
+                      onSubmit={handleSendCustomerMessage}
+                      className="flex gap-2 pt-1"
+                    >
                       <input
                         type="text"
                         value={customerMessage}
@@ -622,43 +705,53 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   CONVERSACIÓN & SOPORTE DEL PEDIDO
                 </p>
                 <span className="text-[10px] text-slate-500 font-mono font-bold">
-                  {orderMessages.filter(m => !m.isPrivate).length} mensajes
+                  {orderMessages.filter((m) => !m.isPrivate).length} mensajes
                 </span>
               </div>
 
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1 bg-white p-3 rounded-xl border border-slate-200">
-                {orderMessages.filter(m => !m.isPrivate).length === 0 ? (
+                {orderMessages.filter((m) => !m.isPrivate).length === 0 ? (
                   <p className="text-slate-400 text-center py-3 font-mono text-[11px]">
-                    ¿Tienes alguna duda sobre tu pedido o pago? Escribe un mensaje a nuestro equipo de soporte.
+                    ¿Tienes alguna duda sobre tu pedido o pago? Escribe un
+                    mensaje a nuestro equipo de soporte.
                   </p>
                 ) : (
-                  orderMessages.filter(m => !m.isPrivate).map((msg, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex flex-col ${msg.sender === 'admin' ? 'items-start' : 'items-end'}`}
-                    >
-                      <div className="flex items-center gap-1.5 mb-1 text-[10px] font-mono text-slate-500">
-                        <span className={`font-bold px-1.5 py-0.5 rounded text-[9px] uppercase ${msg.sender === 'admin' ? 'bg-sky-100 text-[#0A3088] border border-sky-200' : 'bg-slate-200 text-slate-800'}`}>
-                          {msg.senderName || (msg.sender === 'admin' ? 'Soporte Suzuki' : 'Tú')}
-                        </span>
-                        {msg.timestamp && (
-                          <>
-                            <span>•</span>
-                            <span className="text-[10px] text-slate-400 font-medium">{formatOrderMessageTime(msg.timestamp)}</span>
-                          </>
-                        )}
-                      </div>
+                  orderMessages
+                    .filter((m) => !m.isPrivate)
+                    .map((msg, idx) => (
                       <div
-                        className={`p-2.5 rounded-2xl text-xs font-sans leading-relaxed shadow-2xs max-w-[85%] ${
-                          msg.sender === 'admin'
-                            ? 'bg-[#0A3088] text-white rounded-tl-none'
-                            : 'bg-slate-100 text-slate-900 border border-slate-200 rounded-tr-none'
-                        }`}
+                        key={idx}
+                        className={`flex flex-col ${msg.sender === "admin" ? "items-start" : "items-end"}`}
                       >
-                        {msg.text}
+                        <div className="flex items-center gap-1.5 mb-1 text-[10px] font-mono text-slate-500">
+                          <span
+                            className={`font-bold px-1.5 py-0.5 rounded text-[9px] uppercase ${msg.sender === "admin" ? "bg-sky-100 text-[#0A3088] border border-sky-200" : "bg-slate-200 text-slate-800"}`}
+                          >
+                            {msg.senderName ||
+                              (msg.sender === "admin"
+                                ? "Soporte Suzuki"
+                                : "Tú")}
+                          </span>
+                          {msg.timestamp && (
+                            <>
+                              <span>•</span>
+                              <span className="text-[10px] text-slate-400 font-medium">
+                                {formatOrderMessageTime(msg.timestamp)}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        <div
+                          className={`p-2.5 rounded-2xl text-xs font-sans leading-relaxed shadow-2xs max-w-[85%] ${
+                            msg.sender === "admin"
+                              ? "bg-[#0A3088] text-white rounded-tl-none"
+                              : "bg-slate-100 text-slate-900 border border-slate-200 rounded-tr-none"
+                          }`}
+                        >
+                          {msg.text}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))
                 )}
               </div>
 

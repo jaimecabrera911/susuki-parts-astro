@@ -136,6 +136,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   return (
     <div
+      id="product-detail-modal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="product-detail-modal-title"

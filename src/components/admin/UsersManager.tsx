@@ -43,7 +43,7 @@ export const UsersManager: React.FC<UsersManagerProps> = ({
   const activeUsersCount = users.filter(u => u.active !== false).length;
 
   return (
-    <div className="space-y-6">
+    <div id="users-manager" className="space-y-6">
       
       {/* Metric Cards Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

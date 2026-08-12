@@ -31,7 +31,7 @@ export const CatalogFilterBar: React.FC<CatalogFilterBarProps> = ({
   ];
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs mb-8 space-y-4">
+    <div id="catalog-filter-bar" className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs mb-8 space-y-4">
       
       {/* Search Input for mobile & Quick Filter */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">

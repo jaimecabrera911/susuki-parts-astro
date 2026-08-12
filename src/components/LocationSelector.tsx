@@ -104,7 +104,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
       : 'Selecciona Ciudad...';
 
   return (
-    <div className={`grid grid-cols-1 sm:grid-cols-3 gap-4 ${className}`}>
+    <div id="location-selector" className={`grid grid-cols-1 sm:grid-cols-3 gap-4 ${className}`}>
       
       {/* 1. Selección de País */}
       <div>

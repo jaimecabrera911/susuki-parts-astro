@@ -76,7 +76,7 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div id="returns-manager" className="space-y-6">
       {/* Metrics Banner */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">

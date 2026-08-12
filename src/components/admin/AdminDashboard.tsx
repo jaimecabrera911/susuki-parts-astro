@@ -663,7 +663,7 @@ export const AdminDashboard: React.FC = () => {
 
   if (!authorized) {
     return (
-      <div className="min-h-screen bg-[#f7f9fb] text-[#191c1e] flex font-sans antialiased items-center justify-center px-4">
+      <div id="admin-dashboard" className="min-h-screen bg-[#f7f9fb] text-[#191c1e] flex font-sans antialiased items-center justify-center px-4">
         <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-sm p-8 text-center">
           <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-5 border border-red-100">
             <ShieldAlert className="w-8 h-8" />
@@ -687,7 +687,7 @@ export const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f9fb] text-[#191c1e] flex font-sans antialiased">
+    <div id="admin-dashboard" className="min-h-screen bg-[#f7f9fb] text-[#191c1e] flex font-sans antialiased">
       {/* Sidebar */}
       <AdminSidebar
         activeTab={activeTab}

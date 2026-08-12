@@ -65,7 +65,7 @@ export const SearchableModelSelect: React.FC<SearchableModelSelectProps> = ({
   };
 
   return (
-    <div className="relative w-full" ref={containerRef}>
+    <div id="searchable-model-select" className="relative w-full" ref={containerRef}>
       {label && (
         <label htmlFor="searchable-model-select-input" className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
           {label}

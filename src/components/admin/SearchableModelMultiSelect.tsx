@@ -55,7 +55,7 @@ export const SearchableModelMultiSelect: React.FC<SearchableModelMultiSelectProp
   const selectedModels = models.filter(m => selectedModelIds.includes(m.id));
 
   return (
-    <div className="relative w-full" ref={containerRef}>
+    <div id="searchable-model-multi-select" className="relative w-full" ref={containerRef}>
       {label && (
         <div className="flex items-center justify-between mb-1.5">
           <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider font-mono">

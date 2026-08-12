@@ -102,6 +102,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
 
   return (
     <div 
+      id="ai-assistant-modal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="ai-assistant-modal-title"

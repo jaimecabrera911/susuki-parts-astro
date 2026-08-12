@@ -175,7 +175,7 @@ export const ShippingManager: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6 font-sans">
+    <div id="shipping-manager" className="space-y-6 font-sans">
       
       {/* Top Banner & Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">

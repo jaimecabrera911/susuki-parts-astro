@@ -58,7 +58,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   const displayEmail = activeUser?.email || "admin@suzukiparts.com.co";
 
   return (
-    <header className="bg-white border-b border-slate-200 px-8 py-5 flex items-center justify-between sticky top-0 z-20 shadow-xs">
+    <header id="admin-header" className="bg-white border-b border-slate-200 px-8 py-5 flex items-center justify-between sticky top-0 z-20 shadow-xs">
       <div>
         <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-500 font-mono mb-1">
           <span>ADMINISTRACIÓN</span>

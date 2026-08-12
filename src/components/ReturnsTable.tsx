@@ -127,7 +127,7 @@ export const ReturnsTable: React.FC<ReturnsTableProps> = ({ returnsList, orders 
   };
 
   return (
-    <div className="space-y-4">
+    <div id="returns-table" className="space-y-4">
       {/* Search & Filter Header */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         {/* Search Bar */}

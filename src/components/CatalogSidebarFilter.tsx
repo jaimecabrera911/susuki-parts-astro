@@ -612,7 +612,7 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
   );
 
   return (
-    <>
+    <div id="catalog-sidebar-filter">
       {/* Mobile Top Header & Filter Trigger */}
       <div className="lg:hidden mb-6 space-y-3">
         <div className="flex items-center gap-3">
@@ -765,6 +765,6 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };

@@ -63,6 +63,7 @@ export const GarageModal: React.FC<GarageModalProps> = ({
 
   return (
     <div 
+      id="garage-modal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="garage-modal-title"

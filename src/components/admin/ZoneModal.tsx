@@ -92,7 +92,7 @@ export const ZoneModal: React.FC<ZoneModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+    <div id="zone-modal" className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 my-8">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">

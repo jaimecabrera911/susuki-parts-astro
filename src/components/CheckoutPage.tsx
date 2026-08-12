@@ -515,7 +515,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   // 1. EMPTY CART STATE
   if (!completedOrder && cartItems.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
+      <div id="checkout-page" className="max-w-4xl mx-auto px-4 py-16 text-center">
         <div className="bg-white rounded-3xl p-12 border border-slate-200 shadow-sm max-w-lg mx-auto">
           <div className="w-16 h-16 rounded-2xl bg-red-50 text-[#E60012] flex items-center justify-center mx-auto mb-4 border border-red-100">
             <ShoppingBag className="w-8 h-8" />
@@ -544,7 +544,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   // 2. SUCCESS POST-CONFIRMATION VOUCHER VIEW
   if (completedOrder) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <div id="checkout-page" className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
           {/* Header Status Banner */}
           <div className="bg-slate-900 text-white p-6 sm:p-8 relative overflow-hidden">
@@ -871,7 +871,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
   // MAIN CHECKOUT FORM & DETAIL PROCESS
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div id="checkout-page" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       {/* Page Header */}
       <div className="mb-6">
         <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#E60012] uppercase tracking-wider mb-1">

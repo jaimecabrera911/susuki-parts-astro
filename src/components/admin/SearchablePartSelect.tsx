@@ -53,7 +53,7 @@ export const SearchablePartSelect: React.FC<SearchablePartSelectProps> = ({
   };
 
   return (
-    <div className="relative w-full" ref={containerRef}>
+    <div id="searchable-part-select" className="relative w-full" ref={containerRef}>
       {label && (
         <label className="block text-[10px] font-mono font-bold text-slate-700 uppercase tracking-wider mb-1">
           {label}

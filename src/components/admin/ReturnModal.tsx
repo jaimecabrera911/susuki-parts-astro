@@ -138,6 +138,7 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({
 
   return (
     <div
+      id="return-modal"
       role="dialog"
       aria-modal="true"
       onClick={onClose}

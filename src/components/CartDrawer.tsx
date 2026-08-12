@@ -62,6 +62,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   return (
     <div
+      id="cart-drawer"
       role="dialog"
       aria-modal="true"
       aria-labelledby="cart-drawer-title"

@@ -15,7 +15,7 @@ export const AuthRequired: React.FC<AuthRequiredProps> = ({
   onGoHome
 }) => {
   return (
-    <div className="min-h-[60vh] flex items-center justify-center px-4 py-16">
+    <div id="auth-required" className="min-h-[60vh] flex items-center justify-center px-4 py-16">
       <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-sm p-8 text-center">
         <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-5 border border-amber-100">
           <Lock className="w-8 h-8" />

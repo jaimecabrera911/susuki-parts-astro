@@ -141,6 +141,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   return (
     <div 
+      id="auth-modal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="auth-modal-title"

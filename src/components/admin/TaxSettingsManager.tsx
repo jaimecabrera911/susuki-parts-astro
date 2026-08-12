@@ -64,7 +64,7 @@ export const TaxSettingsManager: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div id="tax-settings-manager" className="space-y-6 max-w-4xl">
       {/* Header */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">

@@ -166,7 +166,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
     };
 
     return (
-      <div className="w-full space-y-2.5">
+      <div id="product-image-gallery" className="w-full space-y-2.5">
         {/* Header — diagram title + section + zoom controls */}
         <div className="flex items-center justify-between gap-2 px-1">
           <div className="flex items-center gap-1.5 min-w-0">
@@ -327,7 +327,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
 
   // ---------- CASE 2: Static product photo / fallback ----------
   return (
-    <div className="w-full space-y-2">
+    <div id="product-image-gallery" className="w-full space-y-2">
       <div className="flex items-center justify-end px-1">
         {/* Zoom Toolbar for Static Photo */}
         <div className="flex items-center gap-1 bg-slate-100 border border-slate-200 p-0.5 rounded-lg shadow-2xs">

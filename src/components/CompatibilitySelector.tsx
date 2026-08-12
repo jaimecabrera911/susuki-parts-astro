@@ -55,7 +55,7 @@ export const CompatibilitySelector: React.FC<CompatibilitySelectorProps> = ({
   const isFormComplete = selectedModelId && selectedYear && selectedVersion;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-md p-6 sm:p-8 max-w-4xl mx-auto my-6">
+    <div id="compatibility-selector" className="bg-white rounded-2xl border border-slate-200/80 shadow-md p-6 sm:p-8 max-w-4xl mx-auto my-6">
       
       {/* Active Garage Banner if bike is already set */}
       {activeMotorcycle ? (

@@ -55,7 +55,7 @@ export const ProductCardSkeleton: React.FC = () => {
  */
 export const ProductCatalogSkeletonGrid: React.FC<{ count?: number }> = ({ count = 6 }) => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div id="product-catalog-skeleton-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
       {Array.from({ length: count }).map((_, i) => (
         <ProductCardSkeleton key={i} />
       ))}
@@ -99,7 +99,7 @@ export const DiagramCardSkeleton: React.FC = () => {
  */
 export const DiagramCatalogSkeletonGrid: React.FC<{ count?: number }> = ({ count = 6 }) => {
   return (
-    <div className="space-y-8">
+    <div id="diagram-catalog-skeleton-grid" className="space-y-8">
       {/* Section Header Skeleton */}
       <div className="flex items-center justify-between pb-3 border-b-2 border-slate-200">
         <div className="h-7 w-48 bg-slate-200 rounded-lg animate-pulse"></div>

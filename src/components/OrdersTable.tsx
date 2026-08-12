@@ -114,7 +114,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div id="orders-table" className="space-y-6">
       {/* Top Header & Search Filter Bar */}
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="relative w-full sm:w-72">

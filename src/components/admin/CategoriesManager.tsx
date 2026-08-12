@@ -74,7 +74,7 @@ export const CategoriesManager: React.FC<CategoriesManagerProps> = ({
   });
 
   return (
-    <div className="space-y-6">
+    <div id="categories-manager" className="space-y-6">
       {/* Action & Filter Toolbar */}
       <div className="flex flex-col lg:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">

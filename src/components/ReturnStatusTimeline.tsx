@@ -82,7 +82,7 @@ export const ReturnStatusTimeline: React.FC<ReturnStatusTimelineProps> = ({ orde
     : '';
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 text-slate-900 shadow-xl space-y-6">
+    <div id="return-status-timeline" className="bg-white border border-slate-200 rounded-2xl p-6 text-slate-900 shadow-xl space-y-6">
       {/* Header Info */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-4 gap-3">
         <div>

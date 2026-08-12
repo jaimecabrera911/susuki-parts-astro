@@ -25,6 +25,7 @@ export const IdentificationGuideModal: React.FC<IdentificationGuideModalProps> =
 
   return (
     <div 
+      id="identification-guide-modal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="id-guide-modal-title"

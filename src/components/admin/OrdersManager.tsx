@@ -86,7 +86,7 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
   const deliveredCount = orders.filter(o => groupOf(o.status) === 'delivered').length;
 
   return (
-    <div className="space-y-6">
+    <div id="orders-manager" className="space-y-6">
       
       {/* Metric Cards Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

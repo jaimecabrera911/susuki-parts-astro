@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { X, ShieldCheck, CheckCircle2, Printer } from 'lucide-react';
-import type { CartItem, ActiveMotorcycle } from '../types';
-import { formatCurrency } from '../utils/formatCurrency';
-import { saveOrderApi, fetchDefaultStatusName } from '../services/api';
+import React, { useState, useEffect } from "react";
+import { X, ShieldCheck, CheckCircle2, Printer } from "lucide-react";
+import type { CartItem, ActiveMotorcycle } from "../types";
+import { formatCurrency } from "../utils/formatCurrency";
+import { saveOrderApi, fetchDefaultStatusName } from "../services/api";
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -19,9 +19,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   activeMotorcycle,
   onOrderComplete,
 }) => {
-  const [name, setName] = useState('Juan Pérez');
-  const [address, setAddress] = useState('Av. Central #450, Taller Mecánico Motos');
-  const [phone, setPhone] = useState('+57 310 982 7311');
+  const [name, setName] = useState("Juan Pérez");
+  const [address, setAddress] = useState(
+    "Av. Central #450, Taller Mecánico Motos",
+  );
+  const [phone, setPhone] = useState("+57 310 982 7311");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedOrder, setCompletedOrder] = useState<any>(null);
 
@@ -29,26 +31,29 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', handleKeyDown);
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.body.style.overflow = 'unset';
-      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = "unset";
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  const total = cartItems.reduce((acc, item) => acc + (item.part.price * item.quantity), 0);
+  const total = cartItems.reduce(
+    (acc, item) => acc + item.part.price * item.quantity,
+    0,
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     const order = {
-      id: 'SZ-ORD-' + Math.floor(100000 + Math.random() * 900000),
+      id: "SZ-ORD-" + Math.floor(100000 + Math.random() * 900000),
       date: new Date().toISOString(),
       customerName: name,
       shippingAddress: address,
@@ -56,14 +61,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       items: [...cartItems],
       totalPrice: total,
       motorcycle: activeMotorcycle,
-      guaranteeCode: 'SZ-CERT-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
-      status: (await fetchDefaultStatusName()) || 'Pendiente de pago'
+      guaranteeCode:
+        "SZ-CERT-" + Math.random().toString(36).substring(2, 8).toUpperCase(),
+      status: (await fetchDefaultStatusName()) || "Pendiente de pago",
     };
 
     try {
       await saveOrderApi(order);
     } catch (err) {
-      console.error('Error guardando orden en BD:', err);
+      console.error("Error guardando orden en BD:", err);
     }
 
     setCompletedOrder(order);
@@ -72,18 +78,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   };
 
   return (
-    <div 
+    <div
+      id="checkout-modal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="checkout-modal-title"
       onClick={onClose}
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 overflow-y-auto"
     >
-      <div 
+      <div
         onClick={(e) => e.stopPropagation()}
         className="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative border border-slate-200 my-auto"
       >
-        
         {/* Close Button */}
         <button
           type="button"
@@ -101,8 +107,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <ShieldCheck className="w-5 h-5" aria-hidden="true" />
               </div>
               <div>
-                <h3 id="checkout-modal-title" className="text-xl font-black text-slate-900">Checkout con Garantía de Ajuste OEM</h3>
-                <p className="text-xs text-slate-500">Resumen y validación final de pedido directo de bodega Suzuki</p>
+                <h3
+                  id="checkout-modal-title"
+                  className="text-xl font-black text-slate-900"
+                >
+                  Checkout con Garantía de Ajuste OEM
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Resumen y validación final de pedido directo de bodega Suzuki
+                </p>
               </div>
             </div>
 
@@ -110,9 +123,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             {activeMotorcycle && (
               <div className="bg-slate-900 text-white rounded-xl p-4 mb-6 border border-slate-800 text-xs flex justify-between items-center">
                 <div>
-                  <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block">CERTIFICADO DE COMPATIBILIDAD</span>
-                  <span className="font-black text-sm">{activeMotorcycle.brand} {activeMotorcycle.modelName} ({activeMotorcycle.year})</span>
-                  <p className="text-slate-400 mt-0.5">Versión: {activeMotorcycle.version}</p>
+                  <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block">
+                    CERTIFICADO DE COMPATIBILIDAD
+                  </span>
+                  <span className="font-black text-sm">
+                    {activeMotorcycle.brand} {activeMotorcycle.modelName} (
+                    {activeMotorcycle.year})
+                  </span>
+                  <p className="text-slate-400 mt-0.5">
+                    Versión: {activeMotorcycle.version}
+                  </p>
                 </div>
                 <div className="bg-emerald-500/10 text-emerald-300 font-mono text-[11px] px-2.5 py-1 rounded-lg border border-emerald-500/30">
                   100% OK
@@ -122,7 +142,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="checkout-name" className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                <label
+                  htmlFor="checkout-name"
+                  className="block text-xs font-bold text-slate-700 uppercase mb-1"
+                >
                   Nombre Completo / Razón Social
                 </label>
                 <input
@@ -136,7 +159,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
 
               <div>
-                <label htmlFor="checkout-address" className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                <label
+                  htmlFor="checkout-address"
+                  className="block text-xs font-bold text-slate-700 uppercase mb-1"
+                >
                   Dirección de Despacho / Taller
                 </label>
                 <input
@@ -150,7 +176,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
 
               <div>
-                <label htmlFor="checkout-phone" className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                <label
+                  htmlFor="checkout-phone"
+                  className="block text-xs font-bold text-slate-700 uppercase mb-1"
+                >
                   Teléfono Móvil de Contacto
                 </label>
                 <input
@@ -165,8 +194,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
               <div className="border-t border-slate-200 pt-4 mt-6 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] text-slate-500 font-bold uppercase block">TOTAL PAGO GARANTIZADO</span>
-                  <span className="text-lg font-mono font-black text-slate-900">{formatCurrency(total)}</span>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase block">
+                    TOTAL PAGO GARANTIZADO
+                  </span>
+                  <span className="text-lg font-mono font-black text-slate-900">
+                    {formatCurrency(total)}
+                  </span>
                 </div>
 
                 <button
@@ -190,28 +223,50 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <CheckCircle2 className="w-10 h-10" aria-hidden="true" />
             </div>
 
-            <h3 className="text-2xl font-black text-slate-900">¡Pedido Generado Exitosamente!</h3>
-            <p className="text-xs text-slate-500 mt-1">Orden de despacho registrada con sello de garantía Suzuki Repuestos Colombia.</p>
+            <h3 className="text-2xl font-black text-slate-900">
+              ¡Pedido Generado Exitosamente!
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Orden de despacho registrada con sello de garantía Suzuki
+              Repuestos Colombia.
+            </p>
 
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 my-6 text-left space-y-3">
               <div className="flex justify-between items-center text-xs border-b border-slate-200 pb-2">
-                <span className="text-slate-500 font-medium">NÚMERO DE ORDEN:</span>
-                <span className="font-mono font-extrabold text-slate-900">{completedOrder.id}</span>
+                <span className="text-slate-500 font-medium">
+                  NÚMERO DE ORDEN:
+                </span>
+                <span className="font-mono font-extrabold text-slate-900">
+                  {completedOrder.id}
+                </span>
               </div>
 
               <div className="flex justify-between items-center text-xs border-b border-slate-200 pb-2">
-                <span className="text-slate-500 font-medium">CÓDIGO DE GARANTÍA COMPATIBILIDAD:</span>
-                <span className="font-mono font-extrabold text-emerald-600">{completedOrder.guaranteeCode}</span>
+                <span className="text-slate-500 font-medium">
+                  CÓDIGO DE GARANTÍA COMPATIBILIDAD:
+                </span>
+                <span className="font-mono font-extrabold text-emerald-600">
+                  {completedOrder.guaranteeCode}
+                </span>
               </div>
 
               <div className="flex justify-between items-center text-xs border-b border-slate-200 pb-2">
-                <span className="text-slate-500 font-medium">VEHÍCULO ASOCIADO:</span>
-                <span className="font-bold text-slate-900">{completedOrder.motorcycle?.modelName} ({completedOrder.motorcycle?.year})</span>
+                <span className="text-slate-500 font-medium">
+                  VEHÍCULO ASOCIADO:
+                </span>
+                <span className="font-bold text-slate-900">
+                  {completedOrder.motorcycle?.modelName} (
+                  {completedOrder.motorcycle?.year})
+                </span>
               </div>
 
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500 font-medium">TOTAL FACTURADO:</span>
-                <span className="font-mono font-black text-slate-900 text-sm">{formatCurrency(completedOrder.totalPrice)}</span>
+                <span className="text-slate-500 font-medium">
+                  TOTAL FACTURADO:
+                </span>
+                <span className="font-mono font-black text-slate-900 text-sm">
+                  {formatCurrency(completedOrder.totalPrice)}
+                </span>
               </div>
             </div>
 
@@ -221,8 +276,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 onClick={() => window.print()}
                 className="w-full sm:w-auto px-6 py-3 min-h-[44px] bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs uppercase rounded-xl transition-colors flex items-center justify-center gap-2 border border-slate-300 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
               >
-                <Printer className="w-4 h-4 text-slate-600" aria-hidden="true" />
-                <span>Imprimir Certificado y Recibo</span>
+                <Printer
+                  className="w-4 h-4 text-slate-600"
+                  aria-hidden="true"
+                />
+                <span>Imprimir Pedidotu</span>
               </button>
 
               <button
@@ -235,7 +293,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
