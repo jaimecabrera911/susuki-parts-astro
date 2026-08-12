@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ShieldCheck, CheckCircle2, Printer } from 'lucide-react';
 import type { CartItem, ActiveMotorcycle } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
-import { saveOrderApi } from '../services/api';
+import { saveOrderApi, fetchDefaultStatusName } from '../services/api';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -57,7 +57,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       totalPrice: total,
       motorcycle: activeMotorcycle,
       guaranteeCode: 'SZ-CERT-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
-      status: 'Despachado en Bodega Central'
+      status: (await fetchDefaultStatusName()) || 'Pendiente de pago'
     };
 
     try {

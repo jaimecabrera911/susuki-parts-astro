@@ -1,7 +1,26 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Package, Plus, Trash2, Layers, AlertCircle, Image as ImageIcon, Wrench, CheckCircle2, UploadCloud, Check, Percent } from 'lucide-react';
-import type { SuzukiPart, SuzukiModel, AvailabilityStatus, TechnicalSpec, CompatibilityRule } from '../../types';
-import { SearchableModelSelect } from '../SearchableModelSelect';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  X,
+  Package,
+  Plus,
+  Trash2,
+  Layers,
+  AlertCircle,
+  Image as ImageIcon,
+  Wrench,
+  CheckCircle2,
+  UploadCloud,
+  Check,
+  Percent,
+} from "lucide-react";
+import type {
+  SuzukiPart,
+  SuzukiModel,
+  AvailabilityStatus,
+  TechnicalSpec,
+  CompatibilityRule,
+} from "../../types";
+import { SearchableModelSelect } from "../SearchableModelSelect";
 
 interface PartDrawerProps {
   isOpen: boolean;
@@ -11,13 +30,19 @@ interface PartDrawerProps {
   models: SuzukiModel[];
 }
 
-const CATEGORY_OPTIONS: { id: SuzukiPart['category']; label: string }[] = [
-  { id: 'filtros', label: 'Filtros (Aire, Aceite, Gasolina)' },
-  { id: 'frenos', label: 'Frenos (Pastillas, Discos, Guayas)' },
-  { id: 'motor', label: 'Motor (Pistones, Empaques, Bujías)' },
-  { id: 'electrico', label: 'Sistema Eléctrico (Baterías, Relés, Sensores)' },
-  { id: 'transmision', label: 'Transmisión (Cadenas, Spockets, Kit de Arrastre)' },
-  { id: 'carroceria', label: 'Carrocería & Carenaje (Espejos, Manetas, Faros)' }
+const CATEGORY_OPTIONS: { id: SuzukiPart["category"]; label: string }[] = [
+  { id: "filtros", label: "Filtros (Aire, Aceite, Gasolina)" },
+  { id: "frenos", label: "Frenos (Pastillas, Discos, Guayas)" },
+  { id: "motor", label: "Motor (Pistones, Empaques, Bujías)" },
+  { id: "electrico", label: "Sistema Eléctrico (Baterías, Relés, Sensores)" },
+  {
+    id: "transmision",
+    label: "Transmisión (Cadenas, Spockets, Kit de Arrastre)",
+  },
+  {
+    id: "carroceria",
+    label: "Carrocería & Carenaje (Espejos, Manetas, Faros)",
+  },
 ];
 
 export const PartDrawer: React.FC<PartDrawerProps> = ({
@@ -25,43 +50,46 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
   onClose,
   onSave,
   partToEdit,
-  models
+  models,
 }) => {
-  const [name, setName] = useState('');
-  const [primaryOem, setPrimaryOem] = useState('');
-  const [secondaryOems, setSecondaryOems] = useState<string>('');
-  const [category, setCategory] = useState<SuzukiPart['category']>('filtros');
+  const [name, setName] = useState("");
+  const [primaryOem, setPrimaryOem] = useState("");
+  const [secondaryOems, setSecondaryOems] = useState<string>("");
+  const [category, setCategory] = useState<SuzukiPart["category"]>("filtros");
   const [price, setPrice] = useState<number>(50000);
   const [taxable, setTaxable] = useState<boolean>(true);
   const [priceIncludesTax, setPriceIncludesTax] = useState<boolean>(false);
   const [stock, setStock] = useState<number>(10);
-  const [availability, setAvailability] = useState<AvailabilityStatus>('in_stock');
-  const [image, setImage] = useState('');
-  const [description, setDescription] = useState('');
+  const [availability, setAvailability] =
+    useState<AvailabilityStatus>("in_stock");
+  const [image, setImage] = useState("");
+  const [description, setDescription] = useState("");
 
   // Technical Specs List
   const [specs, setSpecs] = useState<TechnicalSpec[]>([]);
-  const [specLabel, setSpecLabel] = useState('');
-  const [specValue, setSpecValue] = useState('');
+  const [specLabel, setSpecLabel] = useState("");
+  const [specValue, setSpecValue] = useState("");
 
   // Compatibility Rules List
   const [compatibility, setCompatibility] = useState<CompatibilityRule[]>([]);
-  const [selectedModelId, setSelectedModelId] = useState('');
-  const [yearStart, setYearStart] = useState<number>(2018);
-  const [yearEnd, setYearEnd] = useState<number>(2024);
-  const [versionNote, setVersionNote] = useState('');
+  const [selectedModelId, setSelectedModelId] = useState("");
+  const [yearStart, setYearStart] = useState<number>();
+  const [yearEnd, setYearEnd] = useState<number>();
+  const [versionNote, setVersionNote] = useState("");
 
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const handleFileSelect = (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      setError('Por favor selecciona un archivo de imagen válido (PNG, JPG, WEBP, SVG).');
+    if (!file.type.startsWith("image/")) {
+      setError(
+        "Por favor selecciona un archivo de imagen válido (PNG, JPG, WEBP, SVG).",
+      );
       return;
     }
-    setError('');
+    setError("");
     const reader = new FileReader();
     reader.onload = (e) => {
       if (e.target?.result) {
@@ -88,46 +116,52 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
   useEffect(() => {
     if (partToEdit) {
       setName(partToEdit.name);
-      setPrimaryOem(partToEdit.oemNumbers[0] || '');
-      setSecondaryOems(partToEdit.oemNumbers.slice(1).join(', '));
+      setPrimaryOem(partToEdit.oemNumbers[0] || "");
+      setSecondaryOems(partToEdit.oemNumbers.slice(1).join(", "));
       setCategory(partToEdit.category);
       setPrice(partToEdit.price);
       setTaxable(partToEdit.taxable !== false);
       setPriceIncludesTax(partToEdit.priceIncludesTax === true);
       setStock(partToEdit.stock);
-      setAvailability(partToEdit.availability || (partToEdit.stock > 0 ? 'in_stock' : 'on_order'));
-      setImage(partToEdit.image || '');
-      setDescription(partToEdit.description || '');
+      setAvailability(
+        partToEdit.availability ||
+          (partToEdit.stock > 0 ? "in_stock" : "on_order"),
+      );
+      setImage(partToEdit.image || "");
+      setDescription(partToEdit.description || "");
       setSpecs(partToEdit.specs || []);
       setCompatibility(partToEdit.compatibility || []);
     } else {
-      setName('');
-      setPrimaryOem('');
-      setSecondaryOems('');
-      setCategory('filtros');
-      setPrice(75000);
+      setName("");
+      setPrimaryOem("");
+      setSecondaryOems("");
+      setCategory("filtros");
+      setPrice(0);
       setTaxable(true);
       setPriceIncludesTax(false);
-      setStock(15);
-      setAvailability('in_stock');
-      setImage('');
-      setDescription('');
+      setStock(0);
+      setAvailability("in_stock");
+      setImage("");
+      setDescription("");
       setSpecs([
-        { label: 'Origen', value: 'Genuine Suzuki Parts (Japan)' },
-        { label: 'Garantía', value: '12 Meses Defecto Fábrica' }
+        { label: "Origen", value: "Genuine Suzuki Parts (Japan)" },
+        { label: "Garantía", value: "12 Meses Defecto Fábrica" },
       ]);
       setCompatibility([]);
     }
-    setError('');
+    setError("");
   }, [partToEdit, isOpen]);
 
   if (!isOpen) return null;
 
   const handleAddSpec = () => {
     if (specLabel.trim() && specValue.trim()) {
-      setSpecs([...specs, { label: specLabel.trim(), value: specValue.trim() }]);
-      setSpecLabel('');
-      setSpecValue('');
+      setSpecs([
+        ...specs,
+        { label: specLabel.trim(), value: specValue.trim() },
+      ]);
+      setSpecLabel("");
+      setSpecValue("");
     }
   };
 
@@ -141,10 +175,10 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       modelId: selectedModelId,
       yearStart,
       yearEnd,
-      note: versionNote.trim() || undefined
+      note: versionNote.trim() || undefined,
     };
     setCompatibility([...compatibility, rule]);
-    setVersionNote('');
+    setVersionNote("");
   };
 
   const handleRemoveCompatibility = (index: number) => {
@@ -154,18 +188,21 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError('El nombre del repuesto es obligatorio.');
+      setError("El nombre del repuesto es obligatorio.");
       return;
     }
 
     if (!primaryOem.trim()) {
-      setError('La referencia OEM principal es obligatoria.');
+      setError("La referencia OEM principal es obligatoria.");
       return;
     }
 
     const oemNumbers = [
       primaryOem.trim(),
-      ...secondaryOems.split(',').map(s => s.trim()).filter(Boolean)
+      ...secondaryOems
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
     ];
 
     const partId = partToEdit
@@ -182,10 +219,12 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       priceIncludesTax,
       stock,
       availability,
-      image: image.trim() || 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/parts/default.jpg',
+      image:
+        image.trim() ||
+        "https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/parts/default.jpg",
       description: description.trim(),
       specs,
-      compatibility
+      compatibility,
     };
 
     onSave(newPart);
@@ -203,10 +242,12 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
             </div>
             <div>
               <h2 className="text-xl font-black text-slate-900 font-display">
-                {partToEdit ? 'Editar Repuesto OEM' : 'Nuevo Repuesto OEM'}
+                {partToEdit ? "Editar Repuesto OEM" : "Nuevo Repuesto OEM"}
               </h2>
               <p className="text-xs text-slate-500 font-mono">
-                {partToEdit ? `ID: ${partToEdit.id}` : 'Catálogo Suzuki Parts Expert'}
+                {partToEdit
+                  ? `ID: ${partToEdit.id}`
+                  : "Catálogo Suzuki Parts Expert"}
               </p>
             </div>
           </div>
@@ -219,7 +260,10 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
         </div>
 
         {/* Body Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 custom-scrollbar">
+        <form
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 custom-scrollbar"
+        >
           {error && (
             <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-[#dc2626] text-xs flex items-center gap-2 font-semibold">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -252,8 +296,10 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                 onChange={(e) => setCategory(e.target.value as any)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#E60012] focus:ring-2 focus:ring-[#E60012]/20 font-medium"
               >
-                {CATEGORY_OPTIONS.map(c => (
-                  <option key={c.id} value={c.id}>{c.label}</option>
+                {CATEGORY_OPTIONS.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -267,7 +313,9 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[11px] text-slate-500 mb-1 font-mono">OEM Principal *</label>
+                <label className="block text-[11px] text-slate-500 mb-1 font-mono">
+                  OEM Principal *
+                </label>
                 <input
                   type="text"
                   required
@@ -278,7 +326,9 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-[11px] text-slate-500 mb-1 font-mono">OEMs Secundarias (separadas por coma)</label>
+                <label className="block text-[11px] text-slate-500 mb-1 font-mono">
+                  OEMs Secundarias (separadas por coma)
+                </label>
                 <input
                   type="text"
                   value={secondaryOems}
@@ -325,7 +375,9 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
               </label>
               <select
                 value={availability}
-                onChange={(e) => setAvailability(e.target.value as AvailabilityStatus)}
+                onChange={(e) =>
+                  setAvailability(e.target.value as AvailabilityStatus)
+                }
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 font-medium"
               >
                 <option value="in_stock">Disponible (En Stock)</option>
@@ -346,8 +398,12 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
               {/* Switch 1: Taxable */}
               <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
                 <div>
-                  <span className="text-xs font-bold text-slate-900 block">¿Aplica Impuesto (IVA 19%)?</span>
-                  <span className="text-[10px] text-slate-500 block">Si está activo, genera impuesto legal</span>
+                  <span className="text-xs font-bold text-slate-900 block">
+                    ¿Aplica Impuesto (IVA 19%)?
+                  </span>
+                  <span className="text-[10px] text-slate-500 block">
+                    Si está activo, genera impuesto legal
+                  </span>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer shrink-0">
                   <input
@@ -361,13 +417,21 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
               </div>
 
               {/* Switch 2: Price Includes Tax */}
-              <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
-                !taxable ? 'opacity-50 pointer-events-none bg-slate-100 border-slate-200' : 'bg-white border-slate-200'
-              }`}>
+              <div
+                className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                  !taxable
+                    ? "opacity-50 pointer-events-none bg-slate-100 border-slate-200"
+                    : "bg-white border-slate-200"
+                }`}
+              >
                 <div>
-                  <span className="text-xs font-bold text-slate-900 block">¿El Precio YA Incluye Impuesto?</span>
+                  <span className="text-xs font-bold text-slate-900 block">
+                    ¿El Precio YA Incluye Impuesto?
+                  </span>
                   <span className="text-[10px] text-slate-500 block">
-                    {priceIncludesTax ? 'Impuesto Incluido (Fórmula /1.19)' : 'Impuesto Adicional (+19% al total)'}
+                    {priceIncludesTax
+                      ? "Impuesto Incluido (Fórmula /1.19)"
+                      : "Impuesto Adicional (+19% al total)"}
                   </span>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer shrink-0">
@@ -386,19 +450,42 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
             {/* Live Calculation Preview Card */}
             <div className="bg-slate-900 text-white p-3.5 rounded-xl text-xs font-mono grid grid-cols-3 gap-2 border border-slate-800">
               <div>
-                <span className="text-[9px] text-slate-400 uppercase font-bold block">BASE GRAVABLE:</span>
-                <span className="font-bold text-white">${taxable ? (priceIncludesTax ? Math.round(price / 1.19) : price).toLocaleString('es-CO') : price.toLocaleString('es-CO')}</span>
-              </div>
-              <div>
-                <span className="text-[9px] text-slate-400 uppercase font-bold block">IVA 19%:</span>
-                <span className="font-bold text-emerald-400">
-                  {taxable ? (priceIncludesTax ? `$${(price - Math.round(price / 1.19)).toLocaleString('es-CO')}` : `+$${Math.round(price * 0.19).toLocaleString('es-CO')}`) : '$0 (EXENTO)'}
+                <span className="text-[9px] text-slate-400 uppercase font-bold block">
+                  BASE GRAVABLE:
+                </span>
+                <span className="font-bold text-white">
+                  $
+                  {taxable
+                    ? (priceIncludesTax
+                        ? Math.round(price / 1.19)
+                        : price
+                      ).toLocaleString("es-CO")
+                    : price.toLocaleString("es-CO")}
                 </span>
               </div>
               <div>
-                <span className="text-[9px] text-slate-400 uppercase font-bold block">TOTAL CLIENTE:</span>
+                <span className="text-[9px] text-slate-400 uppercase font-bold block">
+                  IVA 19%:
+                </span>
+                <span className="font-bold text-emerald-400">
+                  {taxable
+                    ? priceIncludesTax
+                      ? `$${(price - Math.round(price / 1.19)).toLocaleString("es-CO")}`
+                      : `+$${Math.round(price * 0.19).toLocaleString("es-CO")}`
+                    : "$0 (EXENTO)"}
+                </span>
+              </div>
+              <div>
+                <span className="text-[9px] text-slate-400 uppercase font-bold block">
+                  TOTAL CLIENTE:
+                </span>
                 <span className="font-black text-amber-400">
-                  ${taxable ? (priceIncludesTax ? price.toLocaleString('es-CO') : Math.round(price * 1.19).toLocaleString('es-CO')) : price.toLocaleString('es-CO')}
+                  $
+                  {taxable
+                    ? priceIncludesTax
+                      ? price.toLocaleString("es-CO")
+                      : Math.round(price * 1.19).toLocaleString("es-CO")
+                    : price.toLocaleString("es-CO")}
                 </span>
               </div>
             </div>
@@ -424,7 +511,11 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
             {image ? (
               <div className="relative p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center gap-4">
                 <div className="w-32 h-24 rounded-xl bg-white border border-slate-200 p-2 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
-                  <img src={image} alt="Vista previa del repuesto" className="max-w-full max-h-full object-contain" />
+                  <img
+                    src={image}
+                    alt="Vista previa del repuesto"
+                    className="max-w-full max-h-full object-contain"
+                  />
                 </div>
                 <div className="flex-1 min-w-0 text-center sm:text-left">
                   <p className="text-xs font-black text-slate-900 flex items-center gap-1.5 justify-center sm:justify-start">
@@ -432,7 +523,9 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                     Imagen Adjuntada Correctamente
                   </p>
                   <p className="text-[11px] text-slate-500 font-mono mt-0.5 truncate">
-                    {image.startsWith('data:') ? 'Archivo local adjuntado (Data URL)' : image}
+                    {image.startsWith("data:")
+                      ? "Archivo local adjuntado (Data URL)"
+                      : image}
                   </p>
                   <div className="mt-2.5 flex items-center gap-2 justify-center sm:justify-start">
                     <button
@@ -444,7 +537,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setImage('')}
+                      onClick={() => setImage("")}
                       className="px-3 py-1.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -455,14 +548,17 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
               </div>
             ) : (
               <div
-                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
                 className={`cursor-pointer border-2 border-dashed rounded-2xl p-6 text-center transition-all flex flex-col items-center justify-center gap-2.5 ${
                   isDragging
-                    ? 'border-[#E60012] bg-[#E60012]/5 scale-[0.99]'
-                    : 'border-slate-300 hover:border-[#E60012] hover:bg-slate-50/80 bg-slate-50/50'
+                    ? "border-[#E60012] bg-[#E60012]/5 scale-[0.99]"
+                    : "border-slate-300 hover:border-[#E60012] hover:bg-slate-50/80 bg-slate-50/50"
                 }`}
               >
                 <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-xs text-slate-500 group-hover:text-[#E60012]">
@@ -499,8 +595,12 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
           {/* Technical Specs Builder */}
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-900 font-mono uppercase">Especificaciones Técnicas</span>
-              <span className="text-[11px] font-mono text-slate-500 font-bold">{specs.length} especificaciones</span>
+              <span className="text-xs font-bold text-slate-900 font-mono uppercase">
+                Especificaciones Técnicas
+              </span>
+              <span className="text-[11px] font-mono text-slate-500 font-bold">
+                {specs.length} especificaciones
+              </span>
             </div>
 
             <div className="flex gap-2">
@@ -529,10 +629,17 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
 
             <div className="space-y-1.5 pt-1">
               {specs.map((sp, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200 text-xs">
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200 text-xs"
+                >
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-700 font-mono uppercase text-[10px]">{sp.label}:</span>
-                    <span className="text-slate-900 font-medium">{sp.value}</span>
+                    <span className="font-bold text-slate-700 font-mono uppercase text-[10px]">
+                      {sp.label}:
+                    </span>
+                    <span className="text-slate-900 font-medium">
+                      {sp.value}
+                    </span>
                   </div>
                   <button
                     type="button"
@@ -553,7 +660,9 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                 <Layers className="w-4 h-4 text-[#059669]" />
                 <span>MATRIZ DE COMPATIBILIDAD CON MOTOS</span>
               </div>
-              <span className="text-[11px] font-mono text-slate-500 font-bold">{compatibility.length} modelos vinculados</span>
+              <span className="text-[11px] font-mono text-slate-500 font-bold">
+                {compatibility.length} modelos vinculados
+              </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 bg-white p-3 rounded-xl border border-slate-200">
@@ -568,7 +677,9 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
               </div>
 
               <div>
-                <label className="block text-[10px] font-mono font-bold text-slate-500 mb-1">Año Inicio</label>
+                <label className="block text-[10px] font-mono font-bold text-slate-500 mb-1">
+                  Año Inicio
+                </label>
                 <input
                   type="number"
                   value={yearStart}
@@ -578,7 +689,9 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
               </div>
 
               <div>
-                <label className="block text-[10px] font-mono font-bold text-slate-500 mb-1">Año Fin</label>
+                <label className="block text-[10px] font-mono font-bold text-slate-500 mb-1">
+                  Año Fin
+                </label>
                 <input
                   type="number"
                   value={yearEnd}
@@ -609,13 +722,24 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
 
             <div className="space-y-1.5 pt-1">
               {compatibility.map((c, idx) => {
-                const model = models.find(m => m.id === c.modelId);
+                const model = models.find((m) => m.id === c.modelId);
                 return (
-                  <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200 text-xs">
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200 text-xs"
+                  >
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900 font-display">{model?.name || c.modelId}</span>
-                      <span className="font-mono text-slate-500 font-bold">({c.yearStart} - {c.yearEnd})</span>
-                      {c.note && <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-mono">{c.note}</span>}
+                      <span className="font-bold text-slate-900 font-display">
+                        {model?.name || c.modelId}
+                      </span>
+                      <span className="font-mono text-slate-500 font-bold">
+                        ({c.yearStart} - {c.yearEnd})
+                      </span>
+                      {c.note && (
+                        <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-mono">
+                          {c.note}
+                        </span>
+                      )}
                     </div>
                     <button
                       type="button"
@@ -645,7 +769,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
             onClick={handleSubmit}
             className="px-6 py-2.5 rounded-xl bg-[#E60012] hover:bg-[#b5000b] text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-all"
           >
-            {partToEdit ? 'Guardar Cambios' : 'Crear Repuesto'}
+            {partToEdit ? "Guardar Cambios" : "Crear Repuesto"}
           </button>
         </div>
       </div>

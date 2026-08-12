@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Sparkles, Send, Bot, User, Wrench, ShieldCheck, RefreshCw, Eye, ShoppingBag, Package, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { X, Sparkles, Send, Bot, User, Wrench, ShieldCheck, RefreshCw, Eye, Package, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { FaCartPlus } from 'react-icons/fa6';
 import type { ActiveMotorcycle, SuzukiPart } from '../types';
 import { getPrimaryOem } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
@@ -267,7 +268,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
                                     className="flex-1 py-1.5 px-2 bg-[#E60012] hover:bg-red-700 text-white font-extrabold text-[10px] uppercase rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-xs"
                                     title="Añadir al Carrito"
                                   >
-                                    <ShoppingBag className="w-3 h-3" />
+                                    <FaCartPlus className="w-3 h-3" />
                                     <span>Añadir</span>
                                   </button>
                                 )}

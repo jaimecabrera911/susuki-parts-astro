@@ -32,7 +32,7 @@ import { BANK_DETAILS } from '../data/bankDetails';
 import { shouldShowProductImages, STORE_DEFAULT_LOCATION } from '../utils/config';
 import { ProductImageFallback } from './ProductImageFallback';
 import { LocationSelector } from './LocationSelector';
-import { saveOrderApi, fetchShippingMethods, fetchCities, fetchShippingZones } from '../services/api';
+import { saveOrderApi, fetchShippingMethods, fetchCities, fetchShippingZones, fetchDefaultStatusName, fetchDefaultCarrierName } from '../services/api';
 
 import { DEFAULT_TAX_CONFIG, INITIAL_COUPONS } from '../data/taxCouponsData';
 import { calculateCartTotals } from '../utils/taxCalculator';
@@ -258,6 +258,15 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [defaultCarrier, setDefaultCarrier] = useState<string>('');
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchDefaultCarrierName()
+      .then(name => { if (!cancelled) setDefaultCarrier(name); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -365,11 +374,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
       totalPrice: totalAmount,
       shippingCost: actualShippingCost,
       shippingMethodName: selectedShipping?.name || 'Envío Estándar',
-      shippingCarrier: selectedShipping?.carrier || 'Servientrega',
+      shippingCarrier: selectedShipping?.carrier || (await fetchDefaultCarrierName()),
       motorcycle: effectiveBike,
       guaranteeCode,
       paymentMethod: 'transferencia',
-      status: 'Pendiente de pago',
+      status: (await fetchDefaultStatusName()) || 'Pendiente de pago',
       paymentReference: orderId
     };
 
@@ -489,7 +498,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   <span>{completedOrder.shippingAddress} ({completedOrder.postalCode})</span>
                 </div>
                 <div className="text-slate-500 mt-1.5 font-mono text-[11px]">
-                  Transportadora: <strong className="text-slate-800">{completedOrder.shippingCarrier || 'Servientrega'}</strong> ({completedOrder.shippingMethodName})
+                  Transportadora: <strong className="text-slate-800">{completedOrder.shippingCarrier || defaultCarrier}</strong> ({completedOrder.shippingMethodName})
                 </div>
               </div>
             </div>

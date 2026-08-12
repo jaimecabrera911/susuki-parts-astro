@@ -14,7 +14,6 @@ import {
   Trash2, 
   Plus, 
   ChevronRight, 
-  ShoppingBag, 
   FileText, 
   Sparkles, 
   Award,
@@ -23,6 +22,7 @@ import {
   Printer,
   LogOut
 } from 'lucide-react';
+import { FaCartPlus } from 'react-icons/fa6';
 import type { UserProfile, ActiveMotorcycle, SuzukiPart, CartItem } from '../types';
 import { getAvailabilityStatus, AVAILABILITY_META, getPrimaryOem } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
@@ -648,7 +648,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                             onClick={() => onAddToCart(part)}
                             className="flex-1 py-2 bg-[#E60012] hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                           >
-                            <ShoppingBag className="w-3.5 h-3.5" />
+                            <FaCartPlus className="w-3.5 h-3.5" />
                             <span>Al Carrito</span>
                           </button>
                         </div>

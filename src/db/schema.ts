@@ -1,4 +1,4 @@
-import { pgTable, text, integer, doublePrecision, boolean, timestamp, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, doublePrecision, boolean, timestamp, jsonb, index, uniqueIndex, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { STORE_DEFAULT_LOCATION } from '../utils/config';
 
 // 1. Brands Table
@@ -36,7 +36,7 @@ export const modelYears = pgTable('model_years', {
   uniqueModelYear: uniqueIndex('idx_model_years_unique').on(table.modelId, table.year)
 }));
 
-// 3. Categories Table
+// 3. Categories Table (self-referential for subcategories)
 export const categories = pgTable('categories', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -44,19 +44,10 @@ export const categories = pgTable('categories', {
   iconName: text('icon_name'),
   description: text('description'),
   active: boolean('active').notNull().default(true),
-  order: integer('order').notNull().default(0)
-});
-
-// 4. Subcategories Table
-export const subcategories = pgTable('subcategories', {
-  id: text('id').primaryKey(),
-  categoryId: text('category_id').notNull().references(() => categories.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
-  slug: text('slug').notNull(),
-  description: text('description'),
-  active: boolean('active').notNull().default(true)
+  order: integer('order').notNull().default(0),
+  parentId: text('parent_id').references((): AnyPgColumn => categories.id, { onDelete: 'cascade' })
 }, (table) => ({
-  categoryIdx: index('idx_subcategories_category_id').on(table.categoryId)
+  parentIdx: index('idx_categories_parent_id').on(table.parentId)
 }));
 
 // 5. OEM Spare Parts Table
@@ -128,6 +119,42 @@ export const schematicApplicableModels = pgTable('schematic_applicable_models', 
 }, (table) => ({
   schematicModelIdx: index('idx_schematic_models_lookup').on(table.schematicId, table.modelId),
   uniqueSchematicModel: uniqueIndex('idx_schematic_models_unique').on(table.schematicId, table.modelId)
+}));
+
+// 6d. Schematic Sections Table (technical section options, DB-driven)
+export const schematicSections = pgTable('schematic_sections', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  order: integer('order').notNull().default(0),
+  active: boolean('active').notNull().default(true)
+}, (table) => ({
+  activeIdx: index('idx_schematic_sections_active').on(table.active)
+}));
+
+// 6e. Order Statuses Table (DB-driven catalog; color = theme key for the status badge,
+// short = concise badge label, group = aggregation bucket for counters, is_default = new-order default)
+export const orderStatuses = pgTable('order_statuses', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  color: text('color').notNull().default('slate'),
+  short: text('short'),
+  group: text('group'),
+  is_default: boolean('is_default').notNull().default(false),
+  order: integer('order').notNull().default(0),
+  active: boolean('active').notNull().default(true)
+}, (table) => ({
+  activeIdx: index('idx_order_statuses_active').on(table.active)
+}));
+
+// 6f. Shipping Carriers Table (DB-driven catalog of courier companies; is_default = fallback carrier)
+export const carriers = pgTable('carriers', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  is_default: boolean('is_default').notNull().default(false),
+  order: integer('order').notNull().default(0),
+  active: boolean('active').notNull().default(true)
+}, (table) => ({
+  activeIdx: index('idx_carriers_active').on(table.active)
 }));
 
 // 7. Customer Orders Table

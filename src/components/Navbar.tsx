@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Wrench, ShoppingBag, Sparkles, Layers, Menu, X, Package, Clock, ShieldCheck, ChevronRight, User, LogIn, LogOut, ChevronDown, Heart } from 'lucide-react';
+import { Search, Wrench, Sparkles, Layers, Menu, X, Package, Clock, ShieldCheck, ChevronRight, User, LogIn, LogOut, ChevronDown, Heart } from 'lucide-react';
+import { FaCartShopping } from 'react-icons/fa6';
 import type { ActiveMotorcycle } from '../types';
 import logoImg from '../assets/logo.png';
 
@@ -19,6 +20,7 @@ interface NavbarProps {
   onOpenAI: () => void;
   userName?: string;
   isLoggedIn?: boolean;
+  userRole?: 'customer' | 'admin';
   onOpenAuthModal?: () => void;
   onLogout?: () => void;
 }
@@ -35,6 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAI,
   userName = 'Juan Pérez',
   isLoggedIn = true,
+  userRole = 'customer',
   onOpenAuthModal,
   onLogout
 }) => {
@@ -263,13 +266,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <span>Repuestos Guardados</span>
                     </button>
 
-                    <a
-                      href="/admin"
-                      className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-sky-50 hover:text-sky-700 flex items-center gap-2 transition-colors cursor-pointer"
-                    >
-                      <ShieldCheck className="w-3.5 h-3.5 text-sky-600" />
-                      <span>Panel Admin (Marcas/Modelos)</span>
-                    </a>
+                    {isLoggedIn && userRole === 'admin' && (
+                      <a
+                        href="/admin"
+                        className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-sky-50 hover:text-sky-700 flex items-center gap-2 transition-colors cursor-pointer"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 text-sky-600" />
+                        <span>Panel Admin (Marcas/Modelos)</span>
+                      </a>
+                    )}
 
 
 
@@ -310,7 +315,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="relative w-11 h-11 flex items-center justify-center text-slate-800 hover:text-[#E60012] hover:bg-slate-50 rounded-xl transition-colors cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
               aria-label={`Ver Carrito (${cartCount} repuestos)`}
             >
-              <ShoppingBag className="w-5 h-5" aria-hidden="true" />
+              <FaCartShopping className="w-5 h-5" aria-hidden="true" />
               {cartCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#E60012] text-white text-[11px] font-black flex items-center justify-center shadow-xs">
                   {cartCount}

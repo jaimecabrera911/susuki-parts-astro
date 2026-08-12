@@ -18,13 +18,15 @@ import { OrdersModal } from './components/OrdersModal';
 
 import { UserProfilePage } from './components/UserProfilePage';
 import { AuthModal } from './components/AuthModal';
+import { AuthRequired } from './components/AuthRequired';
 import { CatalogSidebarFilter } from './components/CatalogSidebarFilter';
 import { ProductCatalogSkeletonGrid } from './components/SkeletonLoaders';
 
 import { WhatsAppWidget } from './components/WhatsAppWidget';
 import type { ActiveMotorcycle, SuzukiPart, CartItem, AvailabilityStatus, UserProfile, SuzukiModel, ExplodedDiagram, Order } from './types';
 import { getAvailabilityStatus, AVAILABILITY_META, matchesOem, getPrimaryOem } from './types';
-import { ShieldCheck, Wrench, ArrowRight, Layers, FileSearch, Sparkles, CheckCircle2, ArrowUpDown, ShoppingBag } from 'lucide-react';
+import { ShieldCheck, Wrench, ArrowRight, Layers, FileSearch, Sparkles, CheckCircle2, ArrowUpDown } from 'lucide-react';
+import { FaCartShopping } from 'react-icons/fa6';
 
 
 import { fetchOrders, saveUserApi, saveGarageApi, deleteGarageApi, fetchGarages, fetchModels, fetchParts, fetchSchematics } from './services/api';
@@ -101,6 +103,12 @@ export default function App() {
     localStorage.setItem('sz_is_logged_in', isLoggedIn ? 'true' : 'false');
   }, [isLoggedIn]);
 
+  // Mirrors isLoggedIn for use inside the URL-routing effect (registered with [])
+  const isLoggedInRef = React.useRef(isLoggedIn);
+  useEffect(() => {
+    isLoggedInRef.current = isLoggedIn;
+  }, [isLoggedIn]);
+
   // User Profile State
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
     const saved = localStorage.getItem('sz_user_profile');
@@ -128,11 +136,13 @@ export default function App() {
   const handleLoginSuccess = (user: UserProfile) => {
     setUserProfile(user);
     setIsLoggedIn(true);
+    isLoggedInRef.current = true;
     navigateToTab('account');
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
+    isLoggedInRef.current = false;
     navigateToTab('garage');
   };
 
@@ -256,12 +266,15 @@ export default function App() {
         setActiveTab('schematics');
       } else if (pathname === '/pedidos' || hash === '#pedidos' || hash === '#orders') {
         setActiveTab('orders');
+        if (!isLoggedInRef.current) setIsAuthModalOpen(true);
       } else if (pathname === '/cuenta' || pathname === '/usuario' || hash === '#cuenta' || hash === '#perfil') {
         setActiveTab('account');
+        if (!isLoggedInRef.current) setIsAuthModalOpen(true);
       } else if (pathname === '/completar-pedido' || hash === '#completar-pedido' || hash === '#checkout') {
         setActiveTab('checkout');
       } else if (pathname === '/favoritos' || hash === '#favoritos' || hash === '#favorites') {
         setActiveTab('favorites');
+        if (!isLoggedInRef.current) setIsAuthModalOpen(true);
       } else if (pathname === '/garaje' || pathname === '/' || hash === '#garaje' || hash === '#garage') {
         if (pathname === '/') {
           window.history.replaceState(null, '', '/garaje');
@@ -462,7 +475,7 @@ export default function App() {
     if (onlyCompatible && activeMotorcycle) {
       const isCompat = part.compatibility.some(c => {
         if (c.modelId !== activeMotorcycle.modelId) return false;
-        if (activeMotorcycle.year < c.yearStart || activeMotorcycle.year > c.yearEnd) return false;
+        if ((c.yearStart && activeMotorcycle.year < c.yearStart) || (c.yearEnd && activeMotorcycle.year > c.yearEnd)) return false;
         if (c.version && c.version !== activeMotorcycle.version) return false;
         return true;
       });
@@ -497,6 +510,7 @@ export default function App() {
         onOpenAI={() => setIsAIOpen(true)}
         userName={userProfile.fullName}
         isLoggedIn={isLoggedIn}
+        userRole={userProfile.role}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
       />
@@ -555,7 +569,7 @@ export default function App() {
                   if (!activeMotorcycle) return true;
                   return part.compatibility.some(c => {
                     if (c.modelId !== activeMotorcycle.modelId) return false;
-                    if (activeMotorcycle.year < c.yearStart || activeMotorcycle.year > c.yearEnd) return false;
+                    if ((c.yearStart && activeMotorcycle.year < c.yearStart) || (c.yearEnd && activeMotorcycle.year > c.yearEnd)) return false;
                     if (c.version && c.version !== activeMotorcycle.version) return false;
                     return true;
                   });
@@ -701,12 +715,19 @@ export default function App() {
         )}
 
         {/* Tab 4: Orders History */}
-        {activeTab === 'orders' && (
+        {!isLoggedIn && (activeTab === 'orders' || activeTab === 'account' || activeTab === 'favorites') && (
+          <AuthRequired
+            onLogin={() => setIsAuthModalOpen(true)}
+            onGoHome={() => navigateToTab('garage')}
+          />
+        )}
+
+        {activeTab === 'orders' && isLoggedIn && (
           <OrdersModal orders={orders} />
         )}
 
         {/* Tab 5: User Profile & Account Dashboard */}
-        {activeTab === 'account' && (
+        {activeTab === 'account' && isLoggedIn && (
           <UserProfilePage
             userProfile={userProfile}
             onUpdateProfile={handleUpdateProfile}
@@ -771,7 +792,7 @@ export default function App() {
         )}
 
         {/* Tab 8: Dedicated Favorites Page (/favoritos) */}
-        {activeTab === 'favorites' && (
+        {activeTab === 'favorites' && isLoggedIn && (
           <FavoritesPage
             favoriteParts={parts.filter(p => userProfile.favoritePartIds.includes(p.id))}
             activeMotorcycle={activeMotorcycle}
@@ -861,7 +882,7 @@ export default function App() {
         aria-label={`Abrir carrito (${cartItems.reduce((a, b) => a + b.quantity, 0)} repuestos)`}
         className="fixed right-5 top-1/2 -translate-y-1/2 z-40 w-14 h-14 flex items-center justify-center bg-[#E60012] hover:bg-[#b5000b] text-white rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#E60012]/40"
       >
-        <ShoppingBag className="w-6 h-6" aria-hidden="true" />
+        <FaCartShopping className="w-6 h-6" aria-hidden="true" />
         {cartItems.reduce((a, b) => a + b.quantity, 0) > 0 && (
           <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-white text-[#E60012] text-[11px] font-black flex items-center justify-center border border-[#E60012]/20 shadow-sm">
             {cartItems.reduce((a, b) => a + b.quantity, 0)}

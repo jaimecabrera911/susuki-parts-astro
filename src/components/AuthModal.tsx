@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ShieldCheck, Mail, Lock, User, Phone, CheckCircle2, Sparkles, LogIn, ArrowRight, Zap } from 'lucide-react';
 import type { UserProfile } from '../types';
 import { saveUserApi } from '../services/api';
+import { fetchUsers } from '../services/api';
 import { STORE_DEFAULT_LOCATION } from '../utils/config';
 
 interface AuthModalProps {
@@ -44,14 +45,39 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setIsSubmitting(true);
 
-    setTimeout(() => {
+    try {
+      // Lookup an existing account by email so roles (e.g. admin) come from the DB
+      let account: UserProfile | undefined;
+      const matches = await fetchUsers(loginEmail);
+      const exact = matches.find(
+        (u: any) => u.email?.toLowerCase() === loginEmail.trim().toLowerCase()
+      );
+      if (exact) account = exact;
+
+      const profile: UserProfile = account ?? {
+        id: 'USR-8849',
+        fullName: loginEmail.includes('juan') ? 'Juan Pérez' : loginEmail.split('@')[0],
+        email: loginEmail,
+        phone: '+57 310 982 7311',
+        documentId: '1.098.472.910',
+        city: STORE_DEFAULT_LOCATION.city,
+        address: 'Av. Central #450, Taller Mecánico Motos',
+        postalCode: '110111',
+        favoritePartIds: ['suzuki-gsxr-1000-air-filter', 'suzuki-gixxer-150-brake-pads'],
+        createdAt: 'Marzo 2024'
+      };
+
       setIsSubmitting(false);
-      // Demo successful login
+      onLoginSuccess(profile);
+      onClose();
+    } catch (err) {
+      console.error('Error validando cuenta en BD:', err);
+      setIsSubmitting(false);
       const demoUser: UserProfile = {
         id: 'USR-8849',
         fullName: loginEmail.includes('juan') ? 'Juan Pérez' : loginEmail.split('@')[0],
@@ -66,7 +92,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       };
       onLoginSuccess(demoUser);
       onClose();
-    }, 800);
+    }
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {

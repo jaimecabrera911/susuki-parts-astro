@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
-import { seedGeography, seedShipping } from '../../db/writers';
+import { seedGeography, seedShipping, seedSchematicSections, seedOrderStatuses, seedCarriers } from '../../db/writers';
 
 export const POST: APIRoute = async () => {
   try {
@@ -12,7 +12,14 @@ export const POST: APIRoute = async () => {
     // 2. Shipping zones + methods (with normalized mappings) in 3NF
     await seedShipping(db);
 
-    return new Response(JSON.stringify({ success: true, message: 'Países, departamentos, ciudades (3NF), zonas y métodos de envío (3NF) sembrados. Los catálogos (marcas, modelos, repuestos, diagramas) se gestionan desde el Panel Admin.' }), {
+    // 3. Schematic sections catalog
+    await seedSchematicSections(db);
+
+    // 4. Order statuses + carriers catalogs
+    await seedOrderStatuses(db);
+    await seedCarriers(db);
+
+    return new Response(JSON.stringify({ success: true, message: 'Países, departamentos, ciudades (3NF), zonas y métodos de envío (3NF), secciones de despiece, estados de pedido y transportadoras sembrados. Los catálogos (marcas, modelos, repuestos, diagramas) se gestionan desde el Panel Admin.' }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });

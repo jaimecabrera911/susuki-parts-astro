@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Heart, Search, ArrowRight, Trash2, ShoppingBag, ShieldCheck } from 'lucide-react';
+import { Heart, Search, ArrowRight, Trash2, ShieldCheck } from 'lucide-react';
 import { ProductCard } from './ProductCard';
 import type { SuzukiPart, ActiveMotorcycle } from '../types';
 

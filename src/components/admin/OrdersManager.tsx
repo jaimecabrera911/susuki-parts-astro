@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Search, Filter, Eye, Edit, Truck, CheckCircle2, Clock, Package, AlertCircle, FileText, ChevronDown } from 'lucide-react';
 import type { Order, OrderStatus } from '../../types';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { fetchOrderStatuses } from '../../services/api';
 
 interface OrdersManagerProps {
   orders: Order[];
@@ -10,15 +11,24 @@ interface OrdersManagerProps {
   onViewOrder: (order: Order) => void;
 }
 
-const STATUS_FILTERS: Array<{ id: string; label: string }> = [
-  { id: 'all', label: 'Todos los Pedidos' },
-  { id: 'Pendiente de pago', label: 'Pendiente de Pago' },
-  { id: 'Pago confirmado', label: 'Pago Confirmado' },
-  { id: 'Despachado en Bodega Central', label: 'Despachado' },
-  { id: 'En tránsito', label: 'En Tránsito' },
-  { id: 'Entregado', label: 'Entregados' },
-  { id: 'Cancelado', label: 'Cancelados' }
-];
+interface StatusRow {
+  id: string;
+  name: string;
+  color: string;
+  short?: string;
+  group?: string;
+  is_default?: boolean;
+}
+
+const STATUS_THEMES: Record<string, string> = {
+  amber: 'bg-amber-50 text-amber-700 border-amber-200',
+  blue: 'bg-blue-50 text-[#0A3088] border-blue-200',
+  purple: 'bg-purple-50 text-purple-700 border-purple-200',
+  indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  red: 'bg-red-50 text-red-700 border-red-200',
+  slate: 'bg-slate-100 text-slate-700 border-slate-200'
+};
 
 export const OrdersManager: React.FC<OrdersManagerProps> = ({
   orders,
@@ -26,8 +36,25 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
   onEditOrder,
   onViewOrder
 }) => {
+  const [statusRows, setStatusRows] = useState<StatusRow[]>([]);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
   const [localSearch, setLocalSearch] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchOrderStatuses()
+      .then(rows => { if (!cancelled) setStatusRows(rows as StatusRow[]); })
+      .catch(() => { if (!cancelled) setStatusRows([]); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const statusFilters: Array<{ id: string; label: string }> = [
+    { id: 'all', label: 'Todos los Pedidos' },
+    ...statusRows.map(s => ({ id: s.name, label: s.short || s.name }))
+  ];
+
+  const groupOf = (name: string): string | undefined =>
+    statusRows.find(s => s.name === name)?.group;
 
   const activeQuery = (searchQuery || localSearch).trim().toLowerCase();
 
@@ -47,28 +74,16 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
   });
 
   const getStatusBadge = (st: OrderStatus) => {
-    switch (st) {
-      case 'Pendiente de pago':
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-amber-50 text-amber-700 border border-amber-200">Pendiente</span>;
-      case 'Pago confirmado':
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-blue-50 text-[#0A3088] border border-blue-200">Confirmado</span>;
-      case 'Despachado en Bodega Central':
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-purple-50 text-purple-700 border border-purple-200">Despachado</span>;
-      case 'En tránsito':
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">En Tránsito</span>;
-      case 'Entregado':
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Entregado</span>;
-      case 'Cancelado':
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-red-50 text-red-700 border border-red-200">Cancelado</span>;
-      default:
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-slate-100 text-slate-700 border border-slate-200">{st}</span>;
-    }
+    const found = statusRows.find(s => s.name === st);
+    const label = found?.short || st;
+    const theme = STATUS_THEMES[found?.color || 'slate'] || STATUS_THEMES.slate;
+    return <span className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-bold border ${theme}`}>{label}</span>;
   };
 
   const totalRevenue = orders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
-  const pendingCount = orders.filter(o => o.status === 'Pendiente de pago').length;
-  const inTransitCount = orders.filter(o => o.status === 'En tránsito' || o.status === 'Despachado en Bodega Central').length;
-  const deliveredCount = orders.filter(o => o.status === 'Entregado').length;
+  const pendingCount = orders.filter(o => groupOf(o.status) === 'pending').length;
+  const inTransitCount = orders.filter(o => groupOf(o.status) === 'in_transit').length;
+  const deliveredCount = orders.filter(o => groupOf(o.status) === 'delivered').length;
 
   return (
     <div className="space-y-6">
@@ -122,7 +137,7 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
           
           {/* Status Filters Pill Bar */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full custom-scrollbar">
-            {STATUS_FILTERS.map(filter => (
+            {statusFilters.map(filter => (
               <button
                 key={filter.id}
                 onClick={() => setSelectedStatusFilter(filter.id)}

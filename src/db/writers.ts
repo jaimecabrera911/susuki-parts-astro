@@ -2,7 +2,8 @@ import type { AppDb } from './client';
 import {
   models, modelYears,
   parts, partOemNumbers, partCompatibilities,
-  schematics, schematicHotspots, schematicApplicableModels,
+  schematics, schematicHotspots, schematicApplicableModels, schematicSections,
+  orderStatuses, carriers,
   orders, orderItems,
   users, userFavorites,
   shippingMethods, shippingZones, shippingZoneStates, shippingMethodZoneRates,
@@ -212,7 +213,7 @@ export async function upsertOrder(db: AppDb, body: any) {
     motorcycle: body.motorcycle || null,
     guaranteeCode: body.guaranteeCode || `SZ-GAR-${Math.floor(1000 + Math.random() * 9000)}-PENDING`,
     paymentMethod: body.paymentMethod || 'transferencia',
-    status: body.status || 'Pendiente de pago',
+    status: body.status || (await getDefaultStatusName(db)) || 'Pendiente de pago',
     paymentReference: body.paymentReference || id,
     trackingNumber: body.trackingNumber || null,
     shippingCarrier: body.shippingCarrier || null,
@@ -294,7 +295,7 @@ export async function upsertShippingMethod(db: AppDb, body: any) {
   const data = {
     id,
     name: body.name,
-    carrier: body.carrier || 'Servientrega',
+    carrier: body.carrier || (await getDefaultCarrierName(db)) || 'Servientrega',
     description: body.description || '',
     price: Number(body.price || 0),
     estimatedDays: Number(body.estimatedDays || 3),
@@ -439,6 +440,113 @@ export async function seedShipping(db: AppDb) {
     await upsertShippingMethod(db, sm);
   }
   return { zones: DEFAULT_SHIPPING_ZONES.length, methods: DEFAULT_SHIPPING_METHODS.length };
+}
+
+export const DEFAULT_SCHEMATIC_SECTIONS = [
+  { name: 'Motor', order: 1 },
+  { name: 'Frenos', order: 2 },
+  { name: 'Admisión y Combustible', order: 3 },
+  { name: 'Transmisión y Kit de Arrastre', order: 4 },
+  { name: 'Sistema de Refrigeración', order: 5 },
+  { name: 'Chasis y Eléctrico', order: 6 },
+  { name: 'Sistema de Escape', order: 7 },
+  { name: 'Controles y Pedales', order: 8 },
+  { name: 'Tablero e Instrumentos', order: 9 }
+];
+
+export async function upsertSchematicSection(db: AppDb, body: any) {
+  const id = body.id || `sec-${body.name.toLowerCase().replace(/\s+/g, '-')}`;
+  const data = {
+    id,
+    name: body.name,
+    order: body.order ?? 0,
+    active: body.active !== undefined ? Boolean(body.active) : true
+  };
+  await db.insert(schematicSections).values(data).onConflictDoUpdate({ target: schematicSections.id, set: data });
+  return data;
+}
+
+export async function seedSchematicSections(db: AppDb) {
+  for (const s of DEFAULT_SCHEMATIC_SECTIONS) {
+    await upsertSchematicSection(db, s);
+  }
+  return { sections: DEFAULT_SCHEMATIC_SECTIONS.length };
+}
+
+export const DEFAULT_ORDER_STATUSES = [
+  { id: 'status-pending-payment', name: 'Pendiente de pago', color: 'amber', short: 'Pendiente', group: 'pending', is_default: true, order: 1 },
+  { id: 'status-payment-confirmed', name: 'Pago confirmado', color: 'blue', short: 'Confirmado', group: 'paid', is_default: false, order: 2 },
+  { id: 'status-shipped-warehouse', name: 'Despachado en Bodega Central', color: 'purple', short: 'Despachado', group: 'in_transit', is_default: false, order: 3 },
+  { id: 'status-in-transit', name: 'En tránsito', color: 'indigo', short: 'En Tránsito', group: 'in_transit', is_default: false, order: 4 },
+  { id: 'status-delivered', name: 'Entregado', color: 'emerald', short: 'Entregado', group: 'delivered', is_default: false, order: 5 },
+  { id: 'status-cancelled', name: 'Cancelado', color: 'red', short: 'Cancelado', group: 'cancelled', is_default: false, order: 6 }
+];
+
+export const DEFAULT_CARRIERS = [
+  { id: 'carrier-servientrega', name: 'Servientrega', is_default: true, order: 1 },
+  { id: 'carrier-deprisa', name: 'Deprisa', is_default: false, order: 2 },
+  { id: 'carrier-encoexpress', name: 'Encoexpress', is_default: false, order: 3 },
+  { id: 'carrier-interrapidismo', name: 'Interrapidísimo', is_default: false, order: 4 },
+  { id: 'carrier-coordinadora', name: 'Coordinadora', is_default: false, order: 5 },
+  { id: 'carrier-envia-colvanes', name: 'Envía Colvanes', is_default: false, order: 6 },
+  { id: 'carrier-inter-rapidismo', name: 'Inter Rapidísimo', is_default: false, order: 7 },
+  { id: 'carrier-envia', name: 'Envía', is_default: false, order: 8 },
+  { id: 'carrier-tcc', name: 'TCC', is_default: false, order: 9 },
+  { id: 'carrier-retiro-tienda', name: 'Retiro en tienda', is_default: false, order: 10 },
+  { id: 'carrier-otro', name: 'Otro / Transportadora local', is_default: false, order: 11 }
+];
+
+export async function getDefaultStatusName(db: AppDb) {
+  const rows = await db.select().from(orderStatuses).where(eq(orderStatuses.is_default, true)).limit(1);
+  return rows[0]?.name || null;
+}
+
+export async function getDefaultCarrierName(db: AppDb) {
+  const rows = await db.select().from(carriers).where(eq(carriers.is_default, true)).limit(1);
+  return rows[0]?.name || null;
+}
+
+export async function upsertOrderStatus(db: AppDb, body: any) {
+  const id = body.id || `status-${body.name.toLowerCase().replace(/\s+/g, '-')}`;
+  const data = {
+    id,
+    name: body.name,
+    color: body.color || 'slate',
+    short: body.short || null,
+    group: body.group || null,
+    is_default: body.is_default !== undefined ? Boolean(body.is_default) : false,
+    order: body.order ?? 0,
+    active: body.active !== undefined ? Boolean(body.active) : true
+  };
+  await db.insert(orderStatuses).values(data).onConflictDoUpdate({ target: orderStatuses.id, set: data });
+  return data;
+}
+
+export async function upsertCarrier(db: AppDb, body: any) {
+  const id = body.id || `carrier-${body.name.toLowerCase().replace(/\s+/g, '-')}`;
+  const data = {
+    id,
+    name: body.name,
+    is_default: body.is_default !== undefined ? Boolean(body.is_default) : false,
+    order: body.order ?? 0,
+    active: body.active !== undefined ? Boolean(body.active) : true
+  };
+  await db.insert(carriers).values(data).onConflictDoUpdate({ target: carriers.id, set: data });
+  return data;
+}
+
+export async function seedOrderStatuses(db: AppDb) {
+  for (const s of DEFAULT_ORDER_STATUSES) {
+    await upsertOrderStatus(db, s);
+  }
+  return { statuses: DEFAULT_ORDER_STATUSES.length };
+}
+
+export async function seedCarriers(db: AppDb) {
+  for (const c of DEFAULT_CARRIERS) {
+    await upsertCarrier(db, c);
+  }
+  return { carriers: DEFAULT_CARRIERS.length };
 }
 
 export async function seedGeography(db: AppDb) {

@@ -1,14 +1,34 @@
-import React, { useState } from 'react';
-import { X, CheckCircle2, AlertTriangle, ShieldCheck, ArrowRight, ShoppingBag, Wrench, Factory, FileText, Maximize2, Copy, Check, Info, ChevronDown, ChevronUp, Package, HelpCircle } from 'lucide-react';
-import { FaMotorcycle } from 'react-icons/fa';
-import type { SuzukiPart, ActiveMotorcycle, ExplodedDiagram, SuzukiModel } from '../types';
-import { getPrimaryOem } from '../types';
-import { formatCurrency } from '../utils/formatCurrency';
-import { getProductWhatsAppUrl } from '../utils/whatsapp';
-import { shouldShowProductImages } from '../utils/config';
-import { ProductImageFallback } from './ProductImageFallback';
+import React, { useState } from "react";
+import {
+  X,
+  CheckCircle2,
+  AlertTriangle,
+  ShieldCheck,
+  Wrench,
+  Factory,
+  FileText,
+  Maximize2,
+  Copy,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Package,
+} from "lucide-react";
+import { FaMotorcycle } from "react-icons/fa";
+import { FaCartPlus } from "react-icons/fa6";
+import type {
+  SuzukiPart,
+  ActiveMotorcycle,
+  ExplodedDiagram,
+  SuzukiModel,
+} from "../types";
+import { formatCurrency } from "../utils/formatCurrency";
+import { getProductWhatsAppUrl } from "../utils/whatsapp";
+import { shouldShowProductImages } from "../utils/config";
+import { ProductImageFallback } from "./ProductImageFallback";
+import { IoChatbubbleEllipses } from "react-icons/io5";
 
-import { ProductImageGallery } from './ProductImageGallery';
+import { ProductImageGallery } from "./ProductImageGallery";
 
 interface ProductDetailModalProps {
   part: SuzukiPart | null;
@@ -51,13 +71,13 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   React.useEffect(() => {
     if (!part) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', handleKeyDown);
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.body.style.overflow = 'unset';
-      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = "unset";
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [part, onClose]);
 
@@ -68,9 +88,13 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   let compatibilityRule = null;
 
   if (activeMotorcycle) {
-    compatibilityRule = part.compatibility.find(c => {
+    compatibilityRule = part.compatibility.find((c) => {
       if (c.modelId !== activeMotorcycle.modelId) return false;
-      if (activeMotorcycle.year < c.yearStart || activeMotorcycle.year > c.yearEnd) return false;
+      if (
+        (c.yearStart && activeMotorcycle.year < c.yearStart) ||
+        (c.yearEnd && activeMotorcycle.year > c.yearEnd)
+      )
+        return false;
       if (c.version && c.version !== activeMotorcycle.version) return false;
       return true;
     });
@@ -78,10 +102,17 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   }
 
   // Calculate strictly compatible related parts
-  const isPartCompatibleWithMoto = (p: SuzukiPart, moto: ActiveMotorcycle): boolean => {
-    return p.compatibility.some(c => {
+  const isPartCompatibleWithMoto = (
+    p: SuzukiPart,
+    moto: ActiveMotorcycle,
+  ): boolean => {
+    return p.compatibility.some((c) => {
       if (c.modelId !== moto.modelId) return false;
-      if (moto.year < c.yearStart || moto.year > c.yearEnd) return false;
+      if (
+        (c.yearStart && moto.year < c.yearStart) ||
+        (c.yearEnd && moto.year > c.yearEnd)
+      )
+        return false;
       if (c.version && c.version !== moto.version) return false;
       return true;
     });
@@ -91,29 +122,30 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   if (activeMotorcycle) {
     // STRICT RULE: ONLY parts compatible with activeMotorcycle
     relatedParts = allParts.filter(
-      p => p.id !== part.id && isPartCompatibleWithMoto(p, activeMotorcycle)
+      (p) => p.id !== part.id && isPartCompatibleWithMoto(p, activeMotorcycle),
     );
   } else {
     // If no active motorcycle, parts sharing compatibility models
-    const currentModelIds = new Set(part.compatibility.map(c => c.modelId));
+    const currentModelIds = new Set(part.compatibility.map((c) => c.modelId));
     relatedParts = allParts.filter(
-      p => p.id !== part.id && p.compatibility.some(c => currentModelIds.has(c.modelId))
+      (p) =>
+        p.id !== part.id &&
+        p.compatibility.some((c) => currentModelIds.has(c.modelId)),
     );
   }
 
   return (
-    <div 
+    <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="product-detail-modal-title"
       onClick={onClose}
       className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 sm:p-6 overflow-y-auto"
     >
-      <div 
+      <div
         onClick={(e) => e.stopPropagation()}
         className="bg-white rounded-2xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl relative border border-slate-200 my-auto"
       >
-        
         {/* Header Action Controls */}
         <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
           {onOpenAsPage && (
@@ -127,7 +159,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               className="p-1.5 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-colors border border-slate-200/80 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
               title="Abrir en vista dedicada de página completa"
             >
-              <Maximize2 className="w-3.5 h-3.5 text-[#E60012]" aria-hidden="true" />
+              <Maximize2
+                className="w-3.5 h-3.5 text-[#E60012]"
+                aria-hidden="true"
+              />
               <span className="hidden sm:inline">Página Completa</span>
             </button>
           )}
@@ -143,49 +178,75 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         </div>
 
         {/* Top Compatibility Seal */}
-        <div className={`p-4 rounded-xl mb-6 flex items-start gap-3 border ${
-          activeMotorcycle
-            ? isCompatible
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-              : 'bg-red-50 border-red-200 text-red-900'
-            : 'bg-amber-50 border-amber-200 text-amber-900'
-        }`}>
+        <div
+          className={`p-4 rounded-xl mb-6 flex items-start gap-3 border ${
+            activeMotorcycle
+              ? isCompatible
+                ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                : "bg-red-50 border-red-200 text-red-900"
+              : "bg-amber-50 border-amber-200 text-amber-900"
+          }`}
+        >
           {activeMotorcycle ? (
             isCompatible ? (
               <>
-                <ShieldCheck className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
+                <ShieldCheck
+                  className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5"
+                  aria-hidden="true"
+                />
                 <div>
                   <h4 className="font-extrabold text-sm uppercase text-emerald-900">
                     COMPATIBILIDAD 100% GARANTIZADA
                   </h4>
                   <p className="text-xs text-emerald-800 mt-0.5">
-                    Esta pieza con código OEM <span className="font-mono font-bold">{part.oemNumbers[0]}</span> es exactamente la especificada de fábrica para tu <span className="font-bold">{activeMotorcycle.brand} {activeMotorcycle.modelName} ({activeMotorcycle.year})</span>.
+                    Esta pieza con código OEM{" "}
+                    <span className="font-mono font-bold">
+                      {part.oemNumbers[0]}
+                    </span>{" "}
+                    es exactamente la especificada de fábrica para tu{" "}
+                    <span className="font-bold">
+                      {activeMotorcycle.brand} {activeMotorcycle.modelName} (
+                      {activeMotorcycle.year})
+                    </span>
+                    .
                   </p>
                 </div>
               </>
             ) : (
               <>
-                <AlertTriangle className="w-6 h-6 text-[#E60012] shrink-0 mt-0.5" aria-hidden="true" />
+                <AlertTriangle
+                  className="w-6 h-6 text-[#E60012] shrink-0 mt-0.5"
+                  aria-hidden="true"
+                />
                 <div>
                   <h4 className="font-extrabold text-sm uppercase text-[#E60012]">
                     ALERTA DE INCOMPATIBILIDAD TÉCNICA
                   </h4>
                   <p className="text-xs text-red-900 mt-0.5 font-medium">
-                    Este repuesto NO es compatible con tu vehículo activo (<span className="font-bold">{activeMotorcycle.modelName} {activeMotorcycle.year}</span>). Evita selecciones erróneas cambiando la moto en tu Garaje.
+                    Este repuesto NO es compatible con tu vehículo activo (
+                    <span className="font-bold">
+                      {activeMotorcycle.modelName} {activeMotorcycle.year}
+                    </span>
+                    ). Evita selecciones erróneas cambiando la moto en tu
+                    Garaje.
                   </p>
                 </div>
               </>
             )
           ) : (
             <>
-              <Wrench className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
+              <Wrench
+                className="w-6 h-6 text-amber-600 shrink-0 mt-0.5"
+                aria-hidden="true"
+              />
               <div className="flex items-center justify-between w-full">
                 <div>
                   <h4 className="font-extrabold text-sm uppercase text-amber-900">
                     MOTOCICLETA NO SELECCIONADA
                   </h4>
                   <p className="text-xs text-amber-800 mt-0.5">
-                    Selecciona tu modelo y año antes de proceder con el pedido para verificar tolerancias exactas.
+                    Selecciona tu modelo y año antes de proceder con el pedido
+                    para verificar tolerancias exactas.
                   </p>
                 </div>
                 <button
@@ -202,7 +263,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
         {/* Content Layout */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
           {/* Left Column: Interactive Image Gallery & Schematic link */}
           <div className="space-y-3">
             <ProductImageGallery
@@ -218,7 +278,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-xl">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Factory className="w-4 h-4 text-slate-500" aria-hidden="true" />
+                  <Factory
+                    className="w-4 h-4 text-slate-500"
+                    aria-hidden="true"
+                  />
                   <span className="text-[10px] uppercase font-extrabold tracking-wider text-slate-600">
                     Referencias OEM & Cross-Reference
                   </span>
@@ -229,13 +292,18 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     onClick={() => setShowAllOems(!showAllOems)}
                     className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-slate-200 hover:bg-slate-100 rounded-md text-[10px] font-bold text-slate-600 transition-colors"
                   >
-                    {showAllOems ? 'Ver solo principal' : `Ver las ${part.oemNumbers.length} refs (Cross-Ref)`}
+                    {showAllOems
+                      ? "Ver solo principal"
+                      : `Ver las ${part.oemNumbers.length} refs (Cross-Ref)`}
                   </button>
                 )}
               </div>
 
               <ul className="space-y-2">
-                {(showAllOems ? part.oemNumbers : part.oemNumbers.slice(0, 1)).map((oem, idx) => {
+                {(showAllOems
+                  ? part.oemNumbers
+                  : part.oemNumbers.slice(0, 1)
+                ).map((oem, idx) => {
                   const isPrimary = idx === 0;
                   const isCopied = copiedOem === oem;
                   return (
@@ -243,8 +311,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       key={oem}
                       className={`p-2.5 rounded-xl border transition-colors flex items-center justify-between gap-3 ${
                         isPrimary
-                          ? 'bg-emerald-50/80 border-emerald-200'
-                          : 'bg-slate-50 border-slate-200'
+                          ? "bg-emerald-50/80 border-emerald-200"
+                          : "bg-slate-50 border-slate-200"
                       }`}
                     >
                       <div className="min-w-0 flex-1 space-y-1">
@@ -258,7 +326,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                               Principal Suzuki
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 border border-blue-200 text-[#0A3088] text-[10px] font-bold uppercase tracking-wider rounded-md shrink-0" title="Referencia equivalente o número de parte descontinuado que fue reemplazado por la referencia principal">
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 border border-blue-200 text-[#0A3088] text-[10px] font-bold uppercase tracking-wider rounded-md shrink-0"
+                              title="Referencia equivalente o número de parte descontinuado que fue reemplazado por la referencia principal"
+                            >
                               Cross-Ref (Reemplazada)
                             </span>
                           )}
@@ -272,8 +343,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                         title="Copiar referencia al portapapeles"
                         className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
                           isCopied
-                            ? 'bg-emerald-600 text-white shadow-xs'
-                            : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs'
+                            ? "bg-emerald-600 text-white shadow-xs"
+                            : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs"
                         }`}
                       >
                         {isCopied ? (
@@ -309,8 +380,14 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       </>
                     ) : (
                       <>
-                        <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />
-                        Ver {part.oemNumbers.length - 1} {part.oemNumbers.length - 1 === 1 ? 'referencia alternativa' : 'referencias alternativas'}
+                        <ChevronDown
+                          className="w-3.5 h-3.5"
+                          aria-hidden="true"
+                        />
+                        Ver {part.oemNumbers.length - 1}{" "}
+                        {part.oemNumbers.length - 1 === 1
+                          ? "referencia alternativa"
+                          : "referencias alternativas"}
                       </>
                     )}
                   </button>
@@ -322,10 +399,19 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           {/* Right Column: Technical Specs & Description */}
           <div className="space-y-4">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">{part.category}</span>
-              <h2 id="product-detail-modal-title" className="text-xl font-black text-slate-900 mt-0.5">{part.name}</h2>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
+                {part.category}
+              </span>
+              <h2
+                id="product-detail-modal-title"
+                className="text-xl font-black text-slate-900 mt-0.5"
+              >
+                {part.name}
+              </h2>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <div className="text-xl sm:text-2xl font-mono font-black text-[#E60012] whitespace-nowrap">{formatCurrency(part.price)}</div>
+                <div className="text-xl sm:text-2xl font-mono font-black text-[#E60012] whitespace-nowrap">
+                  {formatCurrency(part.price)}
+                </div>
                 {part.taxable !== false ? (
                   part.priceIncludesTax ? (
                     <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded">
@@ -351,14 +437,24 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             {/* Spec Sheet Table */}
             <div>
               <h4 className="text-xs font-extrabold uppercase text-slate-900 mb-2 flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-[#E60012]" aria-hidden="true" />
+                <FileText
+                  className="w-3.5 h-3.5 text-[#E60012]"
+                  aria-hidden="true"
+                />
                 Especificaciones Técnicas
               </h4>
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5 text-xs">
                 {part.specs.map((s, idx) => (
-                  <div key={idx} className="flex justify-between border-b border-slate-200/60 pb-1 last:border-none">
-                    <span className="text-slate-500 font-medium">{s.label}:</span>
-                    <span className="font-mono font-bold text-slate-800">{s.value}</span>
+                  <div
+                    key={idx}
+                    className="flex justify-between border-b border-slate-200/60 pb-1 last:border-none"
+                  >
+                    <span className="text-slate-500 font-medium">
+                      {s.label}:
+                    </span>
+                    <span className="font-mono font-bold text-slate-800">
+                      {s.value}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -367,20 +463,25 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             {/* Applicability Range Badges / Table */}
             <div>
               <h4 className="text-xs font-extrabold uppercase text-slate-900 mb-2 flex items-center gap-1.5">
-                <FaMotorcycle className="w-3.5 h-3.5 text-[#E60012]" aria-hidden="true" />
+                <FaMotorcycle
+                  className="w-3.5 h-3.5 text-[#E60012]"
+                  aria-hidden="true"
+                />
                 Vehículos Asociados & Compatibilidad
               </h4>
               <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
                 {part.compatibility.map((c, idx) => {
-                  const modelObj = models.find(m => m.id === c.modelId);
-                  const isMatch = activeMotorcycle ? activeMotorcycle.modelId === c.modelId : false;
+                  const modelObj = models.find((m) => m.id === c.modelId);
+                  const isMatch = activeMotorcycle
+                    ? activeMotorcycle.modelId === c.modelId
+                    : false;
                   return (
                     <div
                       key={idx}
                       className={`p-2.5 rounded-xl text-xs flex justify-between items-center border transition-colors ${
                         isMatch
-                          ? 'bg-emerald-50 border-emerald-300 text-emerald-950 ring-1 ring-emerald-400/20'
-                          : 'bg-slate-50 border-slate-200 text-slate-800'
+                          ? "bg-emerald-50 border-emerald-300 text-emerald-950 ring-1 ring-emerald-400/20"
+                          : "bg-slate-50 border-slate-200 text-slate-800"
                       }`}
                     >
                       <div>
@@ -393,7 +494,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                           )}
                         </div>
                         {c.version && (
-                          <div className="text-[10px] text-slate-500 font-medium">{c.version}</div>
+                          <div className="text-[10px] text-slate-500 font-medium">
+                            {c.version}
+                          </div>
                         )}
                       </div>
                       <div className="text-right shrink-0">
@@ -406,9 +509,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 })}
               </div>
             </div>
-
           </div>
-
         </div>
 
         {/* Related Products Section (Strictly Compatible with Active Motorcycle) */}
@@ -416,19 +517,22 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" aria-hidden="true" />
+                <ShieldCheck
+                  className="w-4 h-4 text-emerald-600"
+                  aria-hidden="true"
+                />
                 Repuestos Relacionados Garantizados
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
                 {activeMotorcycle ? (
                   <>
-                    Mostrando únicamente repuestos 100% compatibles con tu{' '}
+                    Mostrando únicamente repuestos 100% compatibles con tu{" "}
                     <span className="font-bold text-slate-800">
                       {activeMotorcycle.modelName} ({activeMotorcycle.year})
                     </span>
                   </>
                 ) : (
-                  'Selecciona una motocicleta en tu garaje para verificar compatibilidad exacta.'
+                  "Selecciona una motocicleta en tu garaje para verificar compatibilidad exacta."
                 )}
               </p>
             </div>
@@ -436,7 +540,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
           {relatedParts.length === 0 ? (
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center text-xs text-slate-500">
-              No hay otros repuestos registrados para este modelo en este momento.
+              No hay otros repuestos registrados para este modelo en este
+              momento.
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -452,7 +557,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       </span>
                       {activeMotorcycle && (
                         <span className="text-[9px] font-extrabold text-emerald-600 flex items-center gap-0.5">
-                          <CheckCircle2 className="w-3 h-3" aria-hidden="true" /> Compatible
+                          <CheckCircle2
+                            className="w-3 h-3"
+                            aria-hidden="true"
+                          />{" "}
+                          Compatible
                         </span>
                       )}
                     </div>
@@ -465,7 +574,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                           className="w-10 h-10 object-cover rounded-lg bg-slate-200 shrink-0"
                         />
                       ) : (
-                        <ProductImageFallback part={relPart} size="sm" className="w-10 h-10 shrink-0" />
+                        <ProductImageFallback
+                          part={relPart}
+                          size="sm"
+                          className="w-10 h-10 shrink-0"
+                        />
                       )}
 
                       <h4 className="text-xs font-bold text-slate-900 line-clamp-2 leading-tight">
@@ -480,7 +593,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <div className="flex items-center gap-2 pt-2 border-t border-slate-200/80">
                     <button
                       type="button"
-                      onClick={() => onSelectRelatedPart && onSelectRelatedPart(relPart)}
+                      onClick={() =>
+                        onSelectRelatedPart && onSelectRelatedPart(relPart)
+                      }
                       className="flex-1 py-2 px-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[10px] uppercase rounded-lg transition-colors text-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
                     >
                       Ver Detalle
@@ -492,8 +607,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       title="Añadir al carrito"
                       aria-label={`Añadir ${relPart.name} al carrito`}
                     >
-                      <ShoppingBag className="w-3 h-3" aria-hidden="true" />
-                      <span>+Carrito</span>
+                      <FaCartPlus className="w-3 h-3" aria-hidden="true" />
+                      <span>Carrito</span>
                     </button>
                   </div>
                 </div>
@@ -509,14 +624,20 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             {/* Stock indicator card */}
             <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200/80">
               <div className="shrink-0 w-10 h-10 rounded-lg bg-emerald-100 border border-emerald-200 flex items-center justify-center">
-                <Package className="w-5 h-5 text-emerald-700" aria-hidden="true" />
+                <Package
+                  className="w-5 h-5 text-emerald-700"
+                  aria-hidden="true"
+                />
               </div>
               <div className="min-w-0">
                 <div className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">
                   Stock Disponible
                 </div>
                 <div className="text-base font-mono font-black text-emerald-900 leading-tight">
-                  {part.stock} {part.stock === 1 ? 'unidad' : 'unidades'} <span className="text-[11px] font-bold text-emerald-700/80">en bodega</span>
+                  {part.stock} {part.stock === 1 ? "unidad" : "unidades"}{" "}
+                  <span className="text-[11px] font-bold text-emerald-700/80">
+                    en bodega
+                  </span>
                 </div>
               </div>
             </div>
@@ -533,9 +654,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               rel="noopener noreferrer"
               className="px-4 py-2.5 min-h-[44px] bg-[#25D366] hover:bg-emerald-600 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
             >
-              <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.447-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414zM12.01 2.003c-5.504 0-9.976 4.471-9.976 9.974 0 1.759.458 3.475 1.33 4.988l-1.416 5.17 5.29-1.388c1.458.796 3.104 1.215 4.772 1.215 5.505 0 9.977-4.472 9.977-9.974 0-2.665-1.037-5.17-2.92-7.054a9.907 9.907 0 0 0-7.057-2.932z"/>
-              </svg>
+              <IoChatbubbleEllipses />
               <span>Consultar WhatsApp</span>
             </a>
 
@@ -558,7 +677,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   Compra Bloqueada (Incompatible)
                 </button>
                 <span className="text-[10px] text-red-700 font-medium">
-                  Selecciona tu moto compatible en el Garaje para habilitar la compra.
+                  Selecciona tu moto compatible en el Garaje para habilitar la
+                  compra.
                 </span>
               </div>
             ) : (
@@ -570,13 +690,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 }}
                 className="px-6 py-2.5 min-h-[44px] bg-[#E60012] hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-colors flex items-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
               >
-                <ShoppingBag className="w-4 h-4" aria-hidden="true" />
-                <span>Añadir al Carrito Garantizado</span>
+                <FaCartPlus className="w-4 h-4" aria-hidden="true" />
+                <span>Añadir al Carrito</span>
               </button>
             )}
           </div>
         </div>
-
       </div>
     </div>
   );

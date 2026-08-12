@@ -6,6 +6,7 @@ import { formatOrderDate } from '../utils/formatDate';
 import { shouldShowProductImages } from '../utils/config';
 import { ProductImageFallback } from './ProductImageFallback';
 import { BANK_DETAILS } from '../data/bankDetails';
+import { fetchDefaultCarrierName } from '../services/api';
 
 interface OrderDetailModalProps {
   order: any | null;
@@ -19,6 +20,15 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   onClose
 }) => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [defaultCarrier, setDefaultCarrier] = useState<string>('');
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchDefaultCarrierName()
+      .then(name => { if (!cancelled) setDefaultCarrier(name); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -148,7 +158,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 <span>{order.shippingAddress || 'Dirección de Taller Registrada'}</span>
               </div>
               <div className="text-slate-500 mt-1.5 font-mono text-[11px]">
-                Transportadora: <strong className="text-slate-800">{order.shippingCarrier || 'Servientrega'}</strong> ({order.shippingMethodName || 'Envío Nacional Standard'})
+                Transportadora: <strong className="text-slate-800">{order.shippingCarrier || defaultCarrier}</strong> ({order.shippingMethodName || 'Envío Nacional Standard'})
               </div>
             </div>
           </div>
@@ -313,7 +323,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             ) : null}
 
             <div className="flex items-center justify-between text-slate-600">
-              <span>Costo de Despacho ({order.shippingCarrier || 'Servientrega'}):</span>
+              <span>Costo de Despacho ({order.shippingCarrier || defaultCarrier}):</span>
               <span className="font-bold text-slate-900">
                 {order.shippingCost === 0 || !order.shippingCost ? '¡Flete GRATIS!' : formatCurrency(order.shippingCost)}
               </span>

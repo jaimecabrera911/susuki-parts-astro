@@ -4,10 +4,11 @@ import type { ExplodedDiagram, SuzukiPart, SuzukiModel, ActiveMotorcycle, Availa
 import { getPrimaryOem, getAvailabilityStatus, AVAILABILITY_META } from '../types';
 import {
   Layers, ArrowLeft, Filter, Search, CheckCircle2, AlertTriangle,
-  ShoppingBag, Eye, Info, ChevronRight, X, ArrowRightLeft,
+  Eye, Info, ChevronRight, X, ArrowRightLeft,
   ZoomIn, ZoomOut, RotateCcw
 } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
+import { FaCartPlus } from 'react-icons/fa6';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getMotorcyclePng } from '../data/motorcycleImages';
 import { DiagramCatalogSkeletonGrid } from './SkeletonLoaders';
@@ -202,7 +203,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
     if (!activeMotorcycle) return null;
     return part.compatibility.some(c => {
       if (c.modelId !== activeMotorcycle.modelId) return false;
-      if (activeMotorcycle.year < c.yearStart || activeMotorcycle.year > c.yearEnd) return false;
+      if ((c.yearStart && activeMotorcycle.year < c.yearStart) || (c.yearEnd && activeMotorcycle.year > c.yearEnd)) return false;
       if (c.version && c.version !== activeMotorcycle.version) return false;
       return true;
     });
@@ -702,7 +703,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                             className="w-8 h-8 flex items-center justify-center bg-[#E60012] hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
                             title="Añadir al carrito"
                           >
-                            <ShoppingBag className="w-3.5 h-3.5" aria-hidden="true" />
+                            <FaCartPlus className="w-3.5 h-3.5" aria-hidden="true" />
                           </button>
                         </div>
                       </td>
@@ -921,7 +922,7 @@ const SelectedPartStrip: React.FC<{
               disabled={!!activeMotorcycle && compatible === false}
               className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 bg-[#E60012] hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-[10px] font-extrabold uppercase tracking-wider rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
             >
-              <ShoppingBag className="w-3 h-3" aria-hidden="true" />
+              <FaCartPlus className="w-3 h-3" aria-hidden="true" />
               Añadir
             </button>
           </div>

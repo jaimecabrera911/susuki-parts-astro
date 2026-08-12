@@ -14,6 +14,7 @@ export interface Category {
   description?: string;
   active: boolean;
   order: number;
+  parentId?: string;
   subcategories: Subcategory[];
 }
 
@@ -40,8 +41,8 @@ export interface SuzukiModel {
 
 export interface CompatibilityRule {
   modelId: string;
-  yearStart: number;
-  yearEnd: number;
+  yearStart?: number;
+  yearEnd?: number;
   version?: string;
   note?: string;
 }
@@ -170,13 +171,8 @@ export interface UserProfile {
 
 export type PaymentMethod = 'transferencia';
 
-export type OrderStatus =
-  | 'Pendiente de pago'
-  | 'Pago confirmado'
-  | 'Despachado en Bodega Central'
-  | 'En tránsito'
-  | 'Entregado'
-  | 'Cancelado';
+// DB-driven: statuses live in the `order_statuses` table (catalog).
+export type OrderStatus = string;
 
 export interface ZoneRate {
   zoneId: string;

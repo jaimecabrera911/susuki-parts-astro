@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ShoppingCart, User, MapPin, Truck, ShieldCheck, CheckCircle2, Clock, Package, AlertCircle, FileText, ExternalLink } from 'lucide-react';
 import type { Order, OrderStatus } from '../../types';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { fetchDefaultCarrierName } from '../../services/api';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -10,23 +11,21 @@ interface OrderModalProps {
   onSaveOrder: (updatedOrder: Order) => void;
 }
 
-const ORDER_STATUSES: OrderStatus[] = [
-  'Pendiente de pago',
-  'Pago confirmado',
-  'Despachado en Bodega Central',
-  'En tránsito',
-  'Entregado',
-  'Cancelado'
-];
+interface StatusOption {
+  id: string;
+  name: string;
+  color: string;
+}
 
-const CARRIER_OPTIONS = [
-  'Servientrega',
-  'Deprisa',
-  'Encoexpress',
-  'Interrapidísimo',
-  'Coordinadora',
-  'Envía Colvanes'
-];
+const STATUS_THEMES: Record<string, string> = {
+  amber: 'bg-amber-50 text-amber-700 border-amber-200',
+  blue: 'bg-blue-50 text-[#0A3088] border-blue-200',
+  purple: 'bg-purple-50 text-purple-700 border-purple-200',
+  indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  red: 'bg-red-50 text-red-700 border-red-200',
+  slate: 'bg-slate-100 text-slate-700 border-slate-200'
+};
 
 export const OrderModal: React.FC<OrderModalProps> = ({
   isOpen,
@@ -36,19 +35,52 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 }) => {
   if (!isOpen || !order) return null;
 
+  const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
+  const [carrierOptions, setCarrierOptions] = useState<string[]>([]);
+  const [defaultCarrier, setDefaultCarrier] = useState<string>('');
+
   const [status, setStatus] = useState<OrderStatus>(order.status);
-  const [shippingCarrier, setShippingCarrier] = useState<string>(order.shippingCarrier || CARRIER_OPTIONS[0]);
+  const [shippingCarrier, setShippingCarrier] = useState<string>(order.shippingCarrier || '');
   const [trackingNumber, setTrackingNumber] = useState<string>(order.trackingNumber || '');
   const [notes, setNotes] = useState<string>(order.notes || '');
 
   useEffect(() => {
+    let cancelled = false;
+    fetch('/api/order-statuses')
+      .then(r => r.json())
+      .then(json => {
+        if (cancelled) return;
+        setStatusOptions(((json?.data) || []).filter((s: any) => s.active));
+      })
+      .catch(() => { if (!cancelled) setStatusOptions([]); });
+    fetch('/api/carriers')
+      .then(r => r.json())
+      .then(json => {
+        if (cancelled) return;
+        setCarrierOptions(((json?.data) || []).filter((c: any) => c.active).map((c: any) => c.name));
+      })
+      .catch(() => { if (!cancelled) setCarrierOptions([]); });
+    fetchDefaultCarrierName()
+      .then(name => { if (!cancelled) setDefaultCarrier(name); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
     if (order) {
       setStatus(order.status);
-      setShippingCarrier(order.shippingCarrier || CARRIER_OPTIONS[0]);
+      setShippingCarrier(order.shippingCarrier || '');
       setTrackingNumber(order.trackingNumber || '');
       setNotes(order.notes || '');
     }
   }, [order]);
+
+  // Default the carrier to the DB default once the catalog is loaded
+  useEffect(() => {
+    if ((defaultCarrier || carrierOptions[0]) && !shippingCarrier) {
+      setShippingCarrier(defaultCarrier || carrierOptions[0]);
+    }
+  }, [carrierOptions, defaultCarrier]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,22 +96,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   };
 
   const getStatusTheme = (st: OrderStatus) => {
-    switch (st) {
-      case 'Pendiente de pago':
-        return 'bg-amber-50 text-amber-700 border-amber-200';
-      case 'Pago confirmado':
-        return 'bg-blue-50 text-[#0A3088] border-blue-200';
-      case 'Despachado en Bodega Central':
-        return 'bg-purple-50 text-purple-700 border-purple-200';
-      case 'En tránsito':
-        return 'bg-indigo-50 text-indigo-700 border-indigo-200';
-      case 'Entregado':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'Cancelado':
-        return 'bg-red-50 text-red-700 border-red-200';
-      default:
-        return 'bg-slate-100 text-slate-700 border-slate-200';
-    }
+    const found = statusOptions.find(s => s.name === st);
+    return STATUS_THEMES[found?.color || 'slate'] || STATUS_THEMES.slate;
   };
 
   return (
@@ -219,7 +237,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </div>
               ) : null}
               <div className="flex justify-between text-slate-600">
-                <span>Envío ({order.shippingCarrier || 'Servientrega'}):</span>
+                <span>Envío ({order.shippingCarrier || defaultCarrier}):</span>
                 <span className="font-bold text-slate-900">{order.shippingCost === 0 || !order.shippingCost ? '¡Flete GRATIS!' : formatCurrency(order.shippingCost)}</span>
               </div>
               <div className="flex justify-between text-slate-900 pt-2 border-t border-slate-200 font-black text-sm font-display">
@@ -246,8 +264,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   onChange={(e) => setStatus(e.target.value as OrderStatus)}
                   className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
                 >
-                  {ORDER_STATUSES.map(st => (
-                    <option key={st} value={st}>{st}</option>
+                  {statusOptions.length === 0 && (
+                    <option value="" disabled>Cargando estados...</option>
+                  )}
+                  {statusOptions.map(st => (
+                    <option key={st.id} value={st.name}>{st.name}</option>
                   ))}
                 </select>
               </div>
@@ -261,7 +282,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   onChange={(e) => setShippingCarrier(e.target.value)}
                   className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
                 >
-                  {CARRIER_OPTIONS.map(c => (
+                  {carrierOptions.length === 0 && (
+                    <option value="" disabled>Cargando transportadoras...</option>
+                  )}
+                  {carrierOptions.map(c => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>

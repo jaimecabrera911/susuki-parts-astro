@@ -46,7 +46,8 @@ import {
 } from '../../services/api';
 // adminStore removed — all data loaded exclusively from Neon DB API
 import type { Brand, SuzukiModel, Category, SuzukiPart, AvailabilityStatus, ExplodedDiagram, Order, UserProfile } from '../../types';
-import { CheckCircle2, ShoppingCart, BarChart3, Users } from 'lucide-react';
+import { CheckCircle2, ShoppingCart, BarChart3, Users, ShieldAlert } from 'lucide-react';
+import { getStoredLogin, getStoredUser, isAdminUser } from '../../utils/auth';
 
 const getTabFromUrl = (): AdminTab => {
   if (typeof window === 'undefined') return 'brands';
@@ -60,6 +61,7 @@ const getTabFromUrl = (): AdminTab => {
 };
 
 export const AdminDashboard: React.FC = () => {
+  const [authorized] = useState<boolean>(() => getStoredLogin() && isAdminUser(getStoredUser()));
   const [activeTab, setActiveTabState] = useState<AdminTab>(() => getTabFromUrl());
 
   const handleSetActiveTab = (tab: AdminTab) => {
@@ -125,6 +127,7 @@ export const AdminDashboard: React.FC = () => {
 
   // Load all data from Neon DB API on mount — no localStorage, no mocks
   useEffect(() => {
+    if (!authorized) return;
     async function loadLiveData() {
       try {
         const [b, m, c, p, s, o, u] = await Promise.all([
@@ -485,6 +488,28 @@ export const AdminDashboard: React.FC = () => {
       setIsUserModalOpen(true);
     }
   };
+
+  if (!authorized) {
+    return (
+      <div className="min-h-screen bg-[#f7f9fb] text-[#191c1e] flex font-sans antialiased items-center justify-center px-4">
+        <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-sm p-8 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-5 border border-red-100">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+          <h1 className="text-xl font-black text-slate-900 mb-2">Acceso denegado</h1>
+          <p className="text-sm text-slate-500 leading-relaxed mb-6">
+            Este panel es exclusivo para administradores. Inicia sesión con una cuenta con rol de administrador para continuar.
+          </p>
+          <a
+            href="/garaje"
+            className="w-full inline-flex justify-center py-3 rounded-xl bg-[#E60012] hover:bg-[#b5000b] text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-colors"
+          >
+            Volver al Garaje
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f7f9fb] text-[#191c1e] flex font-sans antialiased">

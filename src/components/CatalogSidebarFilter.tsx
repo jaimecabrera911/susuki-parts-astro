@@ -214,7 +214,7 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
       if (onlyCompatible && activeMotorcycle) {
         const isCompatible = part.compatibility.some(c => {
           if (c.modelId !== activeMotorcycle.modelId) return false;
-          if (activeMotorcycle.year < c.yearStart || activeMotorcycle.year > c.yearEnd) return false;
+          if ((c.yearStart && activeMotorcycle.year < c.yearStart) || (c.yearEnd && activeMotorcycle.year > c.yearEnd)) return false;
           if (c.version && c.version !== activeMotorcycle.version) return false;
           return true;
         });

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Truck, Calendar, DollarSign, Clock, ShieldCheck, Check } from 'lucide-react';
 import type { ShippingMethod, ShippingZone, ZoneRate } from '../../types';
+import { fetchCarrierNames, fetchDefaultCarrierName } from '../../services/api';
 
 interface ShippingModalProps {
   isOpen: boolean;
@@ -9,16 +10,6 @@ interface ShippingModalProps {
   initialMethod?: ShippingMethod | null;
   zones?: ShippingZone[];
 }
-
-const CARRIERS = [
-  'Servientrega',
-  'Inter Rapidísimo',
-  'Coordinadora',
-  'Envía',
-  'TCC',
-  'Retiro en tienda',
-  'Otro / Transportadora local'
-];
 
 const DAYS_OF_WEEK = [
   { id: '1', name: 'Lunes', short: 'LUN' },
@@ -39,7 +30,7 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
 }) => {
   const [formData, setFormData] = useState({
     name: '',
-    carrier: 'Servientrega',
+    carrier: '',
     description: '',
     price: 0,
     estimatedDays: 3,
@@ -48,13 +39,32 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
     active: true
   });
 
+  const [carrierOptions, setCarrierOptions] = useState<string[]>([]);
   const [zoneRatesMap, setZoneRatesMap] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchCarrierNames()
+      .then(names => { if (!cancelled) setCarrierOptions(names); })
+      .catch(() => { if (!cancelled) setCarrierOptions([]); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Default the carrier to the DB default once the catalog is loaded
+  useEffect(() => {
+    if (carrierOptions.length === 0 || formData.carrier) return;
+    let cancelled = false;
+    fetchDefaultCarrierName()
+      .then(name => { if (!cancelled) setFormData(prev => ({ ...prev, carrier: name })); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [carrierOptions]);
 
   useEffect(() => {
     if (initialMethod) {
       setFormData({
         name: initialMethod.name || '',
-        carrier: initialMethod.carrier || 'Servientrega',
+        carrier: initialMethod.carrier || '',
         description: initialMethod.description || '',
         price: initialMethod.price || 0,
         estimatedDays: initialMethod.estimatedDays ?? 3,
@@ -75,7 +85,7 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
     } else {
       setFormData({
         name: '',
-        carrier: 'Servientrega',
+        carrier: '',
         description: '',
         price: 0,
         estimatedDays: 3,
@@ -186,7 +196,10 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
                 onChange={(e) => setFormData({ ...formData, carrier: e.target.value })}
                 className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
               >
-                {CARRIERS.map(carrier => (
+                {carrierOptions.length === 0 && (
+                  <option value="" disabled>Cargando transportadoras...</option>
+                )}
+                {carrierOptions.map(carrier => (
                   <option key={carrier} value={carrier}>{carrier}</option>
                 ))}
               </select>

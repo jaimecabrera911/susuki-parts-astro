@@ -256,3 +256,59 @@ export async function deleteShippingZoneApi(id: string) {
   return await res.json();
 }
 
+// --- DB-driven catalogs (order statuses & carriers) ---
+
+interface CatalogStatus {
+  id: string;
+  name: string;
+  color: string;
+  short?: string;
+  group?: string;
+  is_default?: boolean;
+  active?: boolean;
+}
+
+let statusesCache: CatalogStatus[] | null = null;
+let carriersCache: { id: string; name: string; is_default?: boolean; active?: boolean }[] | null = null;
+
+export async function fetchOrderStatuses(): Promise<CatalogStatus[]> {
+  if (statusesCache) return statusesCache;
+  const res = await fetch('/api/order-statuses');
+  const json = await res.json();
+  const rows = ((json.data || []) as CatalogStatus[]).filter(s => s.active);
+  statusesCache = rows;
+  return rows;
+}
+
+export async function fetchCarriers(): Promise<{ id: string; name: string; is_default?: boolean; active?: boolean }[]> {
+  if (carriersCache) return carriersCache;
+  const res = await fetch('/api/carriers');
+  const json = await res.json();
+  const rows = ((json.data || []) as { id: string; name: string; is_default?: boolean; active?: boolean }[]).filter(c => c.active);
+  carriersCache = rows;
+  return rows;
+}
+
+export async function fetchCarrierNames(): Promise<string[]> {
+  const carriers = await fetchCarriers();
+  return carriers.map(c => c.name);
+}
+
+export async function fetchDefaultStatusName(): Promise<string> {
+  const statuses = await fetchOrderStatuses();
+  return (
+    statuses.find(s => s.is_default)?.name ||
+    statuses[0]?.name ||
+    ''
+  );
+}
+
+export async function fetchDefaultCarrierName(): Promise<string> {
+  const carriers = await fetchCarriers();
+  return (
+    carriers.find(c => c.is_default)?.name ||
+    carriers[0]?.name ||
+    ''
+  );
+}
+

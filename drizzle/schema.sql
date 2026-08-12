@@ -17,7 +17,8 @@ CREATE TABLE "categories" (
 	"icon_name" text,
 	"description" text,
 	"active" boolean DEFAULT true NOT NULL,
-	"order" integer DEFAULT 0 NOT NULL
+	"order" integer DEFAULT 0 NOT NULL,
+	"parent_id" text
 );
 CREATE TABLE "model_years" (
 	"id" text PRIMARY KEY NOT NULL,
@@ -127,12 +128,27 @@ CREATE TABLE "schematics" (
 	"diagram_image" text NOT NULL,
 	"description" text NOT NULL
 );
-CREATE TABLE "subcategories" (
+CREATE TABLE "schematic_sections" (
 	"id" text PRIMARY KEY NOT NULL,
-	"category_id" text NOT NULL,
 	"name" text NOT NULL,
-	"slug" text NOT NULL,
-	"description" text,
+	"order" integer DEFAULT 0 NOT NULL,
+	"active" boolean DEFAULT true NOT NULL
+);
+CREATE TABLE "order_statuses" (
+	"id" text PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"color" text DEFAULT 'slate' NOT NULL,
+	"short" text,
+	"group" text,
+	"is_default" boolean DEFAULT false NOT NULL,
+	"order" integer DEFAULT 0 NOT NULL,
+	"active" boolean DEFAULT true NOT NULL
+);
+CREATE TABLE "carriers" (
+	"id" text PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"is_default" boolean DEFAULT false NOT NULL,
+	"order" integer DEFAULT 0 NOT NULL,
 	"active" boolean DEFAULT true NOT NULL
 );
 CREATE TABLE "user_favorites" (
@@ -180,7 +196,7 @@ ALTER TABLE "schematic_applicable_models" ADD CONSTRAINT "schematic_applicable_m
 ALTER TABLE "schematic_applicable_models" ADD CONSTRAINT "schematic_applicable_models_model_id_models_id_fk" FOREIGN KEY ("model_id") REFERENCES "public"."models"("id") ON DELETE cascade ON UPDATE no action
 ALTER TABLE "schematic_hotspots" ADD CONSTRAINT "schematic_hotspots_schematic_id_schematics_id_fk" FOREIGN KEY ("schematic_id") REFERENCES "public"."schematics"("id") ON DELETE cascade ON UPDATE no action
 ALTER TABLE "schematic_hotspots" ADD CONSTRAINT "schematic_hotspots_part_id_parts_id_fk" FOREIGN KEY ("part_id") REFERENCES "public"."parts"("id") ON DELETE cascade ON UPDATE no action
-ALTER TABLE "subcategories" ADD CONSTRAINT "subcategories_category_id_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."categories"("id") ON DELETE cascade ON UPDATE no action
+ALTER TABLE "categories" ADD CONSTRAINT "categories_parent_id_categories_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."categories"("id") ON DELETE cascade ON UPDATE no action
 ALTER TABLE "user_favorites" ADD CONSTRAINT "user_favorites_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action
 ALTER TABLE "user_favorites" ADD CONSTRAINT "user_favorites_part_id_parts_id_fk" FOREIGN KEY ("part_id") REFERENCES "public"."parts"("id") ON DELETE cascade ON UPDATE no action
 ALTER TABLE "user_garages" ADD CONSTRAINT "user_garages_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action
@@ -209,7 +225,10 @@ CREATE UNIQUE INDEX "idx_schematic_models_unique" ON "schematic_applicable_model
 CREATE INDEX "idx_hotspots_schematic" ON "schematic_hotspots" USING btree ("schematic_id")
 CREATE INDEX "idx_hotspots_part" ON "schematic_hotspots" USING btree ("part_id")
 CREATE INDEX "idx_schematics_section" ON "schematics" USING btree ("section")
-CREATE INDEX "idx_subcategories_category_id" ON "subcategories" USING btree ("category_id")
+CREATE INDEX "idx_schematic_sections_active" ON "schematic_sections" USING btree ("active")
+CREATE INDEX "idx_order_statuses_active" ON "order_statuses" USING btree ("active")
+CREATE INDEX "idx_carriers_active" ON "carriers" USING btree ("active")
+CREATE INDEX "idx_categories_parent_id" ON "categories" USING btree ("parent_id")
 CREATE INDEX "idx_user_favorites_user_part" ON "user_favorites" USING btree ("user_id","part_id")
 CREATE UNIQUE INDEX "idx_user_favorites_unique" ON "user_favorites" USING btree ("user_id","part_id")
 CREATE INDEX "idx_user_garages_user_id" ON "user_garages" USING btree ("user_id")

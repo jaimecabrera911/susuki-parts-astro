@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Search,
   ChevronLeft,
@@ -14,11 +14,22 @@ import { OrderDetailModal } from "./OrderDetailModal";
 import { getPrimaryOem } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatOrderDate } from "../utils/formatDate";
+import { fetchOrderStatuses } from "../services/api";
 
 interface OrdersTableProps {
   orders: any[];
   onNavigateToCatalog?: () => void;
 }
+
+const STATUS_THEMES: Record<string, string> = {
+  amber: "bg-amber-100 text-amber-900 border border-amber-300",
+  emerald: "bg-emerald-100 text-emerald-800 border border-emerald-200",
+  blue: "bg-blue-100 text-blue-800 border border-blue-200",
+  purple: "bg-purple-100 text-purple-800 border border-purple-200",
+  indigo: "bg-indigo-100 text-indigo-800 border border-indigo-200",
+  red: "bg-red-100 text-red-800 border border-red-200",
+  slate: "bg-slate-100 text-slate-800 border border-slate-200",
+};
 
 export const OrdersTable: React.FC<OrdersTableProps> = ({
   orders,
@@ -29,6 +40,15 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
   // Filtering & Search
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [statusRows, setStatusRows] = useState<{ id: string; name: string; color: string }[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchOrderStatuses()
+      .then(rows => { if (!cancelled) setStatusRows(rows); })
+      .catch(() => { if (!cancelled) setStatusRows([]); });
+    return () => { cancelled = true; };
+  }, []);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -36,6 +56,9 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
 
   // Selected Order Modal
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+
+  const statusThemeOf = (status: string) =>
+    STATUS_THEMES[statusRows.find(s => s.name === status)?.color || "slate"] || STATUS_THEMES.slate;
 
   // Filtered orders calculation
   const filteredOrders = useMemo(() => {
@@ -60,7 +83,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
 
       const matchesStatus =
         statusFilter === "all" ||
-        order.status.toLowerCase().includes(statusFilter.toLowerCase());
+        order.status.toLowerCase() === statusFilter.toLowerCase();
 
       return matchesSearch && matchesStatus;
     });
@@ -112,9 +135,9 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
               className="bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012] cursor-pointer"
             >
               <option value="all">Todos los Estados</option>
-              <option value="Pendiente">Pendientes de Pago</option>
-              <option value="Despachado">Despachados</option>
-              <option value="Entregado">Entregados</option>
+              {statusRows.map(s => (
+                <option key={s.id} value={s.name}>{s.name}</option>
+              ))}
             </select>
           </div>
 
@@ -239,15 +262,9 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
 
                       <td className="py-4 px-4 text-center">
                         <span
-                          className={`inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full ${
-                            order.status.includes("Pendiente")
-                              ? "bg-amber-100 text-amber-900 border border-amber-300"
-                              : order.status.includes("Entregado")
-                                ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                                : "bg-blue-100 text-blue-800 border border-blue-200"
-                          }`}
+                          className={`inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full ${statusThemeOf(order.status)}`}
                         >
-                          {order.status.includes("Pendiente") ? (
+                          {order.status.toLowerCase().includes("pendiente") ? (
                             <Clock className="w-3 h-3 text-amber-600" />
                           ) : (
                             <CheckCircle2 className="w-3 h-3" />
