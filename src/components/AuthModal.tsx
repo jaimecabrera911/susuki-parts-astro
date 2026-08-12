@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ShieldCheck, Mail, Lock, User, Phone, CheckCircle2, Sparkles, LogIn, ArrowRight, Zap, Eye, EyeOff } from 'lucide-react';
 import type { UserProfile } from '../types';
 import { saveUserApi, loginApi } from '../services/api';
-import { STORE_DEFAULT_LOCATION } from '../utils/config';
+import { getDefaultLocation } from '../utils/config';
 import { setStoredSession } from '../utils/auth';
 
 interface AuthModalProps {
@@ -86,7 +86,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       email: registerEmail.trim().toLowerCase(),
       phone: registerPhone || '+57 300 000 0000',
       documentId: 'No registrado',
-      city: STORE_DEFAULT_LOCATION.city,
+      city: getDefaultLocation().city,
       address: 'Dirección por definir',
       postalCode: '110111',
       password: registerPassword,

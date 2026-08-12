@@ -423,7 +423,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                             OEM: {primaryOem}
                           </span>
                           <span className="text-[10px] font-mono font-bold text-slate-500 uppercase">
-                            {it.part.category || "Repuestos OEM"}
+                            {it.part.category}
                           </span>
                         </div>
                         <h4 className="font-black text-slate-900 mt-1 text-xs sm:text-sm font-display leading-snug">
@@ -483,9 +483,9 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               </div>
             ) : null}
 
-            {order.taxAmount && order.taxAmount > 0 ? (
+            {order.taxAmount && order.taxAmount > 0 && typeof order.taxRate === 'number' ? (
               <div className="flex items-center justify-between text-slate-600">
-                <span>Impuesto ({order.taxRate || 19}% IVA):</span>
+                <span>Impuesto ({order.taxRate}%):</span>
                 <span className="font-bold text-slate-900">
                   + {formatCurrency(order.taxAmount)}
                 </span>

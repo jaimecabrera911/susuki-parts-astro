@@ -3,6 +3,7 @@ import { Search, Wrench, Sparkles, Layers, Menu, X, Package, Clock, ShieldCheck,
 import { FaCartShopping } from 'react-icons/fa6';
 import type { ActiveMotorcycle } from '../types';
 import { UserAvatar } from './UserAvatar';
+import { getStoreLogo, getStoreName, getStoreTagline } from '../utils/config';
 import logoImg from '../assets/logo.png';
 
 const logoUrl = typeof logoImg === 'string' ? logoImg : (logoImg?.src || '/src/assets/logo.png');
@@ -13,8 +14,8 @@ interface NavbarProps {
   cartCount: number;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
-  activeTab: 'catalog' | 'garage' | 'schematics' | 'orders' | 'product-page' | 'account' | 'checkout' | 'favorites';
-  setActiveTab: (tab: 'catalog' | 'garage' | 'schematics' | 'orders' | 'product-page' | 'account' | 'checkout' | 'favorites') => void;
+  activeTab: 'catalog' | 'garage' | 'schematics' | 'orders' | 'product-page' | 'account' | 'checkout' | 'favorites' | 'contact';
+  setActiveTab: (tab: 'catalog' | 'garage' | 'schematics' | 'orders' | 'product-page' | 'account' | 'checkout' | 'favorites' | 'contact') => void;
 
   onOpenGarageModal: () => void;
   onOpenCart: () => void;
@@ -45,6 +46,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+
+  const storeLogo = getStoreLogo();
+  const storeName = getStoreName();
+  const storeTagline = getStoreTagline();
+  const logoToShow = storeLogo || logoUrl;
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -90,14 +96,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             }}
             className="flex items-center gap-2.5 shrink-0 cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] rounded-xl p-1"
           >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 overflow-hidden shrink-0">
-              <img src={logoUrl} alt="Suzuki Parts" className="w-full h-full object-cover pointer-events-none select-none" />
+            <div className="w-10 h-10 sm:w-11 sm:h-11 overflow-hidden rounded-xl shrink-0">
+              <img src={logoToShow} alt={storeName} className="w-full h-full object-cover pointer-events-none select-none" />
             </div>
             <div>
               <div className="flex items-center gap-1">
-                <span className="text-[#E60012] font-black tracking-tight text-lg sm:text-xl leading-none uppercase">SUZUKI</span>
+                <span className="text-[#E60012] font-black tracking-tight text-lg sm:text-xl leading-none uppercase">{storeName}</span>
               </div>
-              <span className="text-slate-900 font-extrabold text-[10px] sm:text-xs tracking-widest block leading-tight uppercase whitespace-nowrap">REPUESTOS COLOMBIA</span>
+              <span className="text-slate-900 font-extrabold text-[10px] sm:text-xs tracking-widest block leading-tight uppercase whitespace-nowrap">{storeTagline}</span>
             </div>
           </button>
 

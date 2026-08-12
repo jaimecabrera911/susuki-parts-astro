@@ -1,10 +1,4 @@
-import type { TaxConfig, Coupon } from '../types';
-
-export const DEFAULT_TAX_CONFIG: TaxConfig = {
-  taxName: 'IVA Colombia',
-  taxRate: 19,
-  active: true,
-};
+import type { Coupon } from '../types';
 
 export const INITIAL_COUPONS: Coupon[] = [
   {

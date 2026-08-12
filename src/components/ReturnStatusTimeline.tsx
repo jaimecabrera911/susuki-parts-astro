@@ -44,7 +44,7 @@ export const ReturnStatusTimeline: React.FC<ReturnStatusTimelineProps> = ({ orde
   const steps = [
     {
       title: 'Solicitud Registrada',
-      description: 'Solicitud recibida por el sistema RMA de Suzuki Parts.',
+      description: 'Solicitud recibida por el sistema RMA de la tienda.',
       icon: Clock,
     },
     {

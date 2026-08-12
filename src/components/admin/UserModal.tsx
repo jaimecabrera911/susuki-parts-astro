@@ -3,7 +3,7 @@ import { X, User, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import type { UserProfile } from "../../types";
 import { LocationSelector } from "../LocationSelector";
 import { fetchCities } from "../../services/api";
-import { STORE_DEFAULT_LOCATION } from "../../utils/config";
+import { getDefaultLocation } from "../../utils/config";
 
 interface UserModalProps {
   isOpen: boolean;
@@ -25,12 +25,12 @@ export const UserModal: React.FC<UserModalProps> = ({
   const [phone, setPhone] = useState(userToEdit?.phone || "");
   const [documentId, setDocumentId] = useState(userToEdit?.documentId || "");
   const [country, setCountry] = useState(
-    (userToEdit as any)?.country || STORE_DEFAULT_LOCATION.country,
+    (userToEdit as any)?.country || getDefaultLocation().country,
   );
   const [department, setDepartment] = useState(
-    (userToEdit as any)?.department || STORE_DEFAULT_LOCATION.department,
+    (userToEdit as any)?.department || getDefaultLocation().department,
   );
-  const [city, setCity] = useState(userToEdit?.city || STORE_DEFAULT_LOCATION.city);
+  const [city, setCity] = useState(userToEdit?.city || getDefaultLocation().city);
   const [address, setAddress] = useState(userToEdit?.address || "");
   const [postalCode, setPostalCode] = useState(userToEdit?.postalCode || "");
   const [role, setRole] = useState<"customer" | "admin">(
@@ -69,8 +69,8 @@ export const UserModal: React.FC<UserModalProps> = ({
       setEmail(userToEdit.email);
       setPhone(userToEdit.phone);
       setDocumentId(userToEdit.documentId);
-      setCountry((userToEdit as any)?.country || STORE_DEFAULT_LOCATION.country);
-      setDepartment((userToEdit as any)?.department || STORE_DEFAULT_LOCATION.department);
+      setCountry((userToEdit as any)?.country || getDefaultLocation().country);
+      setDepartment((userToEdit as any)?.department || getDefaultLocation().department);
       setCity(userToEdit.city);
       setAddress(userToEdit.address);
       setPostalCode(userToEdit.postalCode);
@@ -82,9 +82,9 @@ export const UserModal: React.FC<UserModalProps> = ({
       setEmail("");
       setPhone("");
       setDocumentId("");
-      setCountry(STORE_DEFAULT_LOCATION.country);
-      setDepartment(STORE_DEFAULT_LOCATION.department);
-      setCity(STORE_DEFAULT_LOCATION.city);
+      setCountry(getDefaultLocation().country);
+      setDepartment(getDefaultLocation().department);
+      setCity(getDefaultLocation().city);
       setAddress("");
       setPostalCode("");
       setRole("customer");

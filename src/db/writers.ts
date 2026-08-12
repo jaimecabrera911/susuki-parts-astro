@@ -11,8 +11,9 @@ import {
 } from './schema';
 import { eq, and } from 'drizzle-orm';
 import { DEFAULT_SHIPPING_ZONES, DEFAULT_SHIPPING_METHODS, DEFAULT_COLOMBIAN_CITIES, COLOMBIAN_DEPARTMENTS } from '../data/initialShippingAndCities';
-import { STORE_DEFAULT_LOCATION } from '../utils/config';
+import { STORE_DEFAULT_LOCATION, STORE_BOOTSTRAP, FOOTER_BOOTSTRAP, getBootstrapShowProductImages } from '../utils/config';
 import { hashPassword } from '../utils/password';
+import type { SiteSettings } from '../types';
 
 export function parseJson(val: any, fallback: any = []) {
   if (!val) return fallback;
@@ -191,6 +192,13 @@ export async function upsertOrder(db: AppDb, body: any) {
     if (!isNaN(parsed.getTime())) date = parsed;
   }
 
+  const settings = await getSiteSettings(db);
+  const defaultLocation = {
+    country: settings.defaultCountry,
+    department: settings.defaultDepartment,
+    city: settings.defaultCity
+  };
+
   const data = {
     id,
     date,
@@ -198,9 +206,9 @@ export async function upsertOrder(db: AppDb, body: any) {
     email: body.email || 'cliente@suzukiparts.com.co',
     phone: body.phone || '',
     documentId: body.documentId || '',
-    country: body.country || STORE_DEFAULT_LOCATION.country,
-    department: body.department || null,
-    city: body.city || '',
+    country: body.country || defaultLocation.country,
+    department: body.department || defaultLocation.department,
+    city: body.city || defaultLocation.city,
     shippingAddress: body.shippingAddress || '',
     postalCode: body.postalCode || '',
     subtotal: body.subtotal ? Number(body.subtotal) : null,
@@ -698,27 +706,77 @@ export async function upsertOrderReturn(db: AppDb, body: any) {
   return data;
 }
 
-export async function getSiteSettings(db: AppDb) {
+export async function getSiteSettings(db: AppDb): Promise<SiteSettings> {
   try {
     const rows = await db.select().from(siteSettings).where(eq(siteSettings.id, 'default')).limit(1);
-    if (rows.length > 0) return rows[0];
+    if (rows.length > 0) return rows[0] as unknown as SiteSettings;
   } catch {}
-  return {
+  const seed = {
     id: 'default',
+    storeName: STORE_BOOTSTRAP.storeName,
+    storeLogo: STORE_BOOTSTRAP.storeLogo,
+    storeTagline: STORE_BOOTSTRAP.storeTagline,
+    whatsappNumber: STORE_BOOTSTRAP.whatsappNumber,
+    contactEmail: STORE_BOOTSTRAP.contactEmail,
+    storeAddress: STORE_BOOTSTRAP.storeAddress,
+    socialLinks: STORE_BOOTSTRAP.socialLinks,
+    defaultCountry: STORE_BOOTSTRAP.location.country,
+    defaultDepartment: STORE_BOOTSTRAP.location.department,
+    defaultCity: STORE_BOOTSTRAP.location.city,
+    showProductImages: getBootstrapShowProductImages(),
     taxName: 'IVA Colombia',
     taxRate: 19,
     taxActive: true,
-    returnMaxDays: 30
+    returnMaxDays: 30,
+    footerConfig: FOOTER_BOOTSTRAP,
+    updatedAt: new Date()
   };
+  try {
+    await db.insert(siteSettings).values(seed).onConflictDoNothing();
+  } catch {}
+  return seed as unknown as SiteSettings;
 }
 
 export async function upsertSiteSettings(db: AppDb, body: any) {
+  const existing = await getSiteSettings(db);
+  const taxActive = typeof body.taxActive === 'boolean' ? body.taxActive
+    : (typeof body.active === 'boolean' ? body.active : existing.taxActive);
+  const footerConfig = body.footerConfig && typeof body.footerConfig === 'object'
+    ? {
+        tagline: typeof body.footerConfig.tagline === 'string' ? body.footerConfig.tagline : (existing.footerConfig?.tagline ?? ''),
+        description: typeof body.footerConfig.description === 'string' ? body.footerConfig.description : (existing.footerConfig?.description ?? ''),
+        copyright: typeof body.footerConfig.copyright === 'string' ? body.footerConfig.copyright : (existing.footerConfig?.copyright ?? ''),
+        legalLinks: Array.isArray(body.footerConfig.legalLinks)
+          ? body.footerConfig.legalLinks.filter((l: any) => l && typeof l.label === 'string' && typeof l.href === 'string')
+          : (existing.footerConfig?.legalLinks ?? [])
+      }
+    : (existing.footerConfig ?? null);
   const data = {
     id: 'default',
-    taxName: body.taxName || 'IVA Colombia',
-    taxRate: typeof body.taxRate === 'number' ? body.taxRate : 19,
-    taxActive: typeof body.active === 'boolean' ? body.active : true,
-    returnMaxDays: typeof body.returnMaxDays === 'number' ? body.returnMaxDays : 30,
+    storeName: typeof body.storeName === 'string' ? body.storeName.trim() : existing.storeName,
+    storeLogo: typeof body.storeLogo === 'string' ? body.storeLogo.trim() : existing.storeLogo,
+    storeTagline: typeof body.storeTagline === 'string' ? body.storeTagline.trim() : existing.storeTagline,
+    whatsappNumber: typeof body.whatsappNumber === 'string' ? body.whatsappNumber.trim() : existing.whatsappNumber,
+    contactEmail: typeof body.contactEmail === 'string' ? body.contactEmail.trim() : existing.contactEmail,
+    storeAddress: typeof body.storeAddress === 'string' ? body.storeAddress.trim() : existing.storeAddress,
+    socialLinks: body.socialLinks && typeof body.socialLinks === 'object'
+      ? {
+          facebook: typeof body.socialLinks.facebook === 'string' ? body.socialLinks.facebook.trim() : existing.socialLinks?.facebook ?? '',
+          instagram: typeof body.socialLinks.instagram === 'string' ? body.socialLinks.instagram.trim() : existing.socialLinks?.instagram ?? '',
+          tiktok: typeof body.socialLinks.tiktok === 'string' ? body.socialLinks.tiktok.trim() : existing.socialLinks?.tiktok ?? '',
+          youtube: typeof body.socialLinks.youtube === 'string' ? body.socialLinks.youtube.trim() : existing.socialLinks?.youtube ?? '',
+          whatsapp: typeof body.socialLinks.whatsapp === 'string' ? body.socialLinks.whatsapp.trim() : existing.socialLinks?.whatsapp ?? ''
+        }
+      : (existing.socialLinks ?? null),
+    defaultCountry: typeof body.defaultCountry === 'string' ? body.defaultCountry : existing.defaultCountry,
+    defaultDepartment: typeof body.defaultDepartment === 'string' ? body.defaultDepartment : existing.defaultDepartment,
+    defaultCity: typeof body.defaultCity === 'string' ? body.defaultCity : existing.defaultCity,
+    showProductImages: typeof body.showProductImages === 'boolean' ? body.showProductImages : existing.showProductImages,
+    taxName: typeof body.taxName === 'string' ? body.taxName : existing.taxName,
+    taxRate: typeof body.taxRate === 'number' ? body.taxRate : existing.taxRate,
+    taxActive,
+    returnMaxDays: typeof body.returnMaxDays === 'number' ? body.returnMaxDays : existing.returnMaxDays,
+    footerConfig,
     updatedAt: new Date()
   };
   await db.insert(siteSettings).values(data).onConflictDoUpdate({ target: siteSettings.id, set: data });

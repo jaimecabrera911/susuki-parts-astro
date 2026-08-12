@@ -9,10 +9,8 @@ import {
   PhoneCall,
 } from "lucide-react";
 import type { ActiveMotorcycle } from "../types";
-import {
-  getGeneralWhatsAppUrl,
-  SUZUKI_WHATSAPP_NUMBER,
-} from "../utils/whatsapp";
+import { getGeneralWhatsAppUrl } from "../utils/whatsapp";
+import { getWhatsAppNumber, getStoreName } from "../utils/config";
 import { IoChatbubbleEllipses } from "react-icons/io5";
 
 interface WhatsAppWidgetProps {
@@ -27,6 +25,14 @@ export const WhatsAppWidget: React.FC<WhatsAppWidgetProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [customQuery, setCustomQuery] = useState("");
 
+  const storeName = getStoreName();
+  const storeInitials = storeName
+    .split(/\s+/)
+    .map((word: string) => word.charAt(0))
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   // Handle Escape key
   React.useEffect(() => {
     if (!isOpen) return;
@@ -39,7 +45,7 @@ export const WhatsAppWidget: React.FC<WhatsAppWidgetProps> = ({
 
   const handleCustomSend = (e: React.FormEvent) => {
     e.preventDefault();
-    let text = `Hola Suzuki Parts Expert 👋, `;
+    let text = `Hola ${storeName || ''} 👋, `;
     if (customQuery.trim()) {
       text += `${customQuery.trim()}`;
     } else {
@@ -51,7 +57,7 @@ export const WhatsAppWidget: React.FC<WhatsAppWidgetProps> = ({
       if (activeMotorcycle.vin) text += `\n🔑 *VIN:* ${activeMotorcycle.vin}`;
     }
 
-    const url = `https://wa.me/${SUZUKI_WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
+    const url = `https://wa.me/${getWhatsAppNumber()}?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank", "noopener,noreferrer");
     setIsOpen(false);
     setCustomQuery("");
@@ -72,13 +78,13 @@ export const WhatsAppWidget: React.FC<WhatsAppWidgetProps> = ({
             <div className="flex items-center gap-3">
               <div className="relative">
                 <div className="w-10 h-10 rounded-full bg-emerald-500/30 flex items-center justify-center border-2 border-white/80 text-white font-extrabold text-sm">
-                  SZ
+                  {storeInitials || '?'}
                 </div>
                 <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-[#075E54] rounded-full"></span>
               </div>
               <div>
                 <h4 className="font-bold text-sm leading-tight flex items-center gap-1.5">
-                  Suzuki Parts Expert
+                  {storeName}
                 </h4>
                 <p className="text-[11px] text-emerald-100 flex items-center gap-1 mt-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-300"></span>

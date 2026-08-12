@@ -41,7 +41,7 @@ import { OrdersTable } from "./OrdersTable";
 import { ReturnsTable } from "./ReturnsTable";
 import {
   shouldShowProductImages,
-  STORE_DEFAULT_LOCATION,
+  getDefaultLocation,
 } from "../utils/config";
 import { ProductImageFallback } from "./ProductImageFallback";
 import { LocationSelector } from "./LocationSelector";
@@ -134,8 +134,8 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
     email: userProfile.email,
     phone: userProfile.phone,
     documentId: userProfile.documentId,
-    country: userProfile.country || STORE_DEFAULT_LOCATION.country,
-    department: userProfile.department || STORE_DEFAULT_LOCATION.department,
+    country: userProfile.country || getDefaultLocation().country,
+    department: userProfile.department || getDefaultLocation().department,
     city: userProfile.city,
     address: userProfile.address,
     postalCode: userProfile.postalCode,

@@ -41,8 +41,9 @@ import { formatCurrency } from "../utils/formatCurrency";
 import { BANK_DETAILS } from "../data/bankDetails";
 import {
   shouldShowProductImages,
-  STORE_DEFAULT_LOCATION,
+  getDefaultLocation,
 } from "../utils/config";
+import { useSiteSettings } from "./SiteSettingsProvider";
 import { ProductImageFallback } from "./ProductImageFallback";
 import { LocationSelector } from "./LocationSelector";
 import {
@@ -54,7 +55,6 @@ import {
   fetchDefaultCarrierName,
 } from "../services/api";
 
-import { DEFAULT_TAX_CONFIG } from "../data/taxCouponsData";
 import { calculateCartTotals } from "../utils/taxCalculator";
 
 export function getShippingMethodCost(
@@ -229,7 +229,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     phone: isLoggedIn && userProfile?.phone ? userProfile.phone : "",
     documentId:
       isLoggedIn && userProfile?.documentId ? userProfile.documentId : "",
-    country: STORE_DEFAULT_LOCATION.country,
+    country: getDefaultLocation().country,
     department:
       isLoggedIn && userProfile?.department ? userProfile.department : "",
     city: isLoggedIn && userProfile?.city ? userProfile.city : "",
@@ -296,15 +296,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   }, []);
 
   // Tax Config & Coupons State
-  const [taxConfig, setTaxConfig] = useState<TaxConfig>(() => {
-    const saved = localStorage.getItem("sz_tax_config");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {}
-    }
-    return DEFAULT_TAX_CONFIG;
-  });
+  const { settings: siteSettings } = useSiteSettings();
+  const taxConfig: TaxConfig = {
+    taxName: siteSettings.taxName,
+    taxRate: typeof siteSettings.taxRate === "number" ? siteSettings.taxRate : 0,
+    active: siteSettings.taxActive === true,
+  };
 
   const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
 
@@ -316,13 +313,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   } | null>(null);
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.json())
-      .then((res) => {
-        if (res?.success && res.data) setTaxConfig(res.data);
-      })
-      .catch(() => {});
-
     fetch("/api/coupons")
       .then((r) => r.json())
       .then((res) => {
@@ -745,7 +735,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 ) : null}
                 {completedOrder.taxAmount && completedOrder.taxAmount > 0 ? (
                   <div className="flex items-center justify-between text-slate-600">
-                    <span>Impuesto ({completedOrder.taxRate || 19}% IVA):</span>
+                    <span>Impuesto ({completedOrder.taxRate}%):</span>
                     <span className="font-bold text-slate-900">
                       + {formatCurrency(completedOrder.taxAmount)}
                     </span>
@@ -876,7 +866,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
       <div className="mb-6">
         <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#E60012] uppercase tracking-wider mb-1">
           <ShieldCheck className="w-4 h-4 text-[#E60012]" />
-          <span>CHECKOUT SEGURO SUZUKI REPUESTOS COLOMBIA</span>
+          <span>CHECKOUT SEGURO</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-display">
           Finalizar Compra & Despacho

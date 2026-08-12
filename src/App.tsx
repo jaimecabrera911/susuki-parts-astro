@@ -22,6 +22,9 @@ import { CatalogSidebarFilter } from "./components/CatalogSidebarFilter";
 import { ProductCatalogSkeletonGrid } from "./components/SkeletonLoaders";
 
 import { WhatsAppWidget } from "./components/WhatsAppWidget";
+import { Footer } from "./components/Footer";
+import { ContactPage } from "./components/ContactPage";
+import { SiteSettingsProvider } from "./components/SiteSettingsProvider";
 import type {
   ActiveMotorcycle,
   SuzukiPart,
@@ -226,6 +229,7 @@ export default function App() {
     | "account"
     | "checkout"
     | "favorites"
+    | "contact"
   >("garage");
 
   const [selectedPagePart, setSelectedPagePart] = useState<SuzukiPart | null>(
@@ -256,7 +260,8 @@ export default function App() {
       | "product-page"
       | "account"
       | "checkout"
-      | "favorites",
+      | "favorites"
+      | "contact",
     pathOverride?: string,
   ) => {
     // Clear schematic targets when leaving the schematics view to avoid stale pre-selection
@@ -272,6 +277,7 @@ export default function App() {
     else if (tab === "account") targetPath = "/cuenta";
     else if (tab === "checkout") targetPath = "/completar-pedido";
     else if (tab === "favorites") targetPath = "/favoritos";
+    else if (tab === "contact") targetPath = "/contacto";
     else if (pathOverride) targetPath = pathOverride;
 
     if (window.location.pathname !== targetPath) {
@@ -371,6 +377,12 @@ export default function App() {
       ) {
         setActiveTab("favorites");
         if (!isLoggedInRef.current) setIsAuthModalOpen(true);
+      } else if (
+        pathname === "/contacto" ||
+        hash === "#contacto" ||
+        hash === "#contact"
+      ) {
+        setActiveTab("contact");
       } else if (
         pathname === "/garaje" ||
         pathname === "/" ||
@@ -636,9 +648,10 @@ export default function App() {
     });
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col font-sans antialiased selection:bg-[#E60012] selection:text-white">
-      {/* Top Header Navbar */}
-      <Navbar
+    <SiteSettingsProvider>
+      <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col font-sans antialiased selection:bg-[#E60012] selection:text-white">
+        {/* Top Header Navbar */}
+        <Navbar
         activeMotorcycle={activeMotorcycle}
         cartCount={cartItems.length}
         searchQuery={searchQuery}
@@ -744,7 +757,7 @@ export default function App() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs">
               <div>
                 <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                  Catálogo Oficial Suzuki Parts
+                  Catálogo Oficial de Repuestos
                   <span className="text-xs font-mono font-bold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full border border-slate-200">
                     {filteredParts.length} repuestos
                   </span>
@@ -979,6 +992,11 @@ export default function App() {
             onNavigateToCatalog={() => navigateToTab("catalog")}
           />
         )}
+
+        {/* Tab 9: Contact Page (/contacto) */}
+        {activeTab === "contact" && (
+          <ContactPage onGoHome={() => navigateToTab("garage")} />
+        )}
       </main>
 
       {/* Global Modals & Drawers */}
@@ -1068,39 +1086,11 @@ export default function App() {
       />
 
       {/* Footer strictly formatted as user design */}
-      <footer className="bg-slate-200/80 border-t border-slate-300 mt-16 py-10 text-slate-700 text-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div>
-            <div className="font-extrabold text-slate-900 uppercase text-sm mb-2">
-              SUZUKI REPUESTOS COLOMBIA
-            </div>
-            <p className="text-slate-600 text-[11px] leading-relaxed">
-              © 2026 SUZUKI REPUESTOS COLOMBIA | INDUSTRIAL PRECISION
-              <br />
-              Sistema oficial de consulta y suministro de repuestos con garantía
-              de ajuste técnico OEM.
-            </p>
-          </div>
-
-          <div className="md:text-right space-y-1">
-            <div className="font-extrabold text-slate-800 text-[11px] uppercase mb-2">
-              LEGAL & INFO
-            </div>
-            <div className="space-y-1 text-slate-700">
-              <button
-                type="button"
-                onClick={() => setIsTutorialOpen(true)}
-                className="hover:text-[#E60012] block text-left md:ml-auto cursor-pointer underline"
-              >
-                Technical Specifications
-              </button>
-              <span className="block">OEM Verification Process</span>
-              <span className="block">Shipping Policy & Warranty</span>
-              <span className="block">Privacy Compliance</span>
-            </div>
-          </div>
-        </div>
-      </footer>
-    </div>
+      <Footer
+        onOpenTutorial={() => setIsTutorialOpen(true)}
+        onOpenContact={() => navigateToTab("contact")}
+      />
+      </div>
+    </SiteSettingsProvider>
   );
 }

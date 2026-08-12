@@ -10,10 +10,11 @@ import { SchematicsManager } from "./SchematicsManager";
 import { OrdersManager } from "./OrdersManager";
 import { UsersManager } from "./UsersManager";
 import { ShippingManager } from "./ShippingManager";
-import { TaxSettingsManager } from "./TaxSettingsManager";
+import { SettingsManager } from "./SettingsManager";
 import { CouponsManager } from "./CouponsManager";
 import { ReturnsManager } from "./ReturnsManager";
 import { ReturnModal } from "./ReturnModal";
+import { getStoreName } from "../../utils/config";
 import { BrandModal } from "./BrandModal";
 import { ModelDrawer } from "./ModelDrawer";
 import { ModelViewModal } from "./ModelViewModal";
@@ -68,6 +69,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { getStoredLogin, getStoredUser, isAdminUser } from "../../utils/auth";
+import { SiteSettingsProvider } from "../SiteSettingsProvider";
 
 const getTabFromUrl = (): AdminTab => {
   if (typeof window === "undefined") return "brands";
@@ -83,10 +85,13 @@ const getTabFromUrl = (): AdminTab => {
     "returns",
     "users",
     "shipping",
+    "settings",
+    "coupons",
     "metrics",
   ];
-  if (section && validTabs.includes(section as AdminTab)) {
-    return section as AdminTab;
+  const sectionClean = section === "taxes" ? "settings" : section;
+  if (sectionClean && validTabs.includes(sectionClean as AdminTab)) {
+    return sectionClean as AdminTab;
   }
   return "brands";
 };
@@ -687,8 +692,9 @@ export const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div id="admin-dashboard" className="min-h-screen bg-[#f7f9fb] text-[#191c1e] flex font-sans antialiased">
-      {/* Sidebar */}
+    <SiteSettingsProvider>
+      <div id="admin-dashboard" className="min-h-screen bg-[#f7f9fb] text-[#191c1e] flex font-sans antialiased">
+        {/* Sidebar */}
       <AdminSidebar
         activeTab={activeTab}
         setActiveTab={handleSetActiveTab}
@@ -725,7 +731,7 @@ export const AdminDashboard: React.FC = () => {
           }
           subtitle={
             activeTab === "brands"
-              ? "Administra las marcas de motocicletas y sus configuraciones en el catálogo Suzuki Parts"
+              ? "Administra las marcas de motocicletas y sus configuraciones en el catálogo"
               : activeTab === "models"
                 ? "Administra la compatibilidad por modelo, años, versiones, despieces y especificaciones OEM"
                 : activeTab === "categories"
@@ -738,7 +744,9 @@ export const AdminDashboard: React.FC = () => {
                         ? "Administra el procesamiento de pedidos, guías de envío y estados de logística"
                         : activeTab === "users"
                           ? "Administra las cuentas de usuarios registrados, roles y permisos de acceso"
-                          : "Sistema administrativo Suzuki Parts Expert"
+                          : getStoreName()
+                            ? `Sistema administrativo ${getStoreName()}`
+                            : "Sistema administrativo"
           }
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -948,7 +956,7 @@ export const AdminDashboard: React.FC = () => {
 
           {activeTab === "shipping" && <ShippingManager />}
 
-          {activeTab === "taxes" && <TaxSettingsManager />}
+          {activeTab === "settings" && <SettingsManager />}
 
           {activeTab === "coupons" && <CouponsManager />}
 
@@ -962,7 +970,7 @@ export const AdminDashboard: React.FC = () => {
             activeTab !== "returns" &&
             activeTab !== "users" &&
             activeTab !== "shipping" &&
-            activeTab !== "taxes" &&
+            activeTab !== "settings" &&
             activeTab !== "coupons" && (
               <div className="p-12 rounded-2xl bg-white border border-slate-200 text-center max-w-xl mx-auto my-12 shadow-xs">
                 <div className="w-16 h-16 rounded-2xl bg-red-50 text-[#E60012] border border-red-200 flex items-center justify-center mx-auto mb-4">
@@ -1096,6 +1104,7 @@ export const AdminDashboard: React.FC = () => {
         returnItem={returnToEdit}
         onSaveReturn={handleSaveReturn}
       />
-    </div>
+      </div>
+    </SiteSettingsProvider>
   );
 };

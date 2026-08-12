@@ -436,7 +436,7 @@ export const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
                         />
                       </div>
                       <p className="text-xs text-slate-600 mt-1">
-                        Recibe un cupón de saldo inmediato para tu próxima compra en Suzuki Parts con un <span className="font-bold text-amber-800">5% extra de regalo</span>.
+                        Recibe un cupón de saldo inmediato para tu próxima compra con un <span className="font-bold text-amber-800">5% extra de regalo</span>.
                       </p>
                       <div className="mt-2 text-sm font-bold text-amber-800 font-mono">
                         Valor Total Recibido: {formatCurrency(totalResolutionValue)}

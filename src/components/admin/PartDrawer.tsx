@@ -144,8 +144,8 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       setImage("");
       setDescription("");
       setSpecs([
-        { label: "Origen", value: "Genuine Suzuki Parts (Japan)" },
-        { label: "Garantía", value: "12 Meses Defecto Fábrica" },
+        { label: "Origen", value: "" },
+        { label: "Garantía", value: "" },
       ]);
       setCompatibility([]);
     }
@@ -247,7 +247,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
               <p className="text-xs text-slate-500 font-mono">
                 {partToEdit
                   ? `ID: ${partToEdit.id}`
-                  : "Catálogo Suzuki Parts Expert"}
+                  : "Catálogo de Repuestos"}
               </p>
             </div>
           </div>

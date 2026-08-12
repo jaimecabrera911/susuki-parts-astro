@@ -79,7 +79,7 @@ export const BrandModal: React.FC<BrandModalProps> = ({
                 {brandToEdit ? 'Editar Marca' : 'Nueva Marca'}
               </h2>
               <p className="text-xs text-slate-500 font-mono">
-                {brandToEdit ? `ID: ${brandToEdit.id}` : 'Catálogo Suzuki Parts'}
+                {brandToEdit ? `ID: ${brandToEdit.id}` : 'Catálogo de Marcas'}
               </p>
             </div>
           </div>

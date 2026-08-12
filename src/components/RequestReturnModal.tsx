@@ -132,13 +132,13 @@ export const RequestReturnModal: React.FC<RequestReturnModalProps> = ({
         },
         ...(isPreDispatchCancel ? [{
           sender: 'admin',
-          senderName: 'Sistema Suzuki Parts',
+          senderName: 'Sistema',
           text: 'Solicitud procesada como Cancelación sin Despacho (el paquete aún no había sido enviado).',
           timestamp: new Date().toISOString()
         }] : []),
         ...(isUnpaidCancel ? [{
           sender: 'admin',
-          senderName: 'Sistema Suzuki Parts',
+          senderName: 'Sistema',
           text: 'Anulación directa sin desembolso financiero ($0 COP) debido a pago pendiente o no verificado.',
           timestamp: new Date().toISOString()
         }] : [])

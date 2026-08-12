@@ -1,6 +1,14 @@
 import type { APIRoute } from 'astro';
 import { db } from '../../db/client';
 import { getSiteSettings, upsertSiteSettings } from '../../db/writers';
+import { verifyJwtToken } from '../../utils/jwt';
+
+function isAdminRequest(request: Request): boolean {
+  const authHeader = request.headers.get('authorization') || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const payload = token ? verifyJwtToken(token) : null;
+  return Boolean(payload && payload.role === 'admin');
+}
 
 export const GET: APIRoute = async () => {
   try {
@@ -18,6 +26,12 @@ export const GET: APIRoute = async () => {
 };
 
 export const POST: APIRoute = async ({ request }) => {
+  if (!isAdminRequest(request)) {
+    return new Response(
+      JSON.stringify({ success: false, error: 'No autorizado: se requiere sesión de administrador' }),
+      { status: 401, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
   try {
     const body = await request.json();
     const data = await upsertSiteSettings(db, body);

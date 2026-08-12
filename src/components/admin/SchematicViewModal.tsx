@@ -297,7 +297,7 @@ export const SchematicViewModal: React.FC<SchematicViewModalProps> = ({
         {/* Footer */}
         <div className="px-6 md:px-8 py-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between shrink-0">
           <p className="text-xs font-mono text-slate-500 hidden sm:block">
-            Esquema despiece homologado para catálogo Suzuki Parts Colombia.
+            Esquema despiece homologado para el catálogo oficial de repuestos.
           </p>
           <div className="flex items-center gap-3 ml-auto">
             <button

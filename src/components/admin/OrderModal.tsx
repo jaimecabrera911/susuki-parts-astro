@@ -269,9 +269,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   <span>- {formatCurrency(order.discount)}</span>
                 </div>
               ) : null}
-              {order.taxAmount && order.taxAmount > 0 ? (
+              {order.taxAmount && order.taxAmount > 0 && typeof order.taxRate === 'number' ? (
                 <div className="flex justify-between text-slate-600">
-                  <span>Impuesto ({order.taxRate || 19}% IVA):</span>
+                  <span>Impuesto ({order.taxRate}%):</span>
                   <span className="font-bold text-slate-900">+ {formatCurrency(order.taxAmount)}</span>
                 </div>
               ) : null}

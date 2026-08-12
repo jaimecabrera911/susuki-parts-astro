@@ -418,10 +418,22 @@ export const orderReturns = pgTable('order_returns', {
 // 15. Site / Store Settings Table
 export const siteSettings = pgTable('site_settings', {
   id: text('id').primaryKey().default('default'),
+  storeName: text('store_name').notNull().default(''),
+  storeLogo: text('store_logo').notNull().default(''),
+  storeTagline: text('store_tagline').notNull().default(''),
+  whatsappNumber: text('whatsapp_number').notNull().default(''),
+  contactEmail: text('contact_email').notNull().default(''),
+  storeAddress: text('store_address').notNull().default(''),
+  socialLinks: jsonb('social_links'),
+  defaultCountry: text('default_country').notNull().default(''),
+  defaultDepartment: text('default_department').notNull().default(''),
+  defaultCity: text('default_city').notNull().default(''),
+  showProductImages: boolean('show_product_images').notNull().default(true),
   taxName: text('tax_name').notNull().default('IVA Colombia'),
   taxRate: doublePrecision('tax_rate').notNull().default(19),
   taxActive: boolean('tax_active').notNull().default(true),
   returnMaxDays: integer('return_max_days').notNull().default(30),
+  footerConfig: jsonb('footer_config'),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 });
 

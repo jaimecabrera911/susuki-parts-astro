@@ -32,7 +32,7 @@ export const ProductImageFallback: React.FC<ProductImageFallbackProps> = ({
       <div className={`rounded-3xl bg-slate-900 text-white border border-slate-800 p-8 flex flex-col items-center justify-center text-center relative overflow-hidden ${className}`}>
         <div className="absolute top-3 left-3 flex items-center gap-1 bg-red-500/20 border border-red-500/30 text-red-400 text-[10px] font-mono font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider">
           <ShieldCheck className="w-3.5 h-3.5" />
-          <span>SUZUKI OEM SPEC</span>
+          <span>OEM SPEC</span>
         </div>
         <div className="w-20 h-20 rounded-3xl bg-slate-800 border border-slate-700 flex items-center justify-center mb-4 shadow-inner">
           <Layers className="w-10 h-10 text-[#E60012]" />

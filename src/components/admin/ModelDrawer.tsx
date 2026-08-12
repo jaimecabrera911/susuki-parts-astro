@@ -171,7 +171,7 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
   const groupedLinkedSchematics = useMemo(() => {
     const map = new Map<string, ExplodedDiagram[]>();
     linkedSchematics.forEach((s) => {
-      const cat = s.category || s.section || "General";
+      const cat = s.category || s.section || "";
       if (!map.has(cat)) {
         map.set(cat, []);
       }
@@ -187,7 +187,7 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
   const groupedUnlinkedSchematics = useMemo(() => {
     const map = new Map<string, ExplodedDiagram[]>();
     unlinkedSchematics.forEach((s) => {
-      const cat = s.category || s.section || "General";
+      const cat = s.category || s.section || "";
       if (!map.has(cat)) {
         map.set(cat, []);
       }

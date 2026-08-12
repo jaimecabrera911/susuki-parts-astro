@@ -1,4 +1,5 @@
 // Client API Service to communicate with backend endpoints in src/pages/api/
+import { getAuthHeaders } from '../utils/auth';
 
 export async function fetchBrands() {
   const res = await fetch('/api/brands');
@@ -383,6 +384,41 @@ export async function sendOrderMessageApi(orderId: string, text: string, sender:
     })
   });
   return await res.json();
+}
+
+export async function GET_SETTINGS() {
+  const res = await fetch('/api/settings');
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Error cargando configuración');
+  return json.data;
+}
+
+export async function POST_SETTINGS(settings: any) {
+  const res = await fetch('/api/settings', {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(settings)
+  });
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Error guardando configuración');
+  return json.data;
+}
+
+export async function UPLOAD_IMAGE(file: File, folder = 'store') {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('folder', folder);
+  const token = localStorage.getItem('sz_jwt_token');
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch('/api/upload', {
+    method: 'POST',
+    headers,
+    body: formData
+  });
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Error subiendo la imagen');
+  return json.data as { url: string; key: string };
 }
 
 

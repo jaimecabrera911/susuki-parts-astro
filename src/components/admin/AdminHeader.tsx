@@ -54,8 +54,8 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   };
 
   const activeUser = propUser || sessionUser;
-  const displayName = activeUser?.fullName || "Administrador Suzuki Parts";
-  const displayEmail = activeUser?.email || "admin@suzukiparts.com.co";
+  const displayName = activeUser?.fullName || "";
+  const displayEmail = activeUser?.email || "";
 
   return (
     <header id="admin-header" className="bg-white border-b border-slate-200 px-8 py-5 flex items-center justify-between sticky top-0 z-20 shadow-xs">

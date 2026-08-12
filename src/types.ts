@@ -232,6 +232,47 @@ export interface TaxConfig {
   active: boolean;
 }
 
+export interface FooterLink {
+  label: string;
+  href: string;
+}
+
+export interface FooterConfig {
+  tagline: string;
+  description: string;
+  copyright: string;
+  legalLinks: FooterLink[];
+}
+
+export interface SocialLinks {
+  facebook?: string;
+  instagram?: string;
+  tiktok?: string;
+  youtube?: string;
+  whatsapp?: string;
+}
+
+export interface SiteSettings {
+  id: string;
+  storeName: string;
+  storeLogo: string;
+  storeTagline: string;
+  whatsappNumber: string;
+  contactEmail: string;
+  storeAddress: string;
+  socialLinks?: SocialLinks;
+  defaultCountry: string;
+  defaultDepartment: string;
+  defaultCity: string;
+  showProductImages: boolean;
+  taxName: string;
+  taxRate: number;
+  taxActive: boolean;
+  returnMaxDays: number;
+  footerConfig?: FooterConfig;
+  updatedAt?: string;
+}
+
 export interface Coupon {
   id: string;
   code: string;

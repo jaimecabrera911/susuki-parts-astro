@@ -1,14 +1,18 @@
 import type { SuzukiPart, CartItem, ActiveMotorcycle } from '../types';
 import { getPrimaryOem } from '../types';
 import { formatCurrency } from './formatCurrency';
+import { getWhatsAppNumber, getStoreName } from './config';
 
-export const SUZUKI_WHATSAPP_NUMBER = '573009128888';
+const storeGreeting = (): string => {
+  const name = getStoreName().trim();
+  return name ? `Hola ${name} 👋, ` : 'Hola 👋, ';
+};
 
 /**
  * Builds a direct WhatsApp link for general expert inquiry
  */
 export function getGeneralWhatsAppUrl(activeMotorcycle?: ActiveMotorcycle | null): string {
-  let message = `Hola Suzuki Parts Expert 👋, necesito asesoría técnica sobre repuestos genuinos Suzuki.`;
+  let message = `${storeGreeting()}necesito asesoría técnica sobre repuestos genuinos Suzuki.`;
   
   if (activeMotorcycle) {
     message += `\n\n🏍️ *Mi Motocicleta Activa:* ${activeMotorcycle.brand} ${activeMotorcycle.modelName} (${activeMotorcycle.year})`;
@@ -21,14 +25,14 @@ export function getGeneralWhatsAppUrl(activeMotorcycle?: ActiveMotorcycle | null
   
   message += `\n\n¿Me pueden colaborar con disponibilidad e información de repuestos?`;
 
-  return `https://wa.me/${SUZUKI_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+  return `https://wa.me/${getWhatsAppNumber()}?text=${encodeURIComponent(message)}`;
 }
 
 /**
  * Builds a WhatsApp URL for inquiring about a specific product
  */
 export function getProductWhatsAppUrl(part: SuzukiPart, activeMotorcycle?: ActiveMotorcycle | null): string {
-  let message = `Hola Suzuki Parts Expert 👋, quiero consultar disponibilidad y precio para este repuesto genuino:\n\n`;
+  let message = `${storeGreeting()}quiero consultar disponibilidad y precio para este repuesto genuino:\n\n`;
   message += `📦 *Producto:* ${part.name}\n`;
   message += `🏷️ *Ref. OEM:* ${getPrimaryOem(part)}\n`;
   message += `📁 *Categoría:* ${part.category}\n`;
@@ -41,7 +45,7 @@ export function getProductWhatsAppUrl(part: SuzukiPart, activeMotorcycle?: Activ
 
   message += `\n\n¿Tienen disponibilidad e información de despacho nacional?`;
 
-  return `https://wa.me/${SUZUKI_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+  return `https://wa.me/${getWhatsAppNumber()}?text=${encodeURIComponent(message)}`;
 }
 
 /**
@@ -50,7 +54,7 @@ export function getProductWhatsAppUrl(part: SuzukiPart, activeMotorcycle?: Activ
 export function getCartWhatsAppUrl(cartItems: CartItem[], activeMotorcycle?: ActiveMotorcycle | null): string {
   const total = cartItems.reduce((acc, item) => acc + (item.part.price * item.quantity), 0);
 
-  let message = `Hola Suzuki Parts Expert 👋, me gustaría cotizar / realizar el pedido de los siguientes repuestos de mi carrito:\n\n`;
+  let message = `${storeGreeting()}me gustaría cotizar / realizar el pedido de los siguientes repuestos de mi carrito:\n\n`;
 
   cartItems.forEach((item, index) => {
     const subtotal = item.part.price * item.quantity;
@@ -73,5 +77,5 @@ export function getCartWhatsAppUrl(cartItems: CartItem[], activeMotorcycle?: Act
 
   message += `\n\nPor favor confirmen inventario, costo de envío y opciones de pago. ¡Gracias!`;
 
-  return `https://wa.me/${SUZUKI_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+  return `https://wa.me/${getWhatsAppNumber()}?text=${encodeURIComponent(message)}`;
 }

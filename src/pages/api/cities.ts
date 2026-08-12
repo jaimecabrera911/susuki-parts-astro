@@ -1,8 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
 import { cities, states, countries } from '../../db/schema';
-import { upsertCity, ensureCountry, ensureState, seedGeography } from '../../db/writers';
-import { STORE_DEFAULT_LOCATION } from '../../utils/config';
+import { upsertCity, ensureCountry, ensureState, seedGeography, getSiteSettings } from '../../db/writers';
 import { eq } from 'drizzle-orm';
 
 export const GET: APIRoute = async () => {
@@ -41,7 +40,9 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const db = getDb();
     const body = await request.json();
-    const countryName = body.country || STORE_DEFAULT_LOCATION.country;
+    const settings = await getSiteSettings(db);
+    const defaultCountry = settings.defaultCountry;
+    const countryName = body.country || defaultCountry;
     const countryId = await ensureCountry(db, countryName);
     const stateId = body.stateId || (await ensureState(db, countryId, body.department || ''));
     const saved = await upsertCity(db, {

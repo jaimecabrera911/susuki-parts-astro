@@ -1,8 +1,32 @@
 ---
 import '../styles/global.css';
 import logoImg from '../assets/logo.png';
+import { db } from '../db/client';
+import { getSiteSettings } from '../db/writers';
+import { setSiteSettingsFromDb, getStoreName, getStoreTagline, getStoreLogo } from '../utils/config';
 
 const logoUrl = typeof logoImg === 'string' ? logoImg : (logoImg?.src || '/src/assets/logo.png');
+
+let siteSettings = null;
+try {
+	const site = await getSiteSettings(db);
+	if (site) {
+		siteSettings = site;
+		setSiteSettingsFromDb(site);
+	}
+} catch {
+	// mantiene bootstrap si la BD no responde
+}
+
+const storeName = getStoreName();
+const storeTagline = getStoreTagline();
+const storeLogo = getStoreLogo();
+const faviconUrl = storeLogo || logoUrl;
+
+const injectedSettingsJson =
+	siteSettings != null
+		? JSON.stringify({ ...siteSettings, updatedAt: String(siteSettings.updatedAt ?? '') })
+		: null;
 
 interface Props {
 	title?: string;
@@ -10,7 +34,7 @@ interface Props {
 }
 
 const {
-	title = "Suzuki Parts Expert | Repuestos Genuinos y Compatibilidad Garantizada",
+	title = `${storeName}${storeTagline ? ` | ${storeTagline}` : ""} | Repuestos Genuinos y Compatibilidad Garantizada`,
 	description = "Catálogo técnico interactivo, decodificador VIN, despieces exploded-view y asistente de mantenimiento de motocicletas Suzuki."
 } = Astro.props;
 ---
@@ -20,13 +44,18 @@ const {
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<link rel="icon" type="image/png" href={logoUrl} />
+		<link rel="icon" type="image/png" href={faviconUrl} />
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
 		<meta name="description" content={description} />
 		<link rel="preconnect" href="https://fonts.googleapis.com">
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 		<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+		{injectedSettingsJson && (
+			<script is:inline define:vars={{ injectedSettingsJson }}>
+				window.__SITE_SETTINGS__ = JSON.parse(injectedSettingsJson);
+			</script>
+		)}
 	</head>
 	<body class="bg-[#f7f9fb] text-[#191c1e] font-sans antialiased">
 		<slot />

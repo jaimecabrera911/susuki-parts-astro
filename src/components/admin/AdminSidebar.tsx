@@ -13,9 +13,13 @@ import {
 } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 
-import { Percent, Tag, RotateCcw } from 'lucide-react';
+import { Tag, RotateCcw, Settings } from 'lucide-react';
+import { getStoreLogo, getStoreName, getStoreTagline } from '../../utils/config';
+import logoImg from '../../assets/logo.png';
 
-export type AdminTab = 'brands' | 'models' | 'categories' | 'parts' | 'schematics' | 'orders' | 'returns' | 'users' | 'shipping' | 'taxes' | 'coupons' | 'metrics';
+const logoUrl = typeof logoImg === 'string' ? logoImg : (logoImg?.src || '/src/assets/logo.png');
+
+export type AdminTab = 'brands' | 'models' | 'categories' | 'parts' | 'schematics' | 'orders' | 'returns' | 'users' | 'shipping' | 'settings' | 'coupons' | 'metrics';
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -46,6 +50,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   shippingCount = 0,
   couponsCount = 0
 }) => {
+  const storeLogo = getStoreLogo();
+  const storeName = getStoreName();
+  const storeTagline = getStoreTagline();
+  const logoToShow = storeLogo || logoUrl;
+
   const menuItems = [
     {
       id: 'brands' as AdminTab,
@@ -93,9 +102,9 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       icon: Truck,
     },
     {
-      id: 'taxes' as AdminTab,
-      label: 'IMPUESTOS (IVA)',
-      icon: Percent,
+      id: 'settings' as AdminTab,
+      label: 'CONFIGURACIÓN',
+      icon: Settings,
     },
     {
       id: 'coupons' as AdminTab,
@@ -115,20 +124,20 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         {/* Header Suzuki Genuine Parts Workshop Branding */}
         <div className="p-5 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#E60012] flex items-center justify-center text-white font-black text-xl tracking-tighter shadow-md shadow-red-500/20 shrink-0">
-              S
+            <div className="w-10 h-10 bg-white overflow-hidden flex items-center justify-center shrink-0">
+              <img src={logoToShow} alt={storeName} className="w-full h-full object-cover pointer-events-none select-none" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-extrabold text-slate-900 text-sm tracking-tight font-display">
-                  SUZUKI
+                  {storeName}
                 </span>
                 <span className="text-[9px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-red-100 text-[#E60012] border border-red-200">
                   ADMIN
                 </span>
               </div>
               <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
-                PARTS EXPERT
+                {storeTagline}
               </p>
             </div>
           </div>
