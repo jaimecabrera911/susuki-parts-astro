@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { UserAvatar } from "./UserAvatar";
+import { RequestReturnModal } from "./RequestReturnModal";
 import {
   X,
   ShieldCheck,
@@ -17,6 +18,9 @@ import {
   Wrench,
   Mail,
   FileText,
+  RotateCcw,
+  Send,
+  MessageSquare,
 } from "lucide-react";
 import { getPrimaryOem } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
@@ -24,7 +28,8 @@ import { formatOrderDate } from "../utils/formatDate";
 import { shouldShowProductImages } from "../utils/config";
 import { ProductImageFallback } from "./ProductImageFallback";
 import { BANK_DETAILS } from "../data/bankDetails";
-import { fetchDefaultCarrierName } from "../services/api";
+import { fetchDefaultCarrierName, fetchReturns, saveReturnApi } from "../services/api";
+import { parseReturnNotes, formatMessageTime } from "../utils/returnNotes";
 
 interface OrderDetailModalProps {
   order: any | null;
@@ -39,6 +44,10 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 }) => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [defaultCarrier, setDefaultCarrier] = useState<string>("");
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [activeReturn, setActiveReturn] = useState<any | null>(null);
+  const [customerMessage, setCustomerMessage] = useState("");
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +60,54 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (isOpen && order?.id) {
+      fetchReturns(undefined, undefined, order.id)
+        .then((returns) => {
+          if (returns && returns.length > 0) {
+            setActiveReturn(returns[0]);
+          } else {
+            setActiveReturn(null);
+          }
+        })
+        .catch(() => setActiveReturn(null));
+    } else {
+      setActiveReturn(null);
+    }
+  }, [isOpen, order?.id]);
+
+  const handleSendCustomerMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = customerMessage.trim();
+    if (!trimmed || !activeReturn || isSendingMessage) return;
+
+    setIsSendingMessage(true);
+    try {
+      const existingNotes = parseReturnNotes(activeReturn.notes, order?.customerName || "Cliente");
+      const newMsg = {
+        id: `msg-${Date.now()}`,
+        sender: "customer",
+        senderName: order?.customerName || "Cliente",
+        text: trimmed,
+        timestamp: new Date().toISOString(),
+      };
+      const updatedNotesList = [...existingNotes, newMsg];
+      const updatedReturn = {
+        ...activeReturn,
+        notes: JSON.stringify(updatedNotesList),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await saveReturnApi(updatedReturn);
+      setActiveReturn(updatedReturn);
+      setCustomerMessage("");
+    } catch (err) {
+      console.error("Error enviando mensaje de devolución:", err);
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -399,9 +456,138 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 {formatCurrency(order.totalPrice)}
               </span>
             </div>
+
+            {/* Request Return Button OR Return Status Banner */}
+            <div className="pt-3">
+              {activeReturn ? (
+                <div className="p-5 bg-[#f7f9fb] text-slate-900 rounded-2xl border border-slate-200 space-y-4 shadow-xs">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <RotateCcw className="w-5 h-5 text-amber-600" />
+                      <span className="font-black text-xs uppercase tracking-wider font-display text-slate-900">
+                        Trámite de Devolución {activeReturn.id}
+                      </span>
+                    </div>
+                    <span className={`text-[10px] font-mono font-extrabold uppercase px-3 py-1 rounded-full border ${
+                      activeReturn.status === 'Pendiente' ? 'bg-amber-50 text-amber-900 border-amber-300' :
+                      activeReturn.status === 'Aprobada' || activeReturn.status === 'En tránsito' ? 'bg-sky-50 text-sky-900 border-sky-300' :
+                      activeReturn.status === 'Reembolsada' ? 'bg-emerald-50 text-emerald-900 border-emerald-300' :
+                      'bg-red-50 text-red-900 border-red-300'
+                    }`}>
+                      {activeReturn.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-1.5 text-center py-1 font-mono text-[9px]">
+                    <div className={`p-1.5 rounded-xl font-bold transition-all ${activeReturn.status === 'Pendiente' ? 'bg-amber-500 text-slate-950 font-black shadow-xs' : 'bg-slate-200/80 text-slate-500 border border-slate-300'}`}>1. Solicitada</div>
+                    <div className={`p-1.5 rounded-xl font-bold transition-all ${activeReturn.status === 'Aprobada' ? 'bg-sky-600 text-white font-black shadow-xs' : 'bg-slate-200/80 text-slate-500 border border-slate-300'}`}>2. Aprobada</div>
+                    <div className={`p-1.5 rounded-xl font-bold transition-all ${activeReturn.status === 'En tránsito' || activeReturn.status === 'Pieza recibida' ? 'bg-indigo-600 text-white font-black shadow-xs' : 'bg-slate-200/80 text-slate-500 border border-slate-300'}`}>3. En Tránsito</div>
+                    <div className={`p-1.5 rounded-xl font-bold transition-all ${activeReturn.status === 'Reembolsada' ? 'bg-emerald-600 text-white font-black shadow-xs' : (activeReturn.status === 'Rechazada' ? 'bg-red-600 text-white font-black' : 'bg-slate-200/80 text-slate-500 border border-slate-300')}`}>
+                      {activeReturn.status === 'Rechazada' ? 'Rechazada' : '4. Reembolsada'}
+                    </div>
+                  </div>
+
+                  <div className="text-xs space-y-1.5 text-slate-700 font-sans">
+                    <p><strong>Motivo:</strong> {activeReturn.reason}</p>
+                    <p><strong>Solución Solicitada:</strong> <span className="font-bold text-slate-900">{
+                      activeReturn.isUnpaidCancel || order?.paymentStatus === 'pending' || order?.status === 'Pendiente' ? '🚫 Anulación sin Desembolso ($0 COP)' :
+                      activeReturn.resolutionType === 'exchange' ? '🔄 Cambio de Repuesto' :
+                      activeReturn.resolutionType === 'store_credit' ? '🏷️ Bono de Tienda' :
+                      '💵 Reembolso de Dinero'
+                    }</span></p>
+                    {activeReturn.returnTrackingNumber && (
+                      <p><strong>Guía de Envío Retorno:</strong> <span className="font-bold text-slate-900">{activeReturn.returnCarrier} #{activeReturn.returnTrackingNumber}</span></p>
+                    )}
+                    {activeReturn.refundAmount > 0 && (
+                      <p><strong>Monto Reembolso:</strong> <span className="text-emerald-700 font-mono font-black text-sm">{formatCurrency(activeReturn.refundAmount)}</span> {activeReturn.refundMethod ? `(${activeReturn.refundMethod})` : ''}</p>
+                    )}
+                    {activeReturn.refundReference && (
+                      <p className="text-[11px] font-mono text-slate-500">Ref. Pago: {activeReturn.refundReference}</p>
+                    )}
+                  </div>
+
+                  {/* Chat / Historial de Conversación y Envío de Mensajes */}
+                  <div className="space-y-2.5 pt-3 border-t border-slate-200">
+                    <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                      <MessageSquare className="w-3.5 h-3.5 text-[#E60012]" />
+                      HISTORIAL DE CONVERSACIÓN & NOTAS DE SOPORTE
+                    </p>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1 bg-white p-3 rounded-2xl border border-slate-200">
+                      {parseReturnNotes(activeReturn.notes, activeReturn.customerName || order?.customerName).length === 0 ? (
+                        <p className="text-slate-400 text-center py-3 font-mono text-[11px]">
+                          Sin mensajes en la conversación.
+                        </p>
+                      ) : (
+                        parseReturnNotes(activeReturn.notes, activeReturn.customerName || order?.customerName).map((msg, idx) => (
+                          <div
+                            key={idx}
+                            className={`flex flex-col ${msg.sender === 'admin' ? 'items-start' : 'items-end'}`}
+                          >
+                            <div className="flex items-center gap-1.5 mb-1 text-[10px] font-mono text-slate-500">
+                              <span className={`font-bold px-1.5 py-0.5 rounded text-[9px] uppercase ${msg.sender === 'admin' ? 'bg-red-100 text-[#E60012] border border-red-200' : 'bg-slate-200 text-slate-800'}`}>
+                                {msg.senderName || (msg.sender === 'admin' ? 'Soporte Suzuki' : 'Tú')}
+                              </span>
+                              {msg.timestamp && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-[10px] text-slate-400 font-medium">{formatMessageTime(msg.timestamp)}</span>
+                                </>
+                              )}
+                            </div>
+                            <div
+                              className={`p-2.5 rounded-2xl text-xs font-sans leading-relaxed shadow-2xs max-w-[85%] ${
+                                msg.sender === 'admin'
+                                  ? 'bg-slate-900 text-white rounded-tl-none'
+                                  : 'bg-slate-100 text-slate-900 border border-slate-200 rounded-tr-none'
+                              }`}
+                            >
+                              {msg.text}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Customer Message Input Box */}
+                    <form onSubmit={handleSendCustomerMessage} className="flex gap-2 pt-1">
+                      <input
+                        type="text"
+                        value={customerMessage}
+                        onChange={(e) => setCustomerMessage(e.target.value)}
+                        placeholder="Escribe tu mensaje o respuesta para soporte..."
+                        className="flex-1 bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-sans text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#E60012] focus:ring-2 focus:ring-[#E60012]/20"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!customerMessage.trim() || isSendingMessage}
+                        className="px-4 py-2 bg-[#E60012] hover:bg-red-700 disabled:opacity-50 text-white text-xs font-bold uppercase rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Enviar</span>
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowReturnModal(true)}
+                  className="w-full py-3 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-2xl text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs"
+                >
+                  <RotateCcw className="w-4 h-4 text-amber-600" />
+                  <span>Solicitar Devolución / Garantía (RMA)</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      <RequestReturnModal
+        isOpen={showReturnModal}
+        onClose={() => setShowReturnModal(false)}
+        order={order}
+      />
     </div>
   );
 };

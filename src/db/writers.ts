@@ -4,7 +4,7 @@ import {
   parts, partOemNumbers, partCompatibilities,
   schematics, schematicHotspots, schematicApplicableModels, schematicSections,
   orderStatuses, carriers, modelCategories,
-  orders, orderItems,
+  orders, orderItems, orderReturns, siteSettings,
   users, userFavorites,
   shippingMethods, shippingZones, shippingZoneStates, shippingMethodZoneRates,
   countries, states, cities
@@ -625,3 +625,92 @@ export async function seedGeography(db: AppDb) {
 
   return { countryId: colombiaId };
 }
+
+export async function upsertOrderReturn(db: AppDb, body: any) {
+  const id = body.id || `SZ-RET-${Math.floor(100000 + Math.random() * 900000)}`;
+  const date = body.createdAt ? new Date(body.createdAt) : new Date();
+
+  const data: any = {
+    id,
+    orderId: body.orderId,
+    customerName: body.customerName,
+    email: body.email,
+    phone: body.phone || '',
+    documentId: body.documentId || '',
+    reason: body.reason || 'Devolución de repuesto',
+    resolutionType: body.resolutionType || 'refund',
+    isPreDispatchCancel: Boolean(body.isPreDispatchCancel),
+    isUnpaidCancel: Boolean(body.isUnpaidCancel),
+    replacementPartId: body.replacementPartId || null,
+    storeCreditCode: body.storeCreditCode || null,
+    status: (Boolean(body.isUnpaidCancel) || Boolean(body.isPreDispatchCancel) || body.resolutionType === 'cancellation') ? 'Aprobada' : (body.status || 'Pendiente'),
+    refundAmount: Number(body.refundAmount || 0),
+    refundMethod: body.refundMethod || null,
+    refundReference: body.refundReference || null,
+    returnCarrier: body.returnCarrier || null,
+    returnTrackingNumber: body.returnTrackingNumber || null,
+    restockInventory: Boolean(body.restockInventory),
+    itemsJson: Array.isArray(body.itemsJson) ? body.itemsJson : (typeof body.itemsJson === 'string' ? parseJson(body.itemsJson, []) : []),
+    notes: body.notes || '',
+    createdAt: date,
+    updatedAt: new Date()
+  };
+
+  await db.transaction(async (tx) => {
+    await tx.insert(orderReturns).values(data).onConflictDoUpdate({ target: orderReturns.id, set: data });
+
+    // Automatically mark the order as Cancelado in DB if it's an unpaid cancellation or pre-dispatch cancel
+    if (data.isUnpaidCancel || data.isPreDispatchCancel || data.resolutionType === 'cancellation') {
+      await tx.update(orders).set({ status: 'Cancelado', updatedAt: new Date() }).where(eq(orders.id, data.orderId));
+    }
+
+    // Handle inventory restocking if switch is enabled
+    if (data.restockInventory && (data.status === 'Reembolsada' || data.status === 'Pieza recibida' || data.status === 'Aprobada')) {
+      const items = data.itemsJson || [];
+      for (const item of items) {
+        if (item.partId && item.quantity) {
+          const existingPart = await tx.select().from(parts).where(eq(parts.id, item.partId));
+          if (existingPart.length > 0) {
+            const currentStock = existingPart[0].stock ?? 0;
+            await tx.update(parts).set({ stock: currentStock + Number(item.quantity) }).where(eq(parts.id, item.partId));
+          }
+        }
+      }
+    }
+  });
+
+  return data;
+}
+
+export async function getSiteSettings(db: AppDb) {
+  try {
+    const rows = await db.select().from(siteSettings).where(eq(siteSettings.id, 'default')).limit(1);
+    if (rows.length > 0) return rows[0];
+  } catch {}
+  return {
+    id: 'default',
+    taxName: 'IVA Colombia',
+    taxRate: 19,
+    taxActive: true,
+    returnMaxDays: 30
+  };
+}
+
+export async function upsertSiteSettings(db: AppDb, body: any) {
+  const data = {
+    id: 'default',
+    taxName: body.taxName || 'IVA Colombia',
+    taxRate: typeof body.taxRate === 'number' ? body.taxRate : 19,
+    taxActive: typeof body.active === 'boolean' ? body.active : true,
+    returnMaxDays: typeof body.returnMaxDays === 'number' ? body.returnMaxDays : 30,
+    updatedAt: new Date()
+  };
+  await db.insert(siteSettings).values(data).onConflictDoUpdate({ target: siteSettings.id, set: data });
+  return data;
+}
+
+export async function deleteOrderReturn(db: AppDb, id: string) {
+  await db.delete(orderReturns).where(eq(orderReturns.id, id));
+  return { id };
+}
+

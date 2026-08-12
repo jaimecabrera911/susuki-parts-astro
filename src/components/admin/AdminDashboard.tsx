@@ -12,6 +12,8 @@ import { UsersManager } from "./UsersManager";
 import { ShippingManager } from "./ShippingManager";
 import { TaxSettingsManager } from "./TaxSettingsManager";
 import { CouponsManager } from "./CouponsManager";
+import { ReturnsManager } from "./ReturnsManager";
+import { ReturnModal } from "./ReturnModal";
 import { BrandModal } from "./BrandModal";
 import { ModelDrawer } from "./ModelDrawer";
 import { ModelViewModal } from "./ModelViewModal";
@@ -29,6 +31,7 @@ import {
   fetchSchematics,
   fetchOrders,
   fetchUsers,
+  fetchReturns,
   saveBrandApi,
   deleteBrandApi,
   saveModelApi,
@@ -43,6 +46,8 @@ import {
   deleteCategoryApi,
   saveUserApi,
   deleteUserApi,
+  saveReturnApi,
+  deleteReturnApi,
 } from "../../services/api";
 // adminStore removed — all data loaded exclusively from Neon DB API
 import type {
@@ -75,6 +80,7 @@ const getTabFromUrl = (): AdminTab => {
     "parts",
     "schematics",
     "orders",
+    "returns",
     "users",
     "shipping",
     "metrics",
@@ -120,6 +126,7 @@ export const AdminDashboard: React.FC = () => {
   const [parts, setParts] = useState<SuzukiPart[]>([]);
   const [schematics, setSchematics] = useState<ExplodedDiagram[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [returnsList, setReturnsList] = useState<any[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
 
   // Toast notification state
@@ -159,6 +166,9 @@ export const AdminDashboard: React.FC = () => {
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [orderToEdit, setOrderToEdit] = useState<Order | null>(null);
 
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+  const [returnToEdit, setReturnToEdit] = useState<any | null>(null);
+
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
 
@@ -167,13 +177,14 @@ export const AdminDashboard: React.FC = () => {
     if (!authorized) return;
     async function loadLiveData() {
       try {
-        const [b, m, c, p, s, o, u] = await Promise.all([
+        const [b, m, c, p, s, o, r, u] = await Promise.all([
           fetchBrands(),
           fetchModels(),
           fetchCategories(),
           fetchParts(),
           fetchSchematics(),
           fetchOrders(),
+          fetchReturns(),
           fetchUsers(),
         ]);
         setBrands(b);
@@ -182,6 +193,7 @@ export const AdminDashboard: React.FC = () => {
         setParts(p);
         setSchematics(s);
         setOrders(o);
+        setReturnsList(r);
         setUsers(u);
       } catch (err) {
         console.error("Error loading data from DB API:", err);
@@ -594,6 +606,38 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleSaveReturn = async (updated: any) => {
+    try {
+      const res = await saveReturnApi(updated, true);
+      if (res.success) {
+        setReturnsList((prev) =>
+          prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r))
+        );
+        showToast(`Devolución ${updated.id} actualizada correctamente`);
+        // Recargar inventario por si se restauro stock
+        if (updated.restockInventory) {
+          const freshParts = await fetchParts();
+          setParts(freshParts);
+        }
+      }
+    } catch (e) {
+      console.error("Error guardando devolución:", e);
+    }
+  };
+
+  const handleDeleteReturn = async (id: string) => {
+    if (!confirm(`¿Estás seguro de eliminar el registro de devolución ${id}?`)) return;
+    try {
+      const res = await deleteReturnApi(id);
+      if (res.success) {
+        setReturnsList((prev) => prev.filter((r) => r.id !== id));
+        showToast(`Devolución ${id} eliminada`);
+      }
+    } catch (e) {
+      console.error("Error eliminando devolución:", e);
+    }
+  };
+
   const handlePrimaryAction = () => {
     if (activeTab === "brands") {
       setBrandToEdit(null);
@@ -654,6 +698,7 @@ export const AdminDashboard: React.FC = () => {
         partsCount={parts.length}
         schematicsCount={schematics.length}
         ordersCount={orders.length}
+        returnsCount={returnsList.length}
         usersCount={users.length}
       />
 
@@ -864,6 +909,27 @@ export const AdminDashboard: React.FC = () => {
             />
           )}
 
+          {activeTab === "returns" && (
+            <ReturnsManager
+              returnsList={returnsList}
+              searchQuery={searchQuery}
+              onEditReturn={(item) => {
+                setReturnToEdit(item);
+                setIsReturnModalOpen(true);
+              }}
+              onDeleteReturn={handleDeleteReturn}
+              onViewOrder={(orderId) => {
+                const found = orders.find((o: any) => o.id === orderId);
+                if (found) {
+                  setOrderToEdit(found);
+                } else {
+                  setOrderToEdit({ id: orderId, customerName: 'Cliente', items: [], totalPrice: 0, status: 'Entregado' });
+                }
+                setIsOrderModalOpen(true);
+              }}
+            />
+          )}
+
           {activeTab === "users" && (
             <UsersManager
               users={users}
@@ -893,6 +959,7 @@ export const AdminDashboard: React.FC = () => {
             activeTab !== "parts" &&
             activeTab !== "schematics" &&
             activeTab !== "orders" &&
+            activeTab !== "returns" &&
             activeTab !== "users" &&
             activeTab !== "shipping" &&
             activeTab !== "taxes" &&
@@ -1021,6 +1088,13 @@ export const AdminDashboard: React.FC = () => {
         onClose={() => setIsUserModalOpen(false)}
         userToEdit={userToEdit}
         onSaveUser={handleSaveUser}
+      />
+
+      <ReturnModal
+        isOpen={isReturnModalOpen}
+        onClose={() => setIsReturnModalOpen(false)}
+        returnItem={returnToEdit}
+        onSaveReturn={handleSaveReturn}
       />
     </div>
   );

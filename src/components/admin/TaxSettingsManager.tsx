@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ShieldAlert,
   RefreshCw,
+  RotateCcw,
 } from "lucide-react";
 import type { TaxConfig } from "../../types";
 import { DEFAULT_TAX_CONFIG } from "../../data/taxCouponsData";
@@ -159,6 +160,34 @@ export const TaxSettingsManager: React.FC = () => {
               Tasa por defecto en Colombia es 19% IVA.
             </p>
           </div>
+        </div>
+
+        {/* Return Days Limit Configuration */}
+        <div className="p-5 bg-amber-50/60 border border-amber-200 rounded-2xl">
+          <label className="block text-xs font-bold text-amber-950 uppercase tracking-wider mb-2 font-mono flex items-center gap-2">
+            <RotateCcw className="w-4 h-4 text-amber-600" />
+            Plazo Máximo para Devoluciones (Días)
+          </label>
+          <div className="flex items-center gap-3">
+            <input
+              type="number"
+              min="1"
+              max="365"
+              value={(taxConfig as any).returnMaxDays !== undefined ? (taxConfig as any).returnMaxDays : 30}
+              onChange={(e) =>
+                setTaxConfig({
+                  ...taxConfig,
+                  returnMaxDays: parseInt(e.target.value) || 30,
+                } as any)
+              }
+              required
+              className="w-32 px-4 py-2.5 bg-white rounded-xl border border-amber-300 focus:ring-2 focus:ring-[#E60012] text-sm font-mono font-bold text-slate-900"
+            />
+            <span className="text-xs font-bold text-slate-700 font-sans">días después de la entrega del pedido</span>
+          </div>
+          <p className="text-[11px] text-amber-800 mt-1 font-sans">
+            Los clientes verán la opción de solicitar devolución/garantía en sus pedidos durante este período máximo.
+          </p>
         </div>
 
         {/* Active Toggle */}

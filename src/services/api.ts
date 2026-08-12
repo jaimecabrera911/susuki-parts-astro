@@ -340,4 +340,35 @@ export async function verifyTokenApi(token: string) {
   return await res.json();
 }
 
+// --- RETURNS & RMA API HELPERS ---
+
+export async function fetchReturns(query?: string, status?: string, orderId?: string) {
+  let url = '/api/returns';
+  const qp = new URLSearchParams();
+  if (query) qp.set('q', query);
+  if (status) qp.set('status', status);
+  if (orderId) qp.set('orderId', orderId);
+  if (qp.toString()) url += `?${qp.toString()}`;
+
+  const res = await fetch(url);
+  const json = await res.json();
+  return json.data || [];
+}
+
+export async function saveReturnApi(returnItem: any, isEdit = false) {
+  const method = isEdit ? 'PUT' : 'POST';
+  const res = await fetch('/api/returns', {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(returnItem)
+  });
+  return await res.json();
+}
+
+export async function deleteReturnApi(id: string) {
+  const res = await fetch(`/api/returns?id=${id}`, { method: 'DELETE' });
+  return await res.json();
+}
+
+
 

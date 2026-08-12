@@ -378,3 +378,45 @@ export const orderItems = pgTable('order_items', {
   orderIdx: index('idx_order_items_order_id').on(table.orderId),
   partIdx: index('idx_order_items_part_id').on(table.partId)
 }));
+
+// 14. Order Returns & Guarantees Table (RMA)
+export const orderReturns = pgTable('order_returns', {
+  id: text('id').primaryKey(),
+  orderId: text('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  customerName: text('customer_name').notNull(),
+  email: text('email').notNull(),
+  phone: text('phone').notNull(),
+  documentId: text('document_id'),
+  reason: text('reason').notNull(),
+  resolutionType: text('resolution_type').notNull().default('refund'), // 'refund' | 'exchange' | 'store_credit'
+  isPreDispatchCancel: boolean('is_pre_dispatch_cancel').notNull().default(false),
+  isUnpaidCancel: boolean('is_unpaid_cancel').notNull().default(false),
+  replacementPartId: text('replacement_part_id'),
+  storeCreditCode: text('store_credit_code'),
+  status: text('status').notNull().default('Pendiente'),
+  refundAmount: doublePrecision('refund_amount').default(0),
+  refundMethod: text('refund_method'),
+  refundReference: text('refund_reference'),
+  returnCarrier: text('return_carrier'),
+  returnTrackingNumber: text('return_tracking_number'),
+  restockInventory: boolean('restock_inventory').notNull().default(false),
+  itemsJson: jsonb('items_json').notNull().default([]),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  orderIdx: index('idx_order_returns_order_id').on(table.orderId),
+  emailIdx: index('idx_order_returns_email').on(table.email),
+  statusIdx: index('idx_order_returns_status').on(table.status)
+}));
+
+// 15. Site / Store Settings Table
+export const siteSettings = pgTable('site_settings', {
+  id: text('id').primaryKey().default('default'),
+  taxName: text('tax_name').notNull().default('IVA Colombia'),
+  taxRate: doublePrecision('tax_rate').notNull().default(19),
+  taxActive: boolean('tax_active').notNull().default(true),
+  returnMaxDays: integer('return_max_days').notNull().default(30),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+

@@ -13,9 +13,9 @@ import {
 } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 
-import { Percent, Tag } from 'lucide-react';
+import { Percent, Tag, RotateCcw } from 'lucide-react';
 
-export type AdminTab = 'brands' | 'models' | 'categories' | 'parts' | 'schematics' | 'orders' | 'users' | 'shipping' | 'taxes' | 'coupons' | 'metrics';
+export type AdminTab = 'brands' | 'models' | 'categories' | 'parts' | 'schematics' | 'orders' | 'returns' | 'users' | 'shipping' | 'taxes' | 'coupons' | 'metrics';
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -26,6 +26,7 @@ interface AdminSidebarProps {
   partsCount: number;
   schematicsCount: number;
   ordersCount?: number;
+  returnsCount?: number;
   usersCount?: number;
   shippingCount?: number;
   couponsCount?: number;
@@ -40,6 +41,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   partsCount,
   schematicsCount,
   ordersCount = 0,
+  returnsCount = 0,
   usersCount = 0,
   shippingCount = 0,
   couponsCount = 0
@@ -49,70 +51,56 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       id: 'brands' as AdminTab,
       label: 'MARCAS',
       icon: Building2,
-      count: brandsCount,
-      badgeColor: 'bg-slate-100 text-slate-700 border-slate-200'
     },
     {
       id: 'models' as AdminTab,
       label: 'MODELOS DE MOTO',
       icon: FaMotorcycle,
-      count: modelsCount,
-      badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
     },
     {
       id: 'categories' as AdminTab,
       label: 'CATEGORÍAS Y SUBCAT',
       icon: FolderTree,
-      count: categoriesCount,
-      badgeColor: 'bg-blue-50 text-blue-700 border-blue-200'
     },
     {
       id: 'parts' as AdminTab,
       label: 'CATÁLOGO REPUESTOS',
       icon: Package,
-      count: partsCount,
-      badgeColor: 'bg-slate-100 text-slate-700 border-slate-200'
     },
     {
       id: 'schematics' as AdminTab,
       label: 'DESPIECES EXPLOSIÓN',
       icon: Layers,
-      count: schematicsCount,
-      badgeColor: 'bg-amber-50 text-amber-700 border-amber-200'
     },
     {
       id: 'orders' as AdminTab,
       label: 'GESTIÓN DE PEDIDOS',
       icon: ShoppingCart,
-      count: ordersCount,
-      badgeColor: 'bg-red-50 text-[#E60012] border-red-200 font-bold'
+    },
+    {
+      id: 'returns' as AdminTab,
+      label: 'DEVOLUCIONES & RMA',
+      icon: RotateCcw,
     },
     {
       id: 'users' as AdminTab,
       label: 'GESTIÓN DE USUARIOS',
       icon: Users,
-      count: usersCount,
-      badgeColor: 'bg-purple-50 text-purple-700 border-purple-200 font-bold'
     },
     {
       id: 'shipping' as AdminTab,
       label: 'MÉTODOS DE ENVÍO',
       icon: Truck,
-      count: shippingCount,
-      badgeColor: 'bg-sky-50 text-sky-700 border-sky-200 font-bold'
     },
     {
       id: 'taxes' as AdminTab,
       label: 'IMPUESTOS (IVA)',
       icon: Percent,
-      badgeColor: 'bg-red-50 text-[#E60012] border-red-200 font-bold'
     },
     {
       id: 'coupons' as AdminTab,
       label: 'CUPONES & DESCUENTOS',
       icon: Tag,
-      count: couponsCount,
-      badgeColor: 'bg-amber-50 text-amber-800 border-amber-200 font-bold'
     },
     {
       id: 'metrics' as AdminTab,

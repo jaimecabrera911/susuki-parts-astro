@@ -22,6 +22,7 @@ import {
   ArrowRight,
   Printer,
   LogOut,
+  RotateCcw,
 } from "lucide-react";
 import { FaCartPlus } from "react-icons/fa6";
 import type {
@@ -37,6 +38,7 @@ import {
 } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { OrdersTable } from "./OrdersTable";
+import { ReturnsTable } from "./ReturnsTable";
 import {
   shouldShowProductImages,
   STORE_DEFAULT_LOCATION,
@@ -44,7 +46,8 @@ import {
 import { ProductImageFallback } from "./ProductImageFallback";
 import { LocationSelector } from "./LocationSelector";
 import type { CityRecord } from "../types";
-import { fetchCities } from "../services/api";
+import { fetchCities, fetchReturns } from "../services/api";
+import { parseReturnNotes } from "../utils/returnNotes";
 
 interface UserProfilePageProps {
   userProfile: UserProfile;
@@ -60,7 +63,7 @@ interface UserProfilePageProps {
   onAddToCart: (part: SuzukiPart) => void;
   onNavigateToCatalog: () => void;
   onNavigateToSchematics: () => void;
-  initialTab?: "profile" | "garage" | "orders" | "favorites";
+  initialTab?: "profile" | "garage" | "orders" | "returns" | "favorites";
   onLogout?: () => void;
 }
 
@@ -82,14 +85,26 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   onLogout,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    "profile" | "garage" | "orders" | "favorites"
+    "profile" | "garage" | "orders" | "returns" | "favorites"
   >(initialTab);
+
+  const [userReturns, setUserReturns] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (userProfile?.email) {
+      fetchReturns(userProfile.email)
+        .then((res) => setUserReturns(res || []))
+        .catch(() => setUserReturns([]));
+    }
+  }, [userProfile?.email]);
 
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.toLowerCase();
       if (hash === "#favoritos" || hash === "#favorites") {
         setActiveTab("favorites");
+      } else if (hash === "#devoluciones" || hash === "#returns") {
+        setActiveTab("returns");
       } else if (hash === "#pedidos" || hash === "#orders") {
         setActiveTab("orders");
       } else if (hash === "#garaje" || hash === "#garage") {
@@ -286,6 +301,26 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
             </span>
             <ChevronRight
               className={`w-4 h-4 ${activeTab === "orders" ? "text-white" : "text-slate-400"}`}
+            />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("returns")}
+            className={`w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-between transition-all cursor-pointer ${
+              activeTab === "returns"
+                ? "bg-[#E60012] text-white shadow-md shadow-red-500/20"
+                : "text-slate-700 hover:bg-slate-100"
+            }`}
+          >
+            <span className="flex items-center gap-3">
+              <RotateCcw
+                className={`w-4 h-4 ${activeTab === "returns" ? "text-white" : "text-amber-600"}`}
+              />
+              Mis Devoluciones ({userReturns.length})
+            </span>
+            <ChevronRight
+              className={`w-4 h-4 ${activeTab === "returns" ? "text-white" : "text-slate-400"}`}
             />
           </button>
 
@@ -669,6 +704,25 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                 orders={orders}
                 onNavigateToCatalog={onNavigateToCatalog}
               />
+            </div>
+          )}
+
+          {/* TAB DEVOLUCIONES & GARANTÍAS */}
+          {activeTab === "returns" && (
+            <div>
+              <div className="flex items-center justify-between pb-6 mb-6 border-b border-slate-100">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 font-display">
+                    <RotateCcw className="w-5 h-5 text-amber-600" />
+                    Mis Devoluciones & Garantías (RMA)
+                  </h2>
+                  <p className="text-xs text-slate-500 font-sans">
+                    Consulta el estado en tiempo real, guías de envío y reembolsos de tus solicitudes de garantía
+                  </p>
+                </div>
+              </div>
+
+              <ReturnsTable returnsList={userReturns} orders={orders} />
             </div>
           )}
 
