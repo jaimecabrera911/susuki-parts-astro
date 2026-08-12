@@ -98,6 +98,10 @@ export interface SuzukiPart {
   diagramHotspot?: { x: number; y: number; itemNumber: number };
   /** Estado de disponibilidad del repuesto. Default: derivado de `stock`. */
   availability?: AvailabilityStatus;
+  /** Indica si la pieza genera impuesto (IVA). Default: true. */
+  taxable?: boolean;
+  /** Indica si el precio de catálogo ya incluye el impuesto (IVA). Default: false. */
+  priceIncludesTax?: boolean;
 }
 
 export interface ExplodedDiagram {
@@ -151,6 +155,8 @@ export interface UserProfile {
   email: string;
   phone: string;
   documentId: string;
+  country?: string;
+  department?: string;
   city: string;
   address: string;
   postalCode: string;
@@ -172,6 +178,74 @@ export type OrderStatus =
   | 'Entregado'
   | 'Cancelado';
 
+export interface ZoneRate {
+  zoneId: string;
+  price: number;
+}
+
+export interface ShippingZone {
+  id: string;
+  name: string;
+  description?: string;
+  departments: string[];
+  active: boolean;
+  createdAt?: string;
+}
+
+export interface ShippingMethod {
+  id: string;
+  name: string;
+  carrier: string; // 'Servientrega' | 'Inter Rapidísimo' | 'Coordinadora' | 'Envía' | 'TCC' | 'Retiro en tienda' | string
+  description?: string;
+  price: number; // Precio base / fallback por defecto
+  estimatedDays: number;
+  dispatchDays: string[]; // ['1', '2', '3', '4', '5'] (1=Mon ... 7=Sun)
+  freeShippingThreshold?: number;
+  active: boolean;
+  zoneRates?: ZoneRate[]; // Tarifas específicas por zona
+  createdAt?: string;
+}
+
+export interface CountryRecord {
+  id: string;
+  name: string;
+  code?: string;
+  active: boolean;
+}
+
+export interface StateRecord {
+  id: string;
+  countryId: string;
+  name: string;
+  code?: string;
+  active: boolean;
+}
+
+export interface CityRecord {
+  id: string;
+  country: string;
+  department: string;
+  city: string;
+  active: boolean;
+  code?: string;
+}
+
+export interface TaxConfig {
+  taxName: string;
+  taxRate: number; // e.g. 19 for 19%
+  active: boolean;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  type: 'percentage' | 'fixed';
+  value: number; // 10 for 10% or 15000 for $15.000 COP
+  minPurchase?: number;
+  active: boolean;
+  createdAt?: string;
+}
+
 export interface Order {
   id: string;
   date: string;
@@ -179,11 +253,20 @@ export interface Order {
   email: string;
   phone: string;
   documentId: string;
+  country?: string;
+  department?: string;
   city: string;
   shippingAddress: string;
   postalCode: string;
   items: CartItem[];
+  subtotal?: number;
+  discount?: number;
+  discountCode?: string;
+  taxRate?: number;
+  taxAmount?: number;
   totalPrice: number;
+  shippingCost?: number;
+  shippingMethodName?: string;
   motorcycle: ActiveMotorcycle | null;
   guaranteeCode: string;
   paymentMethod: PaymentMethod;

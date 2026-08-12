@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AlertTriangle, HelpCircle, Eye, ShoppingBag, ShieldCheck, Globe, Clock, CheckCircle2, Copy, Check, Heart } from 'lucide-react';
 import { AiTwotoneSafetyCertificate } from 'react-icons/ai';
+import { TbAlertHexagonFilled } from 'react-icons/tb';
 import type { SuzukiPart, ActiveMotorcycle, AvailabilityStatus } from '../types';
 import { getAvailabilityStatus, AVAILABILITY_META, getPrimaryOem } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
@@ -225,9 +226,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="flex items-end justify-between gap-2">
           <div>
             <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Precio</span>
-            <span className="text-base sm:text-lg font-mono font-black text-slate-900 tracking-tight block">
-              {formatCurrency(part.price)}
-            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-base sm:text-lg font-mono font-black text-slate-900 tracking-tight block">
+                {formatCurrency(part.price)}
+              </span>
+              {part.taxable !== false ? (
+                part.priceIncludesTax ? (
+                  <span className="text-[9px] font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded" title="El precio mostrado ya incluye el 19% IVA">
+                    IVA Inc.
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-mono font-bold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded" title="El precio no incluye IVA (se liquida al checkout)">
+                    + 19% IVA
+                  </span>
+                )
+              ) : (
+                <span className="text-[9px] font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded" title="Repuesto exento de IVA">
+                  Exento
+                </span>
+              )}
+            </div>
           </div>
           {availabilityStatus === 'in_stock' && (
             <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-lg shrink-0">
@@ -298,11 +316,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <button
               type="button"
               onClick={onOpenGarageModal}
+              aria-label="Validar motocicleta activa"
               className="flex-1 py-2.5 px-3 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs uppercase rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
               title="Debes confirmar tu moto antes de añadir"
             >
-              <ShieldCheck className="w-4 h-4" />
-              <span>Validar Moto</span>
+              <TbAlertHexagonFilled className="w-5 h-5 shrink-0" />
             </button>
           ) : !isCompatible ? (
             <button

@@ -2,7 +2,6 @@ import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
 import { categories, subcategories } from '../../db/schema';
 import { eq } from 'drizzle-orm';
-import { DEFAULT_CATEGORIES } from '../../data/adminStore';
 
 export const GET: APIRoute = async () => {
   try {
@@ -15,12 +14,11 @@ export const GET: APIRoute = async () => {
       subcategories: subList.filter(sub => sub.categoryId === cat.id)
     }));
 
-    const finalResult = (result && result.length > 0) ? result : DEFAULT_CATEGORIES;
-
-    return new Response(JSON.stringify({ success: true, count: finalResult.length, data: finalResult }), {
+    return new Response(JSON.stringify({ success: true, count: result.length, data: result }), {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
+    console.error('Error en GET /api/categories:', error?.message);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -64,6 +62,7 @@ export const POST: APIRoute = async ({ request }) => {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
+    console.error('Error en POST /api/categories:', error?.message);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }
@@ -90,6 +89,7 @@ export const PUT: APIRoute = async ({ request }) => {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
+    console.error('Error en PUT /api/categories:', error?.message);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }
@@ -110,6 +110,7 @@ export const DELETE: APIRoute = async ({ url }) => {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
+    console.error('Error en DELETE /api/categories:', error?.message);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }

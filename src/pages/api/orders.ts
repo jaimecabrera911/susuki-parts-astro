@@ -50,6 +50,7 @@ export const GET: APIRoute = async ({ url }) => {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
+    console.error('Error en GET /api/orders:', error?.message);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -59,8 +60,8 @@ export const GET: APIRoute = async ({ url }) => {
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const db = getDb();
     const body = await request.json();
+    const db = getDb();
     const data = await upsertOrder(db, body);
 
     return new Response(JSON.stringify({ success: true, data }), {
@@ -68,6 +69,7 @@ export const POST: APIRoute = async ({ request }) => {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
+    console.error('Error en POST /api/orders:', error?.message);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }
@@ -95,6 +97,7 @@ export const PUT: APIRoute = async ({ request }) => {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
+    console.error('Error en PUT /api/orders:', error?.message);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }
@@ -114,6 +117,7 @@ export const DELETE: APIRoute = async ({ url }) => {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
+    console.error('Error en DELETE /api/orders:', error?.message);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }

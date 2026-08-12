@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import type { ActiveMotorcycle, SuzukiPart, AvailabilityStatus, SuzukiModel } from '../types';
 import { AVAILABILITY_META } from '../types';
-import { SUZUKI_MODELS } from '../data/suzukiData';
 import { getMotorcyclePng } from '../data/motorcycleImages';
 import { formatCurrency } from '../utils/formatCurrency';
 import motoLoadImg from '../assets/moto-load.webp';
@@ -239,7 +238,7 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
     (minPriceFilter > minDatabasePrice || maxPriceFilter < maxDatabasePrice ? 1 : 0) +
     (searchQuery.trim() ? 1 : 0);
 
-  const availableModels = models && models.length > 0 ? models : SUZUKI_MODELS;
+  const availableModels = models || [];
   const activeModelMeta = activeMotorcycle
     ? availableModels.find((m) =>
         m.id === activeMotorcycle.modelId ||

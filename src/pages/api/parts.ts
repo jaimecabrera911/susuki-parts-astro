@@ -39,6 +39,7 @@ export const GET: APIRoute = async ({ url }) => {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
+    console.error('Error en GET /api/parts:', error?.message);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -48,15 +49,16 @@ export const GET: APIRoute = async ({ url }) => {
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const db = getDb();
     const body = await request.json();
+    const db = getDb();
     const data = await upsertPart(db, body);
 
-    return new Response(JSON.stringify({ success: true, data }), {
+    return new Response(JSON.stringify({ success: true, data: { ...data, ...body } }), {
       status: 201,
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
+    console.error('Error en POST /api/parts:', error?.message);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }
@@ -66,16 +68,16 @@ export const POST: APIRoute = async ({ request }) => {
 
 export const PUT: APIRoute = async ({ request }) => {
   try {
-    const db = getDb();
     const body = await request.json();
     if (!body.id) throw new Error('ID del repuesto es requerido');
-
+    const db = getDb();
     await upsertPart(db, body);
 
-    return new Response(JSON.stringify({ success: true, message: 'Repuesto actualizado exitosamente' }), {
+    return new Response(JSON.stringify({ success: true, message: 'Repuesto actualizado exitosamente', data: body }), {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
+    console.error('Error en PUT /api/parts:', error?.message);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }
@@ -95,6 +97,7 @@ export const DELETE: APIRoute = async ({ url }) => {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
+    console.error('Error en DELETE /api/parts:', error?.message);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }

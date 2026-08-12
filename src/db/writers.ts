@@ -4,9 +4,13 @@ import {
   parts, partOemNumbers, partCompatibilities,
   schematics, schematicHotspots, schematicApplicableModels,
   orders, orderItems,
-  users, userFavorites
+  users, userFavorites,
+  shippingMethods, shippingZones, shippingZoneStates, shippingMethodZoneRates,
+  countries, states, cities
 } from './schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
+import { DEFAULT_SHIPPING_ZONES, DEFAULT_SHIPPING_METHODS, DEFAULT_COLOMBIAN_CITIES, COLOMBIAN_DEPARTMENTS } from '../data/initialShippingAndCities';
+import { STORE_DEFAULT_LOCATION } from '../utils/config';
 
 export function parseJson(val: any, fallback: any = []) {
   if (!val) return fallback;
@@ -48,7 +52,9 @@ export async function formatParts(db: AppDb, rows: any[]) {
       version: r.version,
       note: r.note
     })),
-    diagramHotspot: p.diagramHotspot ?? null
+    diagramHotspot: p.diagramHotspot ?? null,
+    taxable: p.taxable !== false,
+    priceIncludesTax: p.priceIncludesTax === true
   }));
 }
 
@@ -92,7 +98,9 @@ export async function upsertPart(db: AppDb, body: any) {
     specs: body.specs || [],
     schematicId: body.schematicId || null,
     diagramHotspot: body.diagramHotspot || null,
-    availability: body.availability || 'in_stock'
+    availability: body.availability || 'in_stock',
+    taxable: body.taxable !== false,
+    priceIncludesTax: body.priceIncludesTax === true
   };
 
   await db.transaction(async (tx) => {
@@ -188,10 +196,19 @@ export async function upsertOrder(db: AppDb, body: any) {
     email: body.email || 'cliente@suzukiparts.com.co',
     phone: body.phone || '',
     documentId: body.documentId || '',
+    country: body.country || STORE_DEFAULT_LOCATION.country,
+    department: body.department || null,
     city: body.city || '',
     shippingAddress: body.shippingAddress || '',
     postalCode: body.postalCode || '',
+    subtotal: body.subtotal ? Number(body.subtotal) : null,
+    discount: body.discount ? Number(body.discount) : null,
+    discountCode: body.discountCode || null,
+    taxRate: body.taxRate ? Number(body.taxRate) : null,
+    taxAmount: body.taxAmount ? Number(body.taxAmount) : null,
     totalPrice: Number(body.totalPrice || 0),
+    shippingCost: Number(body.shippingCost || 0),
+    shippingMethodName: body.shippingMethodName || null,
     motorcycle: body.motorcycle || null,
     guaranteeCode: body.guaranteeCode || `SZ-GAR-${Math.floor(1000 + Math.random() * 9000)}-PENDING`,
     paymentMethod: body.paymentMethod || 'transferencia',
@@ -270,4 +287,177 @@ export async function upsertUser(db: AppDb, body: any) {
   });
 
   return data;
+}
+
+export async function upsertShippingMethod(db: AppDb, body: any) {
+  const id = body.id || `sm-${Date.now()}`;
+  const data = {
+    id,
+    name: body.name,
+    carrier: body.carrier || 'Servientrega',
+    description: body.description || '',
+    price: Number(body.price || 0),
+    estimatedDays: Number(body.estimatedDays || 3),
+    dispatchDays: Array.isArray(body.dispatchDays) ? body.dispatchDays : ['1', '2', '3', '4', '5'],
+    freeShippingThreshold: body.freeShippingThreshold !== undefined && body.freeShippingThreshold !== null ? Number(body.freeShippingThreshold) : null,
+    active: body.active !== undefined ? Boolean(body.active) : true,
+    createdAt: body.createdAt ? new Date(body.createdAt) : new Date()
+  };
+
+  await db.transaction(async (tx) => {
+    await tx.insert(shippingMethods).values(data).onConflictDoUpdate({ target: shippingMethods.id, set: data });
+
+    await tx.delete(shippingMethodZoneRates).where(eq(shippingMethodZoneRates.methodId, id));
+    for (const r of body.zoneRates || []) {
+      if (r && r.zoneId) {
+        await tx.insert(shippingMethodZoneRates).values({
+          id: `${id}-rate-${r.zoneId}`,
+          methodId: id,
+          zoneId: r.zoneId,
+          price: Number(r.price || 0)
+        }).onConflictDoNothing();
+      }
+    }
+  });
+
+  return data;
+}
+
+export async function upsertShippingZone(db: AppDb, body: any) {
+  const id = body.id || `zone-${Date.now()}`;
+  const data = {
+    id,
+    name: body.name,
+    description: body.description || '',
+    active: body.active !== undefined ? Boolean(body.active) : true,
+    createdAt: body.createdAt ? new Date(body.createdAt) : new Date()
+  };
+
+  await db.transaction(async (tx) => {
+    await tx.insert(shippingZones).values(data).onConflictDoUpdate({ target: shippingZones.id, set: data });
+
+    await tx.delete(shippingZoneStates).where(eq(shippingZoneStates.zoneId, id));
+    for (const dept of body.departments || []) {
+      const stateId = await resolveStateRef(tx as unknown as AppDb, dept);
+      if (stateId) {
+        await tx.insert(shippingZoneStates).values({
+          id: `${id}-st-${stateId}`,
+          zoneId: id,
+          stateId
+        }).onConflictDoNothing();
+      }
+    }
+  });
+
+  return data;
+}
+
+function slugify(value: string): string {
+  return (value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ñ/g, 'n')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// ============ 3NF Geography: Countries, States, Cities ============
+
+export async function upsertCountry(db: AppDb, body: any) {
+  const id = body.id || `country-${slugify(body.name || '')}`;
+  const data = {
+    id,
+    name: body.name,
+    code: body.code || null,
+    active: body.active !== undefined ? Boolean(body.active) : true
+  };
+  await db.insert(countries).values(data).onConflictDoUpdate({ target: countries.id, set: data });
+  return data;
+}
+
+export async function upsertState(db: AppDb, body: any) {
+  const id = body.id || `state-${slugify(body.name || '')}`;
+  const data = {
+    id,
+    countryId: body.countryId,
+    name: body.name,
+    code: body.code || null,
+    active: body.active !== undefined ? Boolean(body.active) : true
+  };
+  await db.insert(states).values(data).onConflictDoUpdate({ target: states.id, set: data });
+  return data;
+}
+
+export async function upsertCity(db: AppDb, body: any) {
+  const id = body.id || `city-${Date.now()}`;
+  const data = {
+    id,
+    stateId: body.stateId,
+    name: body.name,
+    code: body.code || null,
+    active: body.active !== undefined ? Boolean(body.active) : true
+  };
+  await db.insert(cities).values(data).onConflictDoUpdate({ target: cities.id, set: data });
+  return data;
+}
+
+export async function ensureCountry(db: AppDb, name: string): Promise<string> {
+  const existing = await db.select().from(countries).where(eq(countries.name, name)).limit(1);
+  if (existing.length > 0) return existing[0].id;
+  const saved = await upsertCountry(db, { name });
+  return saved.id;
+}
+
+export async function ensureState(db: AppDb, countryId: string, name: string): Promise<string> {
+  const existing = await db.select().from(states).where(and(eq(states.countryId, countryId), eq(states.name, name))).limit(1);
+  if (existing.length > 0) return existing[0].id;
+  const saved = await upsertState(db, { countryId, name });
+  return saved.id;
+}
+
+export async function resolveStateRef(db: AppDb, ref: any): Promise<string | null> {
+  if (!ref) return null;
+  const value = typeof ref === 'object' && ref !== null ? ref.id || ref.stateId : ref;
+  if (!value) return null;
+
+  const byId = await db.select().from(states).where(eq(states.id, value)).limit(1);
+  if (byId.length > 0) return byId[0].id;
+
+  const byName = await db.select().from(states).where(eq(states.name, value)).limit(1);
+  if (byName.length > 0) return byName[0].id;
+
+  const countryId = await ensureCountry(db, STORE_DEFAULT_LOCATION.country);
+  return ensureState(db, countryId, value);
+}
+
+export async function seedShipping(db: AppDb) {
+  for (const zone of DEFAULT_SHIPPING_ZONES) {
+    await upsertShippingZone(db, zone);
+  }
+  for (const sm of DEFAULT_SHIPPING_METHODS) {
+    await upsertShippingMethod(db, sm);
+  }
+  return { zones: DEFAULT_SHIPPING_ZONES.length, methods: DEFAULT_SHIPPING_METHODS.length };
+}
+
+export async function seedGeography(db: AppDb) {
+  const colombiaId = await ensureCountry(db, STORE_DEFAULT_LOCATION.country);
+
+  for (const dept of COLOMBIAN_DEPARTMENTS) {
+    await ensureState(db, colombiaId, dept);
+  }
+
+  for (const c of DEFAULT_COLOMBIAN_CITIES) {
+    const stateId = await ensureState(db, colombiaId, c.department);
+    await upsertCity(db, {
+      id: c.id,
+      stateId,
+      name: c.city,
+      code: c.code,
+      active: c.active
+    });
+  }
+
+  return { countryId: colombiaId };
 }

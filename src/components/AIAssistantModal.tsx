@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Sparkles, Send, Bot, User, Wrench, ShieldCheck, RefreshCw, Eye, ShoppingBag, Package, CheckCircle2, AlertTriangle } from 'lucide-react';
 import type { ActiveMotorcycle, SuzukiPart } from '../types';
 import { getPrimaryOem } from '../types';
-import { SUZUKI_PARTS } from '../data/suzukiData';
 import { formatCurrency } from '../utils/formatCurrency';
 import { shouldShowProductImages } from '../utils/config';
 import { ProductImageFallback } from './ProductImageFallback';
@@ -11,6 +10,7 @@ interface AIAssistantModalProps {
   isOpen: boolean;
   onClose: () => void;
   activeMotorcycle: ActiveMotorcycle | null;
+  partsList?: SuzukiPart[];
   onOpenDetail?: (part: SuzukiPart) => void;
   onAddToCart?: (part: SuzukiPart) => void;
   onOpenGarageModal?: () => void;
@@ -26,6 +26,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
   isOpen,
   onClose,
   activeMotorcycle,
+  partsList = [],
   onOpenDetail,
   onAddToCart,
   onOpenGarageModal
@@ -35,8 +36,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
   const [messages, setMessages] = useState<Message[]>([
     {
       sender: 'assistant',
-      text: `¡Hola! Soy tu **Asistente Técnico Suzuki Expert** powered by Gemini AI.\n\nPuedo responder tus dudas mecánicas, verificar pares de apriete, sugerir lubricantes OEM y validar códigos de piezas para tu ${activeMotorcycle ? `${activeMotorcycle.brand} ${activeMotorcycle.modelName} (${activeMotorcycle.year})` : 'motocicleta'}.`,
-      recommendedOems: activeMotorcycle ? ['16510-05240', '09482-00406'] : []
+      text: `¡Hola! Soy tu **Asistente Técnico Suzuki Expert** powered by Gemini AI.\n\nPuedo responder tus dudas mecánicas, verificar pares de apriete, sugerir lubricantes OEM y validar códigos de piezas para tu ${activeMotorcycle ? `${activeMotorcycle.brand} ${activeMotorcycle.modelName} (${activeMotorcycle.year})` : 'motocicleta'}.`
     }
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -173,7 +173,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
           {messages.map((m, idx) => {
             // Find matched SuzukiPart objects from catalog
             const matchedParts = m.recommendedOems && m.recommendedOems.length > 0
-              ? SUZUKI_PARTS.filter(part => 
+              ? partsList.filter(part => 
                   part.oemNumbers.some(oem => m.recommendedOems?.includes(oem)) ||
                   m.recommendedOems?.includes(part.id)
                 )

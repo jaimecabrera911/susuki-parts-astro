@@ -5,7 +5,6 @@ import type { SuzukiPart, ExplodedDiagram } from '../types';
 import { shouldShowProductImages } from '../utils/config';
 import { ProductImageFallback } from './ProductImageFallback';
 import { DIAGRAM_SVGS } from '../data/svgAssets';
-import { EXPLODED_DIAGRAMS } from '../data/suzukiData';
 
 interface ProductImageGalleryProps {
   part: SuzukiPart;
@@ -68,7 +67,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
     }
   }, [schematics]);
 
-  const allDiagrams = liveSchematics.length > 0 ? liveSchematics : EXPLODED_DIAGRAMS;
+  const allDiagrams = liveSchematics;
 
   // Find schematic info by explicit hotspot match, schematicId or category fallback
   const diagramInfo = useMemo(() => {

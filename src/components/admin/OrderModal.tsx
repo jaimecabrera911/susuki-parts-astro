@@ -201,12 +201,30 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               </table>
             </div>
 
-            <div className="flex justify-end pt-3 border-t border-slate-100">
-              <div className="text-right">
-                <span className="text-[10px] font-mono font-bold text-slate-500 uppercase">Total Pedido: </span>
-                <span className="text-lg font-black font-mono text-[#E60012] ml-2">
-                  {formatCurrency(order.totalPrice)}
-                </span>
+            <div className="pt-3 border-t border-slate-100 space-y-1.5 text-xs font-mono">
+              <div className="flex justify-between text-slate-600">
+                <span>Subtotal Repuestos:</span>
+                <span className="font-bold text-slate-900">{formatCurrency(order.subtotal ?? order.totalPrice)}</span>
+              </div>
+              {order.discount && order.discount > 0 ? (
+                <div className="flex justify-between text-emerald-700 font-bold">
+                  <span>Descuento ({order.discountCode || 'Cupón'}):</span>
+                  <span>- {formatCurrency(order.discount)}</span>
+                </div>
+              ) : null}
+              {order.taxAmount && order.taxAmount > 0 ? (
+                <div className="flex justify-between text-slate-600">
+                  <span>Impuesto ({order.taxRate || 19}% IVA):</span>
+                  <span className="font-bold text-slate-900">+ {formatCurrency(order.taxAmount)}</span>
+                </div>
+              ) : null}
+              <div className="flex justify-between text-slate-600">
+                <span>Envío ({order.shippingCarrier || 'Servientrega'}):</span>
+                <span className="font-bold text-slate-900">{order.shippingCost === 0 || !order.shippingCost ? '¡Flete GRATIS!' : formatCurrency(order.shippingCost)}</span>
+              </div>
+              <div className="flex justify-between text-slate-900 pt-2 border-t border-slate-200 font-black text-sm font-display">
+                <span>Total Facturado:</span>
+                <span className="font-mono text-[#E60012] text-base font-black">{formatCurrency(order.totalPrice)}</span>
               </div>
             </div>
           </div>

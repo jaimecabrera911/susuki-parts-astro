@@ -2,17 +2,16 @@ import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
 import { brands } from '../../db/schema';
 import { eq } from 'drizzle-orm';
-import { DEFAULT_BRANDS } from '../../data/adminStore';
 
 export const GET: APIRoute = async () => {
   try {
     const db = getDb();
     const data = await db.select().from(brands);
-    const result = (data && data.length > 0) ? data : DEFAULT_BRANDS;
-    return new Response(JSON.stringify({ success: true, count: result.length, data: result }), {
+    return new Response(JSON.stringify({ success: true, count: data.length, data }), {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
+    console.error('Error en GET /api/brands:', error?.message);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -41,6 +40,7 @@ export const POST: APIRoute = async ({ request }) => {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
+    console.error('Error en POST /api/brands:', error?.message);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }
@@ -66,6 +66,7 @@ export const PUT: APIRoute = async ({ request }) => {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
+    console.error('Error en PUT /api/brands:', error?.message);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }
@@ -84,6 +85,7 @@ export const DELETE: APIRoute = async ({ url }) => {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
+    console.error('Error en DELETE /api/brands:', error?.message);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }

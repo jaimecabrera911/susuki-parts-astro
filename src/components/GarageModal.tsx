@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { X, Wrench, CheckCircle2, Plus, ShieldCheck, Trash2, ArrowRight } from 'lucide-react';
-import { SUZUKI_MODELS } from '../data/suzukiData';
 import type { ActiveMotorcycle, SuzukiModel } from '../types';
 import { SearchableModelSelect } from './SearchableModelSelect';
 
@@ -27,7 +26,7 @@ export const GarageModal: React.FC<GarageModalProps> = ({
   const [selectedYear, setSelectedYear] = useState<number | ''>('');
   const [selectedVersion, setSelectedVersion] = useState('');
 
-  const availableModels = models && models.length > 0 ? models : SUZUKI_MODELS;
+  const availableModels = models || [];
 
   // Handle Escape key and body scroll lock
   React.useEffect(() => {
@@ -45,7 +44,7 @@ export const GarageModal: React.FC<GarageModalProps> = ({
 
   if (!isOpen) return null;
 
-  const currentModelObj = SUZUKI_MODELS.find(m => m.id === selectedModelId);
+  const currentModelObj = availableModels.find(m => m.id === selectedModelId);
 
   const handleAddNew = () => {
     if (!currentModelObj || !selectedYear || !selectedVersion) return;

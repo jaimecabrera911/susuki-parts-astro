@@ -18,9 +18,8 @@ import {
 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { FaMotorcycle } from 'react-icons/fa';
-import type { SuzukiPart, ActiveMotorcycle, ExplodedDiagram } from '../types';
+import type { SuzukiPart, ActiveMotorcycle, ExplodedDiagram, SuzukiModel } from '../types';
 import { getPrimaryOem } from '../types';
-import { SUZUKI_MODELS } from '../data/suzukiData';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getProductWhatsAppUrl } from '../utils/whatsapp';
 import { shouldShowProductImages } from '../utils/config';
@@ -33,6 +32,7 @@ interface ProductDetailPageProps {
   activeMotorcycle: ActiveMotorcycle | null;
   allParts: SuzukiPart[];
   schematics?: ExplodedDiagram[];
+  models?: SuzukiModel[];
   onBack: () => void;
   onAddToCart: (part: SuzukiPart) => void;
   onOpenGarageModal: () => void;
@@ -45,6 +45,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   activeMotorcycle,
   allParts,
   schematics,
+  models = [],
   onBack,
   onAddToCart,
   onOpenGarageModal,
@@ -336,8 +337,25 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   {part.category}
                 </span>
                 <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 leading-tight">{part.name}</h1>
-                <div className="text-2xl sm:text-3xl font-mono font-black text-slate-900 mt-3 text-[#E60012]">
-                  {formatCurrency(part.price)}
+                <div className="flex items-center gap-3 mt-3">
+                  <div className="text-2xl sm:text-3xl font-mono font-black text-[#E60012]">
+                    {formatCurrency(part.price)}
+                  </div>
+                  {part.taxable !== false ? (
+                    part.priceIncludesTax ? (
+                      <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-lg">
+                        IVA 19% Incluido
+                      </span>
+                    ) : (
+                      <span className="text-xs font-mono font-bold text-slate-700 bg-slate-100 border border-slate-300 px-2.5 py-1 rounded-lg">
+                        + 19% IVA al checkout
+                      </span>
+                    )
+                  ) : (
+                    <span className="text-xs font-mono font-bold text-blue-800 bg-blue-100 border border-blue-300 px-2.5 py-1 rounded-lg">
+                      Exento de IVA
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -369,7 +387,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 </h3>
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                   {part.compatibility.map((c, idx) => {
-                    const modelObj = SUZUKI_MODELS.find((m) => m.id === c.modelId);
+                    const modelObj = models.find((m) => m.id === c.modelId);
                     const isMatch = activeMotorcycle ? activeMotorcycle.modelId === c.modelId : false;
                     return (
                       <div

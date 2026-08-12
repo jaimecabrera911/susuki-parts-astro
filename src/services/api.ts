@@ -192,3 +192,67 @@ export async function deleteGarageApi(id: string) {
   return await res.json();
 }
 
+export async function fetchShippingMethods() {
+  const res = await fetch('/api/shipping-methods');
+  const json = await res.json();
+  return json.data || [];
+}
+
+export async function saveShippingMethodApi(shippingMethod: any, isEdit = false) {
+  const method = isEdit ? 'PUT' : 'POST';
+  const res = await fetch('/api/shipping-methods', {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(shippingMethod)
+  });
+  return await res.json();
+}
+
+export async function deleteShippingMethodApi(id: string) {
+  const res = await fetch(`/api/shipping-methods?id=${id}`, { method: 'DELETE' });
+  return await res.json();
+}
+
+export async function fetchCities() {
+  const res = await fetch('/api/cities');
+  const json = await res.json();
+  return json.data || [];
+}
+
+export async function saveCityApi(city: any) {
+  const res = await fetch('/api/cities', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(city)
+  });
+  return await res.json();
+}
+
+export async function deleteCityApi(id: string) {
+  const res = await fetch(`/api/cities?id=${id}`, { method: 'DELETE' });
+  return await res.json();
+}
+
+export async function fetchShippingZones() {
+  const res = await fetch('/api/shipping-zones');
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Error al cargar zonas de envío');
+  return json.data || [];
+}
+
+
+export async function saveShippingZoneApi(shippingZone: any, isEdit = false) {
+  const method = isEdit ? 'PUT' : 'POST';
+  const res = await fetch('/api/shipping-zones', {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(shippingZone)
+  });
+  return await res.json();
+}
+
+export async function deleteShippingZoneApi(id: string) {
+  const res = await fetch(`/api/shipping-zones?id=${id}`, { method: 'DELETE' });
+  return await res.json();
+}
+

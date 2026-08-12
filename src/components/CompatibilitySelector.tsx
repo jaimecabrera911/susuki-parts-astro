@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Check, ChevronRight, RefreshCw, ShieldCheck, AlertTriangle, ArrowRight } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
-import { SUZUKI_MODELS } from '../data/suzukiData';
 import type { ActiveMotorcycle, SuzukiModel } from '../types';
 import { SearchableModelSelect } from './SearchableModelSelect';
 
@@ -25,7 +24,7 @@ export const CompatibilitySelector: React.FC<CompatibilitySelectorProps> = ({
   const [selectedYear, setSelectedYear] = useState<number | ''>('');
   const [selectedVersion, setSelectedVersion] = useState<string>('');
 
-  const availableModels = models && models.length > 0 ? models : SUZUKI_MODELS;
+  const availableModels = models || [];
 
   // Find currently chosen model object
   const currentModelObj = availableModels.find(m => m.id === selectedModelId);

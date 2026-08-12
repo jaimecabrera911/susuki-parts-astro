@@ -3,7 +3,6 @@ import { X, Trash2, ArrowRight, ShoppingBag, Plus, Minus, MessageSquare, Eye } f
 import { AiTwotoneSafetyCertificate } from 'react-icons/ai';
 import type { CartItem, ActiveMotorcycle, SuzukiPart } from '../types';
 import { getPrimaryOem } from '../types';
-import { SUZUKI_MODELS } from '../data/suzukiData';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getCartWhatsAppUrl } from '../utils/whatsapp';
 import { shouldShowProductImages } from '../utils/config';
@@ -202,8 +201,40 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           {/* Footer Checkout */}
           {cartItems.length > 0 && (
             <div className="p-5 border-t border-slate-200 bg-white space-y-3 shrink-0">
-              <div className="flex justify-between items-center text-sm font-black text-slate-900">
-                <span>TOTAL COMPRAS:</span>
+              
+              {/* Free Shipping Progress Indicator */}
+              {(() => {
+                const FREE_THRESHOLD = 250000;
+                const progressPct = Math.min(100, Math.round((total / FREE_THRESHOLD) * 100));
+                const remaining = FREE_THRESHOLD - total;
+
+                return (
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs">
+                    {total >= FREE_THRESHOLD ? (
+                      <div className="flex items-center gap-2 text-emerald-700 font-extrabold">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                        <span>¡Felicidades! Tienes ENVÍO GRATIS a nivel nacional</span>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="flex justify-between text-[11px] font-bold text-slate-700 mb-1">
+                          <span>Faltan <strong className="text-[#E60012] font-mono">{formatCurrency(remaining)}</strong> para ENVÍO GRATIS</span>
+                          <span className="font-mono text-slate-400">{progressPct}%</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-amber-400 to-[#E60012] transition-all duration-300" 
+                            style={{ width: `${progressPct}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="flex justify-between items-center text-sm font-black text-slate-900 pt-1">
+                <span>SUBTOTAL REPUESTOS:</span>
                 <span className="text-lg text-[#E60012] font-mono font-black">{formatCurrency(total)}</span>
               </div>
 

@@ -1,4 +1,5 @@
 import { pgTable, text, integer, doublePrecision, boolean, timestamp, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { STORE_DEFAULT_LOCATION } from '../utils/config';
 
 // 1. Brands Table
 export const brands = pgTable('brands', {
@@ -71,7 +72,9 @@ export const parts = pgTable('parts', {
   specs: jsonb('specs').notNull(),
   schematicId: text('schematic_id'),
   diagramHotspot: jsonb('diagram_hotspot'),
-  availability: text('availability').notNull().default('in_stock')
+  availability: text('availability').notNull().default('in_stock'),
+  taxable: boolean('taxable').notNull().default(true),
+  priceIncludesTax: boolean('price_includes_tax').notNull().default(false)
 }, (table) => ({
   categoryIdx: index('idx_parts_category').on(table.category),
   availabilityIdx: index('idx_parts_availability').on(table.availability),
@@ -135,10 +138,19 @@ export const orders = pgTable('orders', {
   email: text('email').notNull(),
   phone: text('phone').notNull(),
   documentId: text('document_id').notNull(),
+  country: text('country').notNull().default(STORE_DEFAULT_LOCATION.country),
+  department: text('department'),
   city: text('city').notNull(),
   shippingAddress: text('shipping_address').notNull(),
   postalCode: text('postal_code').notNull(),
+  subtotal: doublePrecision('subtotal'),
+  discount: doublePrecision('discount'),
+  discountCode: text('discount_code'),
+  taxRate: doublePrecision('tax_rate'),
+  taxAmount: doublePrecision('tax_amount'),
   totalPrice: doublePrecision('total_price').notNull(),
+  shippingCost: doublePrecision('shipping_cost').default(0),
+  shippingMethodName: text('shipping_method_name'),
   motorcycle: jsonb('motorcycle'),
   guaranteeCode: text('guarantee_code').notNull(),
   paymentMethod: text('payment_method').notNull(),
@@ -151,6 +163,90 @@ export const orders = pgTable('orders', {
   emailIdx: index('idx_orders_email').on(table.email),
   statusIdx: index('idx_orders_status').on(table.status),
   docIdx: index('idx_orders_document_id').on(table.documentId)
+}));
+
+// 7b. Shipping Methods Table
+export const shippingMethods = pgTable('shipping_methods', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  carrier: text('carrier').notNull().default('Servientrega'),
+  description: text('description'),
+  price: doublePrecision('price').notNull().default(0),
+  estimatedDays: integer('estimated_days').notNull().default(3),
+  dispatchDays: jsonb('dispatch_days').notNull().default(['1', '2', '3', '4', '5']), // 1=Mon, ..., 7=Sun
+  freeShippingThreshold: doublePrecision('free_shipping_threshold'),
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  activeIdx: index('idx_shipping_methods_active').on(table.active)
+}));
+
+// 7b1. Shipping Zones Table
+export const shippingZones = pgTable('shipping_zones', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  activeIdx: index('idx_shipping_zones_active').on(table.active)
+}));
+
+// 7b2. Shipping Zone ↔ States Mapping Table (3NF Normalized)
+export const shippingZoneStates = pgTable('shipping_zone_states', {
+  id: text('id').primaryKey(),
+  zoneId: text('zone_id').notNull().references(() => shippingZones.id, { onDelete: 'cascade' }),
+  stateId: text('state_id').notNull().references(() => states.id, { onDelete: 'cascade' })
+}, (table) => ({
+  zoneIdx: index('idx_zone_states_zone_id').on(table.zoneId),
+  stateIdx: index('idx_zone_states_state_id').on(table.stateId),
+  uniqueZoneState: uniqueIndex('idx_zone_states_unique').on(table.zoneId, table.stateId)
+}));
+
+// 7b3. Shipping Method ↔ Zone Rates Table (3NF Normalized)
+export const shippingMethodZoneRates = pgTable('shipping_method_zone_rates', {
+  id: text('id').primaryKey(),
+  methodId: text('method_id').notNull().references(() => shippingMethods.id, { onDelete: 'cascade' }),
+  zoneId: text('zone_id').notNull().references(() => shippingZones.id, { onDelete: 'cascade' }),
+  price: doublePrecision('price').notNull().default(0)
+}, (table) => ({
+  methodIdx: index('idx_method_zone_rates_method_id').on(table.methodId),
+  zoneIdx: index('idx_method_zone_rates_zone_id').on(table.zoneId),
+  uniqueMethodZone: uniqueIndex('idx_method_zone_rates_unique').on(table.methodId, table.zoneId)
+}));
+
+// 7c. Countries Table (3NF Normalized)
+export const countries = pgTable('countries', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  code: text('code'),
+  active: boolean('active').notNull().default(true)
+}, (table) => ({
+  activeIdx: index('idx_countries_active').on(table.active)
+}));
+
+// 7c2. States / Departments Table (3NF Normalized)
+export const states = pgTable('states', {
+  id: text('id').primaryKey(),
+  countryId: text('country_id').notNull().references(() => countries.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  code: text('code'),
+  active: boolean('active').notNull().default(true)
+}, (table) => ({
+  countryIdx: index('idx_states_country_id').on(table.countryId),
+  activeIdx: index('idx_states_active').on(table.active)
+}));
+
+// 7c3. Cities Table (3NF Normalized)
+export const cities = pgTable('cities', {
+  id: text('id').primaryKey(),
+  stateId: text('state_id').notNull().references(() => states.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  code: text('code'),
+  active: boolean('active').notNull().default(true)
+}, (table) => ({
+  activeIdx: index('idx_cities_active').on(table.active),
+  stateIdx: index('idx_cities_state_id').on(table.stateId)
 }));
 
 // 8. Users / Customers Table

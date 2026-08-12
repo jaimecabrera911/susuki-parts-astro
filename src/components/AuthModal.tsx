@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ShieldCheck, Mail, Lock, User, Phone, CheckCircle2, Sparkles, LogIn, ArrowRight, Zap } from 'lucide-react';
 import type { UserProfile } from '../types';
 import { saveUserApi } from '../services/api';
+import { STORE_DEFAULT_LOCATION } from '../utils/config';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -57,7 +58,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         email: loginEmail,
         phone: '+57 310 982 7311',
         documentId: '1.098.472.910',
-        city: 'Bogotá D.C.',
+        city: STORE_DEFAULT_LOCATION.city,
         address: 'Av. Central #450, Taller Mecánico Motos',
         postalCode: '110111',
         favoritePartIds: ['suzuki-gsxr-1000-air-filter', 'suzuki-gixxer-150-brake-pads'],
@@ -83,7 +84,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       email: registerEmail,
       phone: registerPhone || '+57 300 000 0000',
       documentId: 'No registrado',
-      city: 'Bogotá D.C.',
+      city: STORE_DEFAULT_LOCATION.city,
       address: 'Dirección por definir',
       postalCode: '110111',
       favoritePartIds: [],
@@ -111,7 +112,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         email: 'juan.perez@mototaller.com',
         phone: '+57 310 982 7311',
         documentId: '1.098.472.910',
-        city: 'Bogotá D.C.',
+        city: STORE_DEFAULT_LOCATION.city,
         address: 'Av. Central #450, Taller Mecánico Motos',
         postalCode: '110111',
         favoritePartIds: ['suzuki-gsxr-1000-air-filter', 'suzuki-gixxer-150-brake-pads'],

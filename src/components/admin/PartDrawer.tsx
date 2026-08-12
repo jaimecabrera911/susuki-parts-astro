@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Package, Plus, Trash2, Layers, AlertCircle, Image as ImageIcon, Wrench, CheckCircle2, UploadCloud, Check } from 'lucide-react';
+import { X, Package, Plus, Trash2, Layers, AlertCircle, Image as ImageIcon, Wrench, CheckCircle2, UploadCloud, Check, Percent } from 'lucide-react';
 import type { SuzukiPart, SuzukiModel, AvailabilityStatus, TechnicalSpec, CompatibilityRule } from '../../types';
 import { SearchableModelSelect } from '../SearchableModelSelect';
 
@@ -32,6 +32,8 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
   const [secondaryOems, setSecondaryOems] = useState<string>('');
   const [category, setCategory] = useState<SuzukiPart['category']>('filtros');
   const [price, setPrice] = useState<number>(50000);
+  const [taxable, setTaxable] = useState<boolean>(true);
+  const [priceIncludesTax, setPriceIncludesTax] = useState<boolean>(false);
   const [stock, setStock] = useState<number>(10);
   const [availability, setAvailability] = useState<AvailabilityStatus>('in_stock');
   const [image, setImage] = useState('');
@@ -90,6 +92,8 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       setSecondaryOems(partToEdit.oemNumbers.slice(1).join(', '));
       setCategory(partToEdit.category);
       setPrice(partToEdit.price);
+      setTaxable(partToEdit.taxable !== false);
+      setPriceIncludesTax(partToEdit.priceIncludesTax === true);
       setStock(partToEdit.stock);
       setAvailability(partToEdit.availability || (partToEdit.stock > 0 ? 'in_stock' : 'on_order'));
       setImage(partToEdit.image || '');
@@ -102,6 +106,8 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       setSecondaryOems('');
       setCategory('filtros');
       setPrice(75000);
+      setTaxable(true);
+      setPriceIncludesTax(false);
       setStock(15);
       setAvailability('in_stock');
       setImage('');
@@ -172,6 +178,8 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       name: name.trim(),
       category,
       price,
+      taxable,
+      priceIncludesTax,
       stock,
       availability,
       image: image.trim() || 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/parts/default.jpg',
@@ -324,6 +332,75 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                 <option value="international">Envío Internacional</option>
                 <option value="on_order">Bajo Pedido</option>
               </select>
+            </div>
+          </div>
+
+          {/* Tax Configuration & Live Calculation Card */}
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-900 font-mono">
+              <Percent className="w-4 h-4 text-[#E60012]" />
+              <span>CONFIGURACIÓN DE IMPUESTO (IVA 19%)</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Switch 1: Taxable */}
+              <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                <div>
+                  <span className="text-xs font-bold text-slate-900 block">¿Aplica Impuesto (IVA 19%)?</span>
+                  <span className="text-[10px] text-slate-500 block">Si está activo, genera impuesto legal</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={taxable}
+                    onChange={(e) => setTaxable(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#E60012]"></div>
+                </label>
+              </div>
+
+              {/* Switch 2: Price Includes Tax */}
+              <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                !taxable ? 'opacity-50 pointer-events-none bg-slate-100 border-slate-200' : 'bg-white border-slate-200'
+              }`}>
+                <div>
+                  <span className="text-xs font-bold text-slate-900 block">¿El Precio YA Incluye Impuesto?</span>
+                  <span className="text-[10px] text-slate-500 block">
+                    {priceIncludesTax ? 'Impuesto Incluido (Fórmula /1.19)' : 'Impuesto Adicional (+19% al total)'}
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    disabled={!taxable}
+                    checked={priceIncludesTax}
+                    onChange={(e) => setPriceIncludesTax(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#E60012]"></div>
+                </label>
+              </div>
+            </div>
+
+            {/* Live Calculation Preview Card */}
+            <div className="bg-slate-900 text-white p-3.5 rounded-xl text-xs font-mono grid grid-cols-3 gap-2 border border-slate-800">
+              <div>
+                <span className="text-[9px] text-slate-400 uppercase font-bold block">BASE GRAVABLE:</span>
+                <span className="font-bold text-white">${taxable ? (priceIncludesTax ? Math.round(price / 1.19) : price).toLocaleString('es-CO') : price.toLocaleString('es-CO')}</span>
+              </div>
+              <div>
+                <span className="text-[9px] text-slate-400 uppercase font-bold block">IVA 19%:</span>
+                <span className="font-bold text-emerald-400">
+                  {taxable ? (priceIncludesTax ? `$${(price - Math.round(price / 1.19)).toLocaleString('es-CO')}` : `+$${Math.round(price * 0.19).toLocaleString('es-CO')}`) : '$0 (EXENTO)'}
+                </span>
+              </div>
+              <div>
+                <span className="text-[9px] text-slate-400 uppercase font-bold block">TOTAL CLIENTE:</span>
+                <span className="font-black text-amber-400">
+                  ${taxable ? (priceIncludesTax ? price.toLocaleString('es-CO') : Math.round(price * 1.19).toLocaleString('es-CO')) : price.toLocaleString('es-CO')}
+                </span>
+              </div>
             </div>
           </div>
 

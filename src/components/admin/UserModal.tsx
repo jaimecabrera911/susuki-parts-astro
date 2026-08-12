@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { X, User, Mail, Phone, MapPin, Shield, CheckCircle2, AlertCircle } from 'lucide-react';
-import type { UserProfile } from '../../types';
+import React, { useState, useEffect } from "react";
+import { X, User, CheckCircle2 } from "lucide-react";
+import type { UserProfile } from "../../types";
+import { LocationSelector } from "../LocationSelector";
+import { fetchCities } from "../../services/api";
+import { STORE_DEFAULT_LOCATION } from "../../utils/config";
 
 interface UserModalProps {
   isOpen: boolean;
@@ -13,20 +16,50 @@ export const UserModal: React.FC<UserModalProps> = ({
   isOpen,
   onClose,
   userToEdit,
-  onSaveUser
+  onSaveUser,
 }) => {
   if (!isOpen) return null;
 
-  const [fullName, setFullName] = useState(userToEdit?.fullName || '');
-  const [email, setEmail] = useState(userToEdit?.email || '');
-  const [phone, setPhone] = useState(userToEdit?.phone || '');
-  const [documentId, setDocumentId] = useState(userToEdit?.documentId || '');
-  const [city, setCity] = useState(userToEdit?.city || '');
-  const [address, setAddress] = useState(userToEdit?.address || '');
-  const [postalCode, setPostalCode] = useState(userToEdit?.postalCode || '');
-  const [role, setRole] = useState<'customer' | 'admin'>(userToEdit?.role || 'customer');
-  const [active, setActive] = useState<boolean>(userToEdit?.active !== undefined ? userToEdit.active : true);
-  const [notes, setNotes] = useState(userToEdit?.notes || '');
+  const [fullName, setFullName] = useState(userToEdit?.fullName || "");
+  const [email, setEmail] = useState(userToEdit?.email || "");
+  const [phone, setPhone] = useState(userToEdit?.phone || "");
+  const [documentId, setDocumentId] = useState(userToEdit?.documentId || "");
+  const [country, setCountry] = useState(
+    (userToEdit as any)?.country || STORE_DEFAULT_LOCATION.country,
+  );
+  const [department, setDepartment] = useState(
+    (userToEdit as any)?.department || STORE_DEFAULT_LOCATION.department,
+  );
+  const [city, setCity] = useState(userToEdit?.city || STORE_DEFAULT_LOCATION.city);
+  const [address, setAddress] = useState(userToEdit?.address || "");
+  const [postalCode, setPostalCode] = useState(userToEdit?.postalCode || "");
+  const [role, setRole] = useState<"customer" | "admin">(
+    userToEdit?.role || "customer",
+  );
+  const [active, setActive] = useState<boolean>(
+    userToEdit?.active !== undefined ? userToEdit.active : true,
+  );
+  const [notes, setNotes] = useState(userToEdit?.notes || "");
+  const [citiesList, setCitiesList] = useState<
+    {
+      id: string;
+      country: string;
+      department: string;
+      city: string;
+      active: boolean;
+    }[]
+  >([]);
+
+  useEffect(() => {
+    fetchCities()
+      .then((data: any) => {
+        if (data && data.length > 0)
+          setCitiesList(data.filter((c: any) => c.active));
+      })
+      .catch((err) =>
+        console.error("Error cargando ciudades en modal usuario:", err),
+      );
+  }, []);
 
   useEffect(() => {
     if (userToEdit) {
@@ -34,23 +67,27 @@ export const UserModal: React.FC<UserModalProps> = ({
       setEmail(userToEdit.email);
       setPhone(userToEdit.phone);
       setDocumentId(userToEdit.documentId);
+      setCountry((userToEdit as any)?.country || STORE_DEFAULT_LOCATION.country);
+      setDepartment((userToEdit as any)?.department || STORE_DEFAULT_LOCATION.department);
       setCity(userToEdit.city);
       setAddress(userToEdit.address);
       setPostalCode(userToEdit.postalCode);
-      setRole(userToEdit.role || 'customer');
+      setRole(userToEdit.role || "customer");
       setActive(userToEdit.active !== undefined ? userToEdit.active : true);
-      setNotes(userToEdit.notes || '');
+      setNotes(userToEdit.notes || "");
     } else {
-      setFullName('');
-      setEmail('');
-      setPhone('');
-      setDocumentId('');
-      setCity('');
-      setAddress('');
-      setPostalCode('');
-      setRole('customer');
+      setFullName("");
+      setEmail("");
+      setPhone("");
+      setDocumentId("");
+      setCountry(STORE_DEFAULT_LOCATION.country);
+      setDepartment(STORE_DEFAULT_LOCATION.department);
+      setCity(STORE_DEFAULT_LOCATION.city);
+      setAddress("");
+      setPostalCode("");
+      setRole("customer");
       setActive(true);
-      setNotes('');
+      setNotes("");
     }
   }, [userToEdit]);
 
@@ -67,12 +104,17 @@ export const UserModal: React.FC<UserModalProps> = ({
       address: address.trim(),
       postalCode: postalCode.trim(),
       favoritePartIds: userToEdit?.favoritePartIds || [],
-      createdAt: userToEdit?.createdAt || new Date().toISOString().split('T')[0],
-      avatarUrl: userToEdit?.avatarUrl || 'https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/users/avatar.jpg',
+      createdAt:
+        userToEdit?.createdAt || new Date().toISOString().split("T")[0],
+      avatarUrl:
+        userToEdit?.avatarUrl ||
+        "https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/users/avatar.jpg",
       role,
       active,
-      notes: notes.trim()
+      notes: notes.trim(),
     };
+    (saved as any).country = country;
+    (saved as any).department = department;
     onSaveUser(saved);
     onClose();
   };
@@ -80,7 +122,6 @@ export const UserModal: React.FC<UserModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 md:p-6 overflow-y-auto">
       <div className="w-full max-w-[95vw] md:max-w-3xl bg-white border border-slate-200 rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        
         {/* Header */}
         <div className="px-6 md:px-8 py-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/70 shrink-0">
           <div className="flex items-center gap-3">
@@ -89,10 +130,14 @@ export const UserModal: React.FC<UserModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-black text-slate-900 font-display">
-                {userToEdit ? `Editar Usuario: ${userToEdit.fullName}` : 'Crear Nuevo Usuario / Cliente'}
+                {userToEdit
+                  ? `Editar Usuario: ${userToEdit.fullName}`
+                  : "Crear Nuevo Usuario / Cliente"}
               </h2>
               <p className="text-xs text-slate-500 font-mono">
-                {userToEdit ? `ID: ${userToEdit.id} • Registrado el ${userToEdit.createdAt}` : 'Registra un cliente o administrador manualmente'}
+                {userToEdit
+                  ? `ID: ${userToEdit.id} • Registrado el ${userToEdit.createdAt}`
+                  : "Registra un cliente o administrador manualmente"}
               </p>
             </div>
           </div>
@@ -105,8 +150,10 @@ export const UserModal: React.FC<UserModalProps> = ({
         </div>
 
         {/* Content Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 md:p-8 space-y-5 custom-scrollbar">
-          
+        <form
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto p-6 md:p-8 space-y-5 custom-scrollbar"
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase mb-1">
@@ -164,17 +211,18 @@ export const UserModal: React.FC<UserModalProps> = ({
               />
             </div>
 
-            <div>
-              <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase mb-1">
-                Ciudad *
-              </label>
-              <input
-                type="text"
-                required
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="Bogotá D.C."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
+            {/* Selección en Cascada de Ubicación */}
+            <div className="md:col-span-2">
+              <LocationSelector
+                country={country}
+                department={department}
+                city={city}
+                citiesList={citiesList}
+                onChange={(loc) => {
+                  setCountry(loc.country);
+                  setDepartment(loc.department);
+                  setCity(loc.city);
+                }}
               />
             </div>
 
@@ -211,7 +259,9 @@ export const UserModal: React.FC<UserModalProps> = ({
               </label>
               <select
                 value={role}
-                onChange={(e) => setRole(e.target.value as 'customer' | 'admin')}
+                onChange={(e) =>
+                  setRole(e.target.value as "customer" | "admin")
+                }
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
               >
                 <option value="customer">Cliente Registrado</option>
@@ -224,8 +274,8 @@ export const UserModal: React.FC<UserModalProps> = ({
                 Estado de la Cuenta *
               </label>
               <select
-                value={active ? 'true' : 'false'}
-                onChange={(e) => setActive(e.target.value === 'true')}
+                value={active ? "true" : "false"}
+                onChange={(e) => setActive(e.target.value === "true")}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
               >
                 <option value="true">Activa (Permite Compras)</option>
@@ -263,7 +313,6 @@ export const UserModal: React.FC<UserModalProps> = ({
               <span>Guardar Usuario</span>
             </button>
           </div>
-
         </form>
       </div>
     </div>

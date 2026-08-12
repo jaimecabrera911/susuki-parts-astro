@@ -22,8 +22,7 @@ import { CatalogSidebarFilter } from './components/CatalogSidebarFilter';
 import { ProductCatalogSkeletonGrid } from './components/SkeletonLoaders';
 
 import { WhatsAppWidget } from './components/WhatsAppWidget';
-import { SUZUKI_PARTS, SUZUKI_MODELS, EXPLODED_DIAGRAMS } from './data/suzukiData';
-import type { ActiveMotorcycle, SuzukiPart, CartItem, AvailabilityStatus, UserProfile, SuzukiModel, ExplodedDiagram } from './types';
+import type { ActiveMotorcycle, SuzukiPart, CartItem, AvailabilityStatus, UserProfile, SuzukiModel, ExplodedDiagram, Order } from './types';
 import { getAvailabilityStatus, AVAILABILITY_META, matchesOem, getPrimaryOem } from './types';
 import { ShieldCheck, Wrench, ArrowRight, Layers, FileSearch, Sparkles, CheckCircle2, ArrowUpDown, ShoppingBag } from 'lucide-react';
 
@@ -31,9 +30,10 @@ import { ShieldCheck, Wrench, ArrowRight, Layers, FileSearch, Sparkles, CheckCir
 import { fetchOrders, saveUserApi, saveGarageApi, deleteGarageApi, fetchGarages, fetchModels, fetchParts, fetchSchematics } from './services/api';
 
 export default function App() {
-  const [models, setModels] = useState<SuzukiModel[]>(() => SUZUKI_MODELS);
-  const [parts, setParts] = useState<SuzukiPart[]>(() => SUZUKI_PARTS);
-  const [schematics, setSchematics] = useState<ExplodedDiagram[]>(() => EXPLODED_DIAGRAMS);
+  const [models, setModels] = useState<SuzukiModel[]>([]);
+  const [parts, setParts] = useState<SuzukiPart[]>([]);
+  const [schematics, setSchematics] = useState<ExplodedDiagram[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
   // Dynamic Catalog Filter States
@@ -55,7 +55,11 @@ export default function App() {
         ]);
         if (liveModels && liveModels.length > 0) setModels(liveModels);
         if (liveParts && liveParts.length > 0) {
-          setParts(liveParts);
+          setParts(liveParts.map((p: any) => ({
+            ...p,
+            taxable: p.taxable !== false,
+            priceIncludesTax: p.priceIncludesTax === true
+          })));
           const maxP = Math.max(...liveParts.map((p: any) => p.price), 5000000);
           setMaxPriceFilter(maxP);
         }
@@ -75,14 +79,7 @@ export default function App() {
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { return null; }
     }
-    // Default initial bike for instant seamless demo (GSX-R1000)
-    return {
-      brand: 'SUZUKI',
-      modelId: 'gsx-r1000',
-      modelName: 'GSX-R1000',
-      year: 2021,
-      version: 'GSX-R1000R Spec'
-    };
+    return null;
   });
 
   const [savedGarages, setSavedGarages] = useState<ActiveMotorcycle[]>(() => {
@@ -90,17 +87,13 @@ export default function App() {
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { return []; }
     }
-    return [
-      { brand: 'SUZUKI', modelId: 'gsx-r1000', modelName: 'GSX-R1000', year: 2021, version: 'GSX-R1000R Spec' },
-      { brand: 'SUZUKI', modelId: 'gixxer-150-fi', modelName: 'Gixxer 150 FI', year: 2020, version: 'FI ABS (Disco Doble)' },
-      { brand: 'SUZUKI', modelId: 'vstrom-650', modelName: 'V-Strom 650', year: 2021, version: 'DL650 XT Spoke Wheels' }
-    ];
+    return [];
   });
 
   // Auth & Login State
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     const saved = localStorage.getItem('sz_is_logged_in');
-    return saved !== null ? saved === 'true' : true;
+    return saved !== null ? saved === 'true' : false;
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -115,16 +108,16 @@ export default function App() {
       try { return JSON.parse(saved); } catch (e) {}
     }
     return {
-      id: 'USR-8849',
-      fullName: 'Juan Pérez',
-      email: 'juan.perez@mototaller.com',
-      phone: '+57 310 982 7311',
-      documentId: '1.098.472.910',
-      city: 'Bogotá D.C.',
-      address: 'Av. Central #450, Taller Mecánico Motos',
-      postalCode: '110111',
-      favoritePartIds: ['suzuki-gsxr-1000-air-filter', 'suzuki-gixxer-150-brake-pads'],
-      createdAt: 'Marzo 2024'
+      id: '',
+      fullName: '',
+      email: '',
+      phone: '',
+      documentId: '',
+      city: '',
+      address: '',
+      postalCode: '',
+      favoritePartIds: [],
+      createdAt: ''
     };
   });
 
@@ -185,14 +178,14 @@ export default function App() {
 
   const navigateToTab = (tab: 'garage' | 'catalog' | 'schematics' | 'orders' | 'product-page' | 'account' | 'checkout' | 'favorites', pathOverride?: string) => {
     // Clear schematic targets when leaving the schematics view to avoid stale pre-selection
-    if (tab !== 'schematics') {
+    if (tab !== 'schematics' && !pathOverride) {
       setSchematicTargetId(undefined);
       setSchematicTargetPartId(undefined);
     }
     setActiveTab(tab);
     let targetPath = '/garaje';
     if (tab === 'catalog') targetPath = '/catalogo';
-    else if (tab === 'schematics') targetPath = '/despieces';
+    else if (tab === 'schematics') targetPath = pathOverride || '/despieces';
     else if (tab === 'orders') targetPath = '/pedidos';
     else if (tab === 'account') targetPath = '/cuenta';
     else if (tab === 'checkout') targetPath = '/completar-pedido';
@@ -300,30 +293,42 @@ export default function App() {
   };
 
   // Cart & Orders State
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    const saved = localStorage.getItem('sz_cart_items');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {}
+    }
+    return [];
+  });
 
-  // Load orders from Neon DB API + localStorage on mount
+  const syncedCartItems = React.useMemo(() => {
+    return cartItems.map(item => {
+      const live = parts.find(p => p.id === item.part.id || (item.part.oemNumbers && p.oemNumbers.includes(item.part.oemNumbers[0])));
+      return live ? { ...item, part: live } : item;
+    });
+  }, [cartItems, parts]);
+
+  useEffect(() => {
+    localStorage.setItem('sz_cart_items', JSON.stringify(cartItems));
+  }, [cartItems]);
+
+  // Load orders from Neon DB API on mount
   useEffect(() => {
     const loadAllOrders = async () => {
       try {
         const fetched = await fetchOrders();
-        const stored = JSON.parse(localStorage.getItem('sz_user_orders') || '[]');
-        const combined = [...fetched];
-        for (const s of stored) {
-          if (!combined.some(o => o.id === s.id)) {
-            combined.push(s);
-          }
-        }
-        setOrders(combined);
+        setOrders(fetched);
       } catch (err) {
         console.error('Error cargando órdenes:', err);
-        const stored = JSON.parse(localStorage.getItem('sz_user_orders') || '[]');
-        setOrders(stored);
+        setOrders([]);
       }
     };
     loadAllOrders();
   }, []);
+
 
   // Modals
   const [isGarageModalOpen, setIsGarageModalOpen] = useState(false);
@@ -425,7 +430,7 @@ export default function App() {
     setCartItems(prev => prev.filter(item => item.part.id !== partId));
   };
 
-  const handleOrderComplete = (newOrder: any) => {
+  const handleOrderComplete = (newOrder: Order) => {
     setOrders(prev => [newOrder, ...prev]);
     setCartItems([]);
     navigateToTab('orders');
@@ -733,13 +738,14 @@ export default function App() {
             activeMotorcycle={activeMotorcycle}
             allParts={parts}
             schematics={schematics}
+            models={models}
             onBack={handleBackFromProductPage}
             onAddToCart={handleAddToCart}
             onOpenGarageModal={() => setIsGarageModalOpen(true)}
             onViewSchematics={(sId, pId) => {
               setSchematicTargetId(sId);
               setSchematicTargetPartId(pId);
-              navigateToTab('schematics');
+              navigateToTab('schematics', `/despieces/${encodeURIComponent(sId)}`);
             }}
             onSelectRelatedPart={(p) => {
               setSelectedPagePart(p);
@@ -751,7 +757,7 @@ export default function App() {
         {/* Tab 7: Dedicated Checkout Page (/completar-pedido) */}
         {activeTab === 'checkout' && (
           <CheckoutPage
-            cartItems={cartItems}
+            cartItems={syncedCartItems}
             activeMotorcycle={activeMotorcycle}
             userProfile={userProfile}
             isLoggedIn={isLoggedIn}
@@ -808,13 +814,15 @@ export default function App() {
         activeMotorcycle={activeMotorcycle}
         allParts={parts}
         schematics={schematics}
+        models={models}
         onClose={() => setSelectedPartDetail(null)}
         onAddToCart={handleAddToCart}
         onOpenGarageModal={() => setIsGarageModalOpen(true)}
         onViewSchematics={(sId, pId) => {
+          setSelectedPartDetail(null);
           setSchematicTargetId(sId);
           setSchematicTargetPartId(pId);
-          navigateToTab('schematics');
+          navigateToTab('schematics', `/despieces/${encodeURIComponent(sId)}`);
         }}
         onSelectRelatedPart={(p) => setSelectedPartDetail(p)}
         onOpenAsPage={handleOpenProductPage}
@@ -824,6 +832,7 @@ export default function App() {
         isOpen={isAIOpen}
         onClose={() => setIsAIOpen(false)}
         activeMotorcycle={activeMotorcycle}
+        partsList={parts}
         onOpenDetail={(p) => setSelectedPartDetail(p)}
         onAddToCart={handleAddToCart}
         onOpenGarageModal={() => setIsGarageModalOpen(true)}
@@ -833,7 +842,7 @@ export default function App() {
       <CartDrawer
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
-        cartItems={cartItems}
+        cartItems={syncedCartItems}
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveCartItem}
         onProceedCheckout={() => {

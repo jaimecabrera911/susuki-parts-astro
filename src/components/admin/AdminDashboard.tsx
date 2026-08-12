@@ -9,6 +9,9 @@ import { PartsManager } from './PartsManager';
 import { SchematicsManager } from './SchematicsManager';
 import { OrdersManager } from './OrdersManager';
 import { UsersManager } from './UsersManager';
+import { ShippingManager } from './ShippingManager';
+import { TaxSettingsManager } from './TaxSettingsManager';
+import { CouponsManager } from './CouponsManager';
 import { BrandModal } from './BrandModal';
 import { ModelDrawer } from './ModelDrawer';
 import { ModelViewModal } from './ModelViewModal';
@@ -41,22 +44,7 @@ import {
   saveUserApi,
   deleteUserApi
 } from '../../services/api';
-import { 
-  getStoredBrands, 
-  saveStoredBrands, 
-  getStoredModels, 
-  saveStoredModels,
-  getStoredCategories,
-  saveStoredCategories,
-  getStoredParts,
-  saveStoredParts,
-  getStoredSchematics,
-  saveStoredSchematics,
-  getStoredOrders,
-  saveStoredOrders,
-  getStoredUsers,
-  saveStoredUsers
-} from '../../data/adminStore';
+// adminStore removed — all data loaded exclusively from Neon DB API
 import type { Brand, SuzukiModel, Category, SuzukiPart, AvailabilityStatus, ExplodedDiagram, Order, UserProfile } from '../../types';
 import { CheckCircle2, ShoppingCart, BarChart3, Users } from 'lucide-react';
 
@@ -64,7 +52,7 @@ const getTabFromUrl = (): AdminTab => {
   if (typeof window === 'undefined') return 'brands';
   const path = window.location.pathname.replace(/\/$/, '');
   const section = path.split('/')[2];
-  const validTabs: AdminTab[] = ['brands', 'models', 'categories', 'parts', 'schematics', 'orders', 'users', 'metrics'];
+  const validTabs: AdminTab[] = ['brands', 'models', 'categories', 'parts', 'schematics', 'orders', 'users', 'shipping', 'metrics'];
   if (section && validTabs.includes(section as AdminTab)) {
     return section as AdminTab;
   }
@@ -94,14 +82,14 @@ export const AdminDashboard: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Store States
-  const [brands, setBrands] = useState<Brand[]>(() => getStoredBrands());
-  const [models, setModels] = useState<SuzukiModel[]>(() => getStoredModels());
-  const [categories, setCategories] = useState<Category[]>(() => getStoredCategories());
-  const [parts, setParts] = useState<SuzukiPart[]>(() => getStoredParts());
-  const [schematics, setSchematics] = useState<ExplodedDiagram[]>(() => getStoredSchematics());
-  const [orders, setOrders] = useState<Order[]>(() => getStoredOrders());
-  const [users, setUsers] = useState<UserProfile[]>(() => getStoredUsers());
+  // State — loaded exclusively from Neon DB API on mount
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [models, setModels] = useState<SuzukiModel[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [parts, setParts] = useState<SuzukiPart[]>([]);
+  const [schematics, setSchematics] = useState<ExplodedDiagram[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
 
   // Toast notification state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
@@ -135,40 +123,32 @@ export const AdminDashboard: React.FC = () => {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
 
-  // Initial Load from Neon DB Backend API
+  // Load all data from Neon DB API on mount — no localStorage, no mocks
   useEffect(() => {
     async function loadLiveData() {
       try {
         const [b, m, c, p, s, o, u] = await Promise.all([
-          fetchBrands().catch(() => []),
-          fetchModels().catch(() => []),
-          fetchCategories().catch(() => []),
-          fetchParts().catch(() => []),
-          fetchSchematics().catch(() => []),
-          fetchOrders().catch(() => []),
-          fetchUsers().catch(() => [])
+          fetchBrands(),
+          fetchModels(),
+          fetchCategories(),
+          fetchParts(),
+          fetchSchematics(),
+          fetchOrders(),
+          fetchUsers()
         ]);
-        if (b && b.length > 0) setBrands(b);
-        if (m && m.length > 0) setModels(m);
-        if (c && c.length > 0) setCategories(c);
-        if (p && p.length > 0) setParts(p);
-        if (s && s.length > 0) setSchematics(s);
-        if (o && o.length > 0) setOrders(o);
-        if (u && u.length > 0) setUsers(u);
+        setBrands(b);
+        setModels(m);
+        setCategories(c);
+        setParts(p);
+        setSchematics(s);
+        setOrders(o);
+        setUsers(u);
       } catch (err) {
-        console.error('Error loading live DB data from API:', err);
+        console.error('Error loading data from DB API:', err);
       }
     }
     loadLiveData();
   }, []);
-
-  useEffect(() => { saveStoredBrands(brands); }, [brands]);
-  useEffect(() => { saveStoredModels(models); }, [models]);
-  useEffect(() => { saveStoredCategories(categories); }, [categories]);
-  useEffect(() => { saveStoredParts(parts); }, [parts]);
-  useEffect(() => { saveStoredSchematics(schematics); }, [schematics]);
-  useEffect(() => { saveStoredOrders(orders); }, [orders]);
-  useEffect(() => { saveStoredUsers(users); }, [users]);
 
   const handleSaveUser = async (savedUser: UserProfile) => {
     const exists = users.some(u => u.id === savedUser.id);
@@ -660,8 +640,20 @@ export const AdminDashboard: React.FC = () => {
             />
           )}
 
+          {activeTab === 'shipping' && (
+            <ShippingManager />
+          )}
+
+          {activeTab === 'taxes' && (
+            <TaxSettingsManager />
+          )}
+
+          {activeTab === 'coupons' && (
+            <CouponsManager />
+          )}
+
           {/* Placeholder views for remaining modules */}
-          {activeTab !== 'brands' && activeTab !== 'models' && activeTab !== 'categories' && activeTab !== 'parts' && activeTab !== 'schematics' && activeTab !== 'orders' && activeTab !== 'users' && (
+          {activeTab !== 'brands' && activeTab !== 'models' && activeTab !== 'categories' && activeTab !== 'parts' && activeTab !== 'schematics' && activeTab !== 'orders' && activeTab !== 'users' && activeTab !== 'shipping' && activeTab !== 'taxes' && activeTab !== 'coupons' && (
             <div className="p-12 rounded-2xl bg-white border border-slate-200 text-center max-w-xl mx-auto my-12 shadow-xs">
               <div className="w-16 h-16 rounded-2xl bg-red-50 text-[#E60012] border border-red-200 flex items-center justify-center mx-auto mb-4">
                 {activeTab === 'metrics' && <BarChart3 className="w-8 h-8" />}

@@ -6,13 +6,16 @@ import {
   FolderTree,
   ShoppingCart, 
   Users,
+  Truck,
   BarChart3, 
   ArrowLeft,
   ChevronRight
 } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 
-export type AdminTab = 'brands' | 'models' | 'categories' | 'parts' | 'schematics' | 'orders' | 'users' | 'metrics';
+import { Percent, Tag } from 'lucide-react';
+
+export type AdminTab = 'brands' | 'models' | 'categories' | 'parts' | 'schematics' | 'orders' | 'users' | 'shipping' | 'taxes' | 'coupons' | 'metrics';
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -24,6 +27,8 @@ interface AdminSidebarProps {
   schematicsCount: number;
   ordersCount?: number;
   usersCount?: number;
+  shippingCount?: number;
+  couponsCount?: number;
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
@@ -35,7 +40,9 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   partsCount,
   schematicsCount,
   ordersCount = 0,
-  usersCount = 0
+  usersCount = 0,
+  shippingCount = 0,
+  couponsCount = 0
 }) => {
   const menuItems = [
     {
@@ -86,6 +93,26 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       icon: Users,
       count: usersCount,
       badgeColor: 'bg-purple-50 text-purple-700 border-purple-200 font-bold'
+    },
+    {
+      id: 'shipping' as AdminTab,
+      label: 'MÉTODOS DE ENVÍO',
+      icon: Truck,
+      count: shippingCount,
+      badgeColor: 'bg-sky-50 text-sky-700 border-sky-200 font-bold'
+    },
+    {
+      id: 'taxes' as AdminTab,
+      label: 'IMPUESTOS (IVA)',
+      icon: Percent,
+      badgeColor: 'bg-red-50 text-[#E60012] border-red-200 font-bold'
+    },
+    {
+      id: 'coupons' as AdminTab,
+      label: 'CUPONES & DESCUENTOS',
+      icon: Tag,
+      count: couponsCount,
+      badgeColor: 'bg-amber-50 text-amber-800 border-amber-200 font-bold'
     },
     {
       id: 'metrics' as AdminTab,

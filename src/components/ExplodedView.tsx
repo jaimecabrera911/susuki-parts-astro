@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { EXPLODED_DIAGRAMS, SUZUKI_PARTS, MOTORCYCLE_SECTION_ORDER, SUZUKI_MODELS } from '../data/suzukiData';
+import { MOTORCYCLE_SECTION_ORDER } from '../data/suzukiData';
 import type { ExplodedDiagram, SuzukiPart, SuzukiModel, ActiveMotorcycle, AvailabilityStatus } from '../types';
 import { getPrimaryOem, getAvailabilityStatus, AVAILABILITY_META } from '../types';
 import {
@@ -70,14 +70,14 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
     if (modelsList && modelsList.length > 0) setDbModels(modelsList);
   }, [schematicsList, partsList, modelsList]);
 
-  const allModels = dbModels.length > 0 ? dbModels : SUZUKI_MODELS;
+  const allModels = dbModels;
 
-  const allDiagrams = dbSchematics.length > 0 ? dbSchematics : (schematicsList || EXPLODED_DIAGRAMS);
-  const allParts = dbParts.length > 0 ? dbParts : (partsList || SUZUKI_PARTS);
+  const allDiagrams = dbSchematics;
+  const allParts = dbParts;
 
   const [viewMode, setViewMode] = useState<ViewMode>(initialSchematicId ? 'detail' : 'catalog');
   const [selectedDiagramId, setSelectedDiagramId] = useState<string>(
-    initialSchematicId || (allDiagrams[0]?.id || 'diag-01')
+    initialSchematicId || (allDiagrams[0]?.id || '')
   );
   const [selectedPartId, setSelectedPartId] = useState<string | null>(initialPartId ?? null);
   const [activeSection, setActiveSection] = useState<string>('all');
@@ -181,7 +181,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
     return groups;
   }, [filteredDiagrams, activeSection, availableSections]);
 
-  const currentDiagram = allDiagrams.find(d => d.id === selectedDiagramId) || allDiagrams[0] || EXPLODED_DIAGRAMS[0];
+  const currentDiagram = allDiagrams.find(d => d.id === selectedDiagramId) || allDiagrams[0] || null;
 
   // Get parts for the current diagram (in order of item number)
   const diagramParts = useMemo(() => {
@@ -395,6 +395,18 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   }
 
   // ============ DETAIL MODE ============
+  if (!currentDiagram) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="bg-white border border-slate-200 rounded-2xl p-10 shadow-xs text-center">
+          <Info className="w-10 h-10 text-slate-300 mx-auto mb-3" aria-hidden="true" />
+          <h2 className="text-lg font-black text-slate-900">Sin diagramas disponibles</h2>
+          <p className="text-sm text-slate-500 mt-1">No hay despieces cargados en el catálogo todavía.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Breadcrumb / Back Bar */}
@@ -713,7 +725,7 @@ const ActiveGarageCard: React.FC<{
   models?: SuzukiModel[];
   isLoading?: boolean;
 }> = ({ activeMotorcycle, onOpenGarageModal, models, isLoading = false }) => {
-  const availableModels = models && models.length > 0 ? models : SUZUKI_MODELS;
+  const availableModels = models || [];
   return (
     <div className="group relative overflow-hidden rounded-2xl bg-[#0a1628] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.55)]">
       {/* Subtle ambient glow */}

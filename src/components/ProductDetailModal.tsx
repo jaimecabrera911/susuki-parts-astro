@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { X, CheckCircle2, AlertTriangle, ShieldCheck, ArrowRight, ShoppingBag, Wrench, Factory, FileText, Maximize2, Copy, Check, Info, ChevronDown, ChevronUp, Package, HelpCircle } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
-import type { SuzukiPart, ActiveMotorcycle, ExplodedDiagram } from '../types';
+import type { SuzukiPart, ActiveMotorcycle, ExplodedDiagram, SuzukiModel } from '../types';
 import { getPrimaryOem } from '../types';
-import { SUZUKI_MODELS } from '../data/suzukiData';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getProductWhatsAppUrl } from '../utils/whatsapp';
 import { shouldShowProductImages } from '../utils/config';
@@ -16,6 +15,7 @@ interface ProductDetailModalProps {
   activeMotorcycle: ActiveMotorcycle | null;
   allParts?: SuzukiPart[];
   schematics?: ExplodedDiagram[];
+  models?: SuzukiModel[];
   onClose: () => void;
   onAddToCart: (part: SuzukiPart) => void;
   onOpenGarageModal: () => void;
@@ -29,6 +29,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   activeMotorcycle,
   allParts = [],
   schematics,
+  models = [],
   onClose,
   onAddToCart,
   onOpenGarageModal,
@@ -323,7 +324,24 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">{part.category}</span>
               <h2 id="product-detail-modal-title" className="text-xl font-black text-slate-900 mt-0.5">{part.name}</h2>
-              <div className="text-xl sm:text-2xl font-mono font-black text-slate-900 mt-2 whitespace-nowrap">{formatCurrency(part.price)}</div>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <div className="text-xl sm:text-2xl font-mono font-black text-[#E60012] whitespace-nowrap">{formatCurrency(part.price)}</div>
+                {part.taxable !== false ? (
+                  part.priceIncludesTax ? (
+                    <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded">
+                      IVA 19% Incluido
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-mono font-bold text-slate-700 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded">
+                      + 19% IVA al checkout
+                    </span>
+                  )
+                ) : (
+                  <span className="text-[10px] font-mono font-bold text-blue-800 bg-blue-100 border border-blue-300 px-2 py-0.5 rounded">
+                    Exento de IVA
+                  </span>
+                )}
+              </div>
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed border-t border-slate-100 pt-3">
@@ -354,7 +372,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </h4>
               <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
                 {part.compatibility.map((c, idx) => {
-                  const modelObj = SUZUKI_MODELS.find(m => m.id === c.modelId);
+                  const modelObj = models.find(m => m.id === c.modelId);
                   const isMatch = activeMotorcycle ? activeMotorcycle.modelId === c.modelId : false;
                   return (
                     <div

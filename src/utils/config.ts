@@ -11,3 +11,14 @@ export const shouldShowProductImages = (): boolean => {
   }
   return true;
 };
+
+/**
+ * Default operating location for the store (currently Colombia-only).
+ * Single source of truth so the rest of the code stays generic — swap these
+ * values to relocate the store without touching component code.
+ */
+export const STORE_DEFAULT_LOCATION = {
+  country: 'Colombia',
+  department: 'Bogotá D.C.',
+  city: 'Bogotá D.C.'
+};

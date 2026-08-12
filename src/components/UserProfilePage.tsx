@@ -27,8 +27,11 @@ import type { UserProfile, ActiveMotorcycle, SuzukiPart, CartItem } from '../typ
 import { getAvailabilityStatus, AVAILABILITY_META, getPrimaryOem } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
 import { OrdersTable } from './OrdersTable';
-import { shouldShowProductImages } from '../utils/config';
+import { shouldShowProductImages, STORE_DEFAULT_LOCATION } from '../utils/config';
 import { ProductImageFallback } from './ProductImageFallback';
+import { LocationSelector } from './LocationSelector';
+import type { CityRecord } from '../types';
+import { fetchCities } from '../services/api';
 
 
 
@@ -88,12 +91,24 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   }, []);
 
   
+  const [citiesList, setCitiesList] = useState<CityRecord[]>([]);
+
+  useEffect(() => {
+    fetchCities()
+      .then(data => {
+        if (data && data.length > 0) setCitiesList(data.filter((c: any) => c.active));
+      })
+      .catch(err => console.error('Error cargando ciudades en perfil:', err));
+  }, []);
+
   // Local form state for user profile editing
   const [formData, setFormData] = useState({
     fullName: userProfile.fullName,
     email: userProfile.email,
     phone: userProfile.phone,
     documentId: userProfile.documentId,
+    country: userProfile.country || STORE_DEFAULT_LOCATION.country,
+    department: userProfile.department || STORE_DEFAULT_LOCATION.department,
     city: userProfile.city,
     address: userProfile.address,
     postalCode: userProfile.postalCode,
@@ -369,6 +384,19 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                     </div>
                   </div>
 
+                  {/* Ubicación en Cascada: País, Departamento, Ciudad */}
+                  <div className="sm:col-span-2">
+                    <LocationSelector
+                      country={formData.country}
+                      department={formData.department}
+                      city={formData.city}
+                      citiesList={citiesList}
+                      onChange={({ country, department, city }) => {
+                        setFormData(prev => ({ ...prev, country, department, city }));
+                      }}
+                    />
+                  </div>
+
                   <div className="sm:col-span-2">
                     <label htmlFor="address" className="block text-xs font-bold uppercase text-slate-700 mb-1">
                       Dirección Completa de Despacho / Taller
@@ -387,22 +415,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                     </div>
                   </div>
 
-                  <div>
-                    <label htmlFor="city" className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                      Ciudad / Municipio
-                    </label>
-                    <input
-                      id="city"
-                      name="city"
-                      type="text"
-                      required
-                      value={formData.city}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
-                    />
-                  </div>
-
-                  <div>
+                  <div className="sm:col-span-2">
                     <label htmlFor="postalCode" className="block text-xs font-bold uppercase text-slate-700 mb-1">
                       Código Postal (Opcional)
                     </label>
