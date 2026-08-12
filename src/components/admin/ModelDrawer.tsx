@@ -5,18 +5,8 @@ import {
   Calendar,
   Plus,
   AlertCircle,
-  Image as ImageIcon,
-  Crosshair,
   Link,
   Unlink,
-  ExternalLink,
-  Wrench,
-  ShieldAlert,
-  Repeat,
-  Zap,
-  Shield,
-  ChevronDown,
-  ChevronRight,
   Tag,
   Edit,
   Eye,
@@ -26,6 +16,7 @@ import {
 } from "lucide-react";
 import { FaMotorcycle } from "react-icons/fa";
 import type { Brand, SuzukiModel, ExplodedDiagram } from "../../types";
+import { fetchModelCategories } from "../../services/api";
 
 interface ModelDrawerProps {
   isOpen: boolean;
@@ -45,17 +36,6 @@ interface ModelDrawerProps {
   initialTab?: "data" | "schematics";
 }
 
-const CATEGORY_OPTIONS = [
-  "Naked / Sport",
-  "Sport / Fairing",
-  "Superbike",
-  "Adventure / Tourer",
-  "Dual Sport / Enduro",
-  "Custom / Commuter",
-  "Scooter",
-  "Off-Road / Motocross",
-];
-
 export const ModelDrawer: React.FC<ModelDrawerProps> = ({
   isOpen,
   onClose,
@@ -72,9 +52,10 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<"data" | "schematics">(initialTab);
 
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [name, setName] = useState("");
   const [brandId, setBrandId] = useState("suzuki");
-  const [category, setCategory] = useState(CATEGORY_OPTIONS[0]);
+  const [category, setCategory] = useState(categoryOptions[0]);
   const [image, setImage] = useState("");
   const [yearStart, setYearStart] = useState<number>();
   const [yearEnd, setYearEnd] = useState<number>();
@@ -115,6 +96,30 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
   const [schematicToLinkSelect, setSchematicToLinkSelect] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
+    fetchModelCategories()
+      .then((rows) => {
+        if (cancelled) return;
+        const names = (rows || [])
+          .filter((c: any) => c.active !== false)
+          .map((c: any) => c.name);
+        setCategoryOptions(names);
+      })
+      .catch(() => {
+        if (!cancelled) setCategoryOptions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Once categories are loaded, default an empty category to the first DB option
+  useEffect(() => {
+    if (categoryOptions.length === 0) return;
+    if (!category) setCategory(categoryOptions[0]);
+  }, [categoryOptions]);
+
+  useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab, isOpen]);
 
@@ -122,7 +127,7 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
     if (modelToEdit) {
       setName(modelToEdit.name);
       setBrandId(modelToEdit.brandId || "suzuki");
-      setCategory(modelToEdit.category || CATEGORY_OPTIONS[0]);
+      setCategory(modelToEdit.category || categoryOptions[0]);
       setImage(modelToEdit.image || "");
 
       const yrs = modelToEdit.years || [2020];
@@ -135,7 +140,7 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
     } else {
       setName("");
       setBrandId("suzuki");
-      setCategory(CATEGORY_OPTIONS[0]);
+      setCategory(categoryOptions[0]);
       setImage("");
       setYearStart(2018);
       setYearEnd(2024);
@@ -374,7 +379,12 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-[#E60012] focus:ring-2 focus:ring-[#E60012]/20 font-medium"
                 >
-                  {CATEGORY_OPTIONS.map((c) => (
+                  {categoryOptions.length === 0 && (
+                    <option value="" disabled>
+                      Cargando categorías...
+                    </option>
+                  )}
+                  {categoryOptions.map((c) => (
                     <option key={c} value={c}>
                       {c}
                     </option>

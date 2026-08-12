@@ -541,7 +541,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   rel="noopener noreferrer"
                   className="w-full py-3 px-4 min-h-[44px] bg-[#25D366] hover:bg-emerald-600 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
                 >
-                  <IoChatbubbleEllipses />
+                  <IoChatbubbleEllipses className="w-5 h-5 shrink-0" />
                   <span>Consultar WhatsApp</span>
                 </a>
 
@@ -549,7 +549,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   <button
                     type="button"
                     onClick={onOpenGarageModal}
-                    className="w-full py-3 px-4 min-h-[44px] bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs uppercase rounded-xl shadow-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+                    className="w-full py-3 px-4 min-h-[44px] bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs uppercase rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
                   >
                     <TbAlertHexagonFilled />
                     Seleccionar Moto

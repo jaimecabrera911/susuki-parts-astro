@@ -1,39 +1,49 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  User, 
-  ShieldCheck, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Wrench, 
-  Package, 
-  Heart, 
-  Save, 
-  CheckCircle2, 
-  Calendar, 
-  Trash2, 
-  Plus, 
-  ChevronRight, 
-  FileText, 
-  Sparkles, 
+import React, { useState, useEffect } from "react";
+import {
+  User,
+  ShieldCheck,
+  Mail,
+  Phone,
+  MapPin,
+  Wrench,
+  Package,
+  Heart,
+  Save,
+  CheckCircle2,
+  Calendar,
+  Trash2,
+  Plus,
+  ChevronRight,
+  FileText,
+  Sparkles,
   Award,
   Lock,
   ArrowRight,
   Printer,
-  LogOut
-} from 'lucide-react';
-import { FaCartPlus } from 'react-icons/fa6';
-import type { UserProfile, ActiveMotorcycle, SuzukiPart, CartItem } from '../types';
-import { getAvailabilityStatus, AVAILABILITY_META, getPrimaryOem } from '../types';
-import { formatCurrency } from '../utils/formatCurrency';
-import { OrdersTable } from './OrdersTable';
-import { shouldShowProductImages, STORE_DEFAULT_LOCATION } from '../utils/config';
-import { ProductImageFallback } from './ProductImageFallback';
-import { LocationSelector } from './LocationSelector';
-import type { CityRecord } from '../types';
-import { fetchCities } from '../services/api';
-
-
+  LogOut,
+} from "lucide-react";
+import { FaCartPlus } from "react-icons/fa6";
+import type {
+  UserProfile,
+  ActiveMotorcycle,
+  SuzukiPart,
+  CartItem,
+} from "../types";
+import {
+  getAvailabilityStatus,
+  AVAILABILITY_META,
+  getPrimaryOem,
+} from "../types";
+import { formatCurrency } from "../utils/formatCurrency";
+import { OrdersTable } from "./OrdersTable";
+import {
+  shouldShowProductImages,
+  STORE_DEFAULT_LOCATION,
+} from "../utils/config";
+import { ProductImageFallback } from "./ProductImageFallback";
+import { LocationSelector } from "./LocationSelector";
+import type { CityRecord } from "../types";
+import { fetchCities } from "../services/api";
 
 interface UserProfilePageProps {
   userProfile: UserProfile;
@@ -49,7 +59,7 @@ interface UserProfilePageProps {
   onAddToCart: (part: SuzukiPart) => void;
   onNavigateToCatalog: () => void;
   onNavigateToSchematics: () => void;
-  initialTab?: 'profile' | 'garage' | 'orders' | 'favorites';
+  initialTab?: "profile" | "garage" | "orders" | "favorites";
   onLogout?: () => void;
 }
 
@@ -67,38 +77,39 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   onAddToCart,
   onNavigateToCatalog,
   onNavigateToSchematics,
-  initialTab = 'profile',
-  onLogout
+  initialTab = "profile",
+  onLogout,
 }) => {
+  const [activeTab, setActiveTab] = useState<
+    "profile" | "garage" | "orders" | "favorites"
+  >(initialTab);
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'garage' | 'orders' | 'favorites'>(initialTab);
-  
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.toLowerCase();
-      if (hash === '#favoritos' || hash === '#favorites') {
-        setActiveTab('favorites');
-      } else if (hash === '#pedidos' || hash === '#orders') {
-        setActiveTab('orders');
-      } else if (hash === '#garaje' || hash === '#garage') {
-        setActiveTab('garage');
+      if (hash === "#favoritos" || hash === "#favorites") {
+        setActiveTab("favorites");
+      } else if (hash === "#pedidos" || hash === "#orders") {
+        setActiveTab("orders");
+      } else if (hash === "#garaje" || hash === "#garage") {
+        setActiveTab("garage");
       }
     };
 
     handleHashChange();
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
-  
   const [citiesList, setCitiesList] = useState<CityRecord[]>([]);
 
   useEffect(() => {
     fetchCities()
-      .then(data => {
-        if (data && data.length > 0) setCitiesList(data.filter((c: any) => c.active));
+      .then((data) => {
+        if (data && data.length > 0)
+          setCitiesList(data.filter((c: any) => c.active));
       })
-      .catch(err => console.error('Error cargando ciudades en perfil:', err));
+      .catch((err) => console.error("Error cargando ciudades en perfil:", err));
   }, []);
 
   // Local form state for user profile editing
@@ -118,14 +129,14 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onUpdateProfile({
       ...userProfile,
-      ...formData
+      ...formData,
     });
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
@@ -133,7 +144,6 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
-      
       {/* Header Banner */}
       <div className="relative overflow-hidden bg-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl mb-8 border border-slate-800">
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-[#E60012]/10 rounded-full blur-3xl pointer-events-none" />
@@ -141,38 +151,58 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
           <div className="flex items-center gap-4 sm:gap-6">
             <div className="relative">
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-[#E60012] to-red-700 flex items-center justify-center text-white text-2xl sm:text-3xl font-black shadow-lg ring-4 ring-white/10">
-                {userProfile.fullName ? userProfile.fullName.charAt(0).toUpperCase() : 'U'}
+                {userProfile.fullName
+                  ? userProfile.fullName.charAt(0).toUpperCase()
+                  : "U"}
               </div>
-              <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full border-2 border-slate-900" title="Usuario Verificado">
+              <div
+                className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full border-2 border-slate-900"
+                title="Usuario Verificado"
+              >
                 <ShieldCheck className="w-4 h-4" />
               </div>
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight">{userProfile.fullName}</h1>
-                <span className="bg-red-500/20 text-red-300 text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-red-500/30 flex items-center gap-1">
-                  <Award className="w-3 h-3 text-red-400" />
-                  Cliente Preferencial OEM
-                </span>
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight">
+                  {userProfile.fullName}
+                </h1>
               </div>
               <p className="text-xs sm:text-sm text-slate-400 mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
-                <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5 text-slate-500" /> {userProfile.email}</span>
-                <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5 text-slate-500" /> {userProfile.phone}</span>
-                <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-slate-500" /> Miembro desde {userProfile.createdAt}</span>
+                <span className="flex items-center gap-1">
+                  <Mail className="w-3.5 h-3.5 text-slate-500" />{" "}
+                  {userProfile.email}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Phone className="w-3.5 h-3.5 text-slate-500" />{" "}
+                  {userProfile.phone}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-slate-500" /> Miembro
+                  desde {userProfile.createdAt}
+                </span>
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-slate-800">
             <div className="bg-slate-800/80 backdrop-blur-xs rounded-2xl p-3 border border-slate-700/60 flex-1 md:flex-initial text-center md:text-left min-w-[120px]">
-              <span className="text-[10px] text-slate-400 font-bold uppercase block tracking-wider">Garaje Activo</span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase block tracking-wider">
+                Garaje Activo
+              </span>
               <span className="text-xs font-extrabold text-red-400 truncate block">
-                {activeMotorcycle ? `${activeMotorcycle.modelName} ('${activeMotorcycle.year.toString().slice(-2)})` : 'Ninguna'}
+                {activeMotorcycle
+                  ? `${activeMotorcycle.modelName} ('${activeMotorcycle.year.toString().slice(-2)})`
+                  : "Ninguna"}
               </span>
             </div>
             <div className="bg-slate-800/80 backdrop-blur-xs rounded-2xl p-3 border border-slate-700/60 flex-1 md:flex-initial text-center md:text-left min-w-[100px]">
-              <span className="text-[10px] text-slate-400 font-bold uppercase block tracking-wider">Pedidos</span>
-              <span className="text-xs font-mono font-black text-emerald-400">{orders.length} Realizados</span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase block tracking-wider">
+                Pedidos
+              </span>
+              <span className="text-xs font-mono font-black text-emerald-400">
+                {orders.length} Realizados
+              </span>
             </div>
             {onLogout && (
               <button
@@ -186,13 +216,11 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               </button>
             )}
           </div>
-
         </div>
       </div>
 
       {/* Main Grid: Navigation Sidebar & Content Body */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
         {/* Navigation Sidebar */}
         <div className="lg:col-span-3 space-y-2 bg-white p-3 rounded-2xl border border-slate-200 shadow-xs">
           <div className="px-3 py-2 text-[10px] font-black uppercase text-slate-400 tracking-wider">
@@ -201,66 +229,82 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
           <button
             type="button"
-            onClick={() => setActiveTab('profile')}
+            onClick={() => setActiveTab("profile")}
             className={`w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-between transition-all cursor-pointer ${
-              activeTab === 'profile'
-                ? 'bg-[#E60012] text-white shadow-md shadow-red-500/20'
-                : 'text-slate-700 hover:bg-slate-100'
+              activeTab === "profile"
+                ? "bg-[#E60012] text-white shadow-md shadow-red-500/20"
+                : "text-slate-700 hover:bg-slate-100"
             }`}
           >
             <span className="flex items-center gap-3">
-              <User className={`w-4 h-4 ${activeTab === 'profile' ? 'text-white' : 'text-slate-500'}`} />
+              <User
+                className={`w-4 h-4 ${activeTab === "profile" ? "text-white" : "text-slate-500"}`}
+              />
               Perfil y Datos
             </span>
-            <ChevronRight className={`w-4 h-4 ${activeTab === 'profile' ? 'text-white' : 'text-slate-400'}`} />
+            <ChevronRight
+              className={`w-4 h-4 ${activeTab === "profile" ? "text-white" : "text-slate-400"}`}
+            />
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveTab('garage')}
+            onClick={() => setActiveTab("garage")}
             className={`w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-between transition-all cursor-pointer ${
-              activeTab === 'garage'
-                ? 'bg-[#E60012] text-white shadow-md shadow-red-500/20'
-                : 'text-slate-700 hover:bg-slate-100'
+              activeTab === "garage"
+                ? "bg-[#E60012] text-white shadow-md shadow-red-500/20"
+                : "text-slate-700 hover:bg-slate-100"
             }`}
           >
             <span className="flex items-center gap-3">
-              <Wrench className={`w-4 h-4 ${activeTab === 'garage' ? 'text-white' : 'text-amber-600'}`} />
+              <Wrench
+                className={`w-4 h-4 ${activeTab === "garage" ? "text-white" : "text-amber-600"}`}
+              />
               Mi Garaje ({savedGarages.length})
             </span>
-            <ChevronRight className={`w-4 h-4 ${activeTab === 'garage' ? 'text-white' : 'text-slate-400'}`} />
+            <ChevronRight
+              className={`w-4 h-4 ${activeTab === "garage" ? "text-white" : "text-slate-400"}`}
+            />
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveTab('orders')}
+            onClick={() => setActiveTab("orders")}
             className={`w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-between transition-all cursor-pointer ${
-              activeTab === 'orders'
-                ? 'bg-[#E60012] text-white shadow-md shadow-red-500/20'
-                : 'text-slate-700 hover:bg-slate-100'
+              activeTab === "orders"
+                ? "bg-[#E60012] text-white shadow-md shadow-red-500/20"
+                : "text-slate-700 hover:bg-slate-100"
             }`}
           >
             <span className="flex items-center gap-3">
-              <Package className={`w-4 h-4 ${activeTab === 'orders' ? 'text-white' : 'text-blue-600'}`} />
+              <Package
+                className={`w-4 h-4 ${activeTab === "orders" ? "text-white" : "text-blue-600"}`}
+              />
               Mis Pedidos ({orders.length})
             </span>
-            <ChevronRight className={`w-4 h-4 ${activeTab === 'orders' ? 'text-white' : 'text-slate-400'}`} />
+            <ChevronRight
+              className={`w-4 h-4 ${activeTab === "orders" ? "text-white" : "text-slate-400"}`}
+            />
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveTab('favorites')}
+            onClick={() => setActiveTab("favorites")}
             className={`w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-between transition-all cursor-pointer ${
-              activeTab === 'favorites'
-                ? 'bg-[#E60012] text-white shadow-md shadow-red-500/20'
-                : 'text-slate-700 hover:bg-slate-100'
+              activeTab === "favorites"
+                ? "bg-[#E60012] text-white shadow-md shadow-red-500/20"
+                : "text-slate-700 hover:bg-slate-100"
             }`}
           >
             <span className="flex items-center gap-3">
-              <Heart className={`w-4 h-4 ${activeTab === 'favorites' ? 'text-white' : 'text-rose-500'}`} />
+              <Heart
+                className={`w-4 h-4 ${activeTab === "favorites" ? "text-white" : "text-rose-500"}`}
+              />
               Repuestos Guardados ({favoriteParts.length})
             </span>
-            <ChevronRight className={`w-4 h-4 ${activeTab === 'favorites' ? 'text-white' : 'text-slate-400'}`} />
+            <ChevronRight
+              className={`w-4 h-4 ${activeTab === "favorites" ? "text-white" : "text-slate-400"}`}
+            />
           </button>
 
           <div className="pt-4 border-t border-slate-100 px-3 pb-2 space-y-2">
@@ -270,7 +314,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                 <span>Datos Protegidos</span>
               </div>
               <p className="text-[11px] text-slate-500 leading-tight">
-                Tus datos de despacho y certificado de compatibilidad OEM están asegurados localmente.
+                Tus datos de despacho están asegurados.
               </p>
             </div>
 
@@ -287,19 +331,22 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               </button>
             )}
           </div>
-
         </div>
 
         {/* Dynamic Content Panel */}
         <div className="lg:col-span-9 bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-xs">
-          
           {/* TAB 1: PROFILE & CONTACT DATA */}
-          {activeTab === 'profile' && (
+          {activeTab === "profile" && (
             <div>
               <div className="flex items-center justify-between pb-6 mb-6 border-b border-slate-100">
                 <div>
-                  <h2 className="text-xl font-black text-slate-900">Información Personal & Dirección de Envío</h2>
-                  <p className="text-xs text-slate-500">Mantén actualizados tus datos para el despacho automático de repuestos Suzuki</p>
+                  <h2 className="text-xl font-black text-slate-900">
+                    Información Personal & Dirección de Envío
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Mantén actualizados tus datos para el despacho automático de
+                    repuestos Suzuki
+                  </p>
                 </div>
                 {saveSuccess && (
                   <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-2 animate-in fade-in">
@@ -311,9 +358,11 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
               <form onSubmit={handleFormSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  
                   <div>
-                    <label htmlFor="fullName" className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                    <label
+                      htmlFor="fullName"
+                      className="block text-xs font-bold uppercase text-slate-700 mb-1"
+                    >
                       Nombre Completo
                     </label>
                     <div className="relative">
@@ -331,7 +380,10 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                   </div>
 
                   <div>
-                    <label htmlFor="email" className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                    <label
+                      htmlFor="email"
+                      className="block text-xs font-bold uppercase text-slate-700 mb-1"
+                    >
                       Correo Electrónico
                     </label>
                     <div className="relative">
@@ -349,7 +401,10 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                   </div>
 
                   <div>
-                    <label htmlFor="phone" className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                    <label
+                      htmlFor="phone"
+                      className="block text-xs font-bold uppercase text-slate-700 mb-1"
+                    >
                       Teléfono / WhatsApp de Contacto
                     </label>
                     <div className="relative">
@@ -367,7 +422,10 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                   </div>
 
                   <div>
-                    <label htmlFor="documentId" className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                    <label
+                      htmlFor="documentId"
+                      className="block text-xs font-bold uppercase text-slate-700 mb-1"
+                    >
                       Documento de Identidad (Cédula / DNI)
                     </label>
                     <div className="relative">
@@ -392,13 +450,21 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                       city={formData.city}
                       citiesList={citiesList}
                       onChange={({ country, department, city }) => {
-                        setFormData(prev => ({ ...prev, country, department, city }));
+                        setFormData((prev) => ({
+                          ...prev,
+                          country,
+                          department,
+                          city,
+                        }));
                       }}
                     />
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label htmlFor="address" className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                    <label
+                      htmlFor="address"
+                      className="block text-xs font-bold uppercase text-slate-700 mb-1"
+                    >
                       Dirección Completa de Despacho / Taller
                     </label>
                     <div className="relative">
@@ -416,7 +482,10 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label htmlFor="postalCode" className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                    <label
+                      htmlFor="postalCode"
+                      className="block text-xs font-bold uppercase text-slate-700 mb-1"
+                    >
                       Código Postal (Opcional)
                     </label>
                     <input
@@ -429,7 +498,6 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                       className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
                     />
                   </div>
-
                 </div>
 
                 <div className="pt-4 border-t border-slate-100 flex items-center justify-end">
@@ -446,12 +514,17 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
           )}
 
           {/* TAB 2: MI GARAJE SUZUKI */}
-          {activeTab === 'garage' && (
+          {activeTab === "garage" && (
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 mb-6 border-b border-slate-100 gap-4">
                 <div>
-                  <h2 className="text-xl font-black text-slate-900">Mis Motocicletas Suzuki Guardadas</h2>
-                  <p className="text-xs text-slate-500">Selecciona tu moto activa para filtrar automáticamente el catálogo y diagramas despiece</p>
+                  <h2 className="text-xl font-black text-slate-900">
+                    Mis Motocicletas Suzuki Guardadas
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Selecciona tu moto activa para filtrar automáticamente el
+                    catálogo y diagramas despiece
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -466,9 +539,12 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               {savedGarages.length === 0 ? (
                 <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
                   <Wrench className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-                  <h3 className="text-sm font-bold text-slate-800">No tienes motocicletas registradas en tu Garaje</h3>
+                  <h3 className="text-sm font-bold text-slate-800">
+                    No tienes motocicletas registradas en tu Garaje
+                  </h3>
                   <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto mb-4">
-                    Agrega tu Suzuki para recibir validación de compatibilidad OEM en tiempo real.
+                    Agrega tu Suzuki para recibir validación de compatibilidad
+                    OEM en tiempo real.
                   </p>
                   <button
                     type="button"
@@ -481,15 +557,17 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {savedGarages.map((bike, idx) => {
-                    const isActive = activeMotorcycle?.modelId === bike.modelId && activeMotorcycle?.year === bike.year;
+                    const isActive =
+                      activeMotorcycle?.modelId === bike.modelId &&
+                      activeMotorcycle?.year === bike.year;
 
                     return (
                       <div
                         key={idx}
                         className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
                           isActive
-                            ? 'bg-red-50/50 border-[#E60012] ring-2 ring-[#E60012]/20 shadow-xs'
-                            : 'bg-white border-slate-200 hover:border-slate-300'
+                            ? "bg-red-50/50 border-[#E60012] ring-2 ring-[#E60012]/20 shadow-xs"
+                            : "bg-white border-slate-200 hover:border-slate-300"
                         }`}
                       >
                         <div>
@@ -505,7 +583,9 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => onRemoveGarageBike(bike.modelId, bike.year)}
+                                onClick={() =>
+                                  onRemoveGarageBike(bike.modelId, bike.year)
+                                }
                                 className="text-slate-400 hover:text-red-600 p-1 transition-colors"
                                 title="Eliminar del Garaje"
                               >
@@ -514,9 +594,18 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                             )}
                           </div>
 
-                          <h3 className="text-lg font-black text-slate-900">{bike.modelName}</h3>
+                          <h3 className="text-lg font-black text-slate-900">
+                            {bike.modelName}
+                          </h3>
                           <div className="text-xs font-semibold text-slate-600 mt-1">
-                            Año: <span className="text-slate-900 font-bold">{bike.year}</span> | Versión: <span className="text-slate-900 font-bold">{bike.version}</span>
+                            Año:{" "}
+                            <span className="text-slate-900 font-bold">
+                              {bike.year}
+                            </span>{" "}
+                            | Versión:{" "}
+                            <span className="text-slate-900 font-bold">
+                              {bike.version}
+                            </span>
                           </div>
                           {bike.vin && (
                             <div className="text-[11px] font-mono text-slate-500 mt-2 bg-slate-100 px-2.5 py-1 rounded-lg inline-block">
@@ -537,14 +626,16 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                           ) : (
                             <div className="flex items-center justify-between w-full">
                               <span className="text-xs font-bold text-emerald-700 flex items-center gap-1">
-                                <ShieldCheck className="w-4 h-4 text-emerald-600" /> Filtros aplicados
+                                <ShieldCheck className="w-4 h-4 text-emerald-600" />{" "}
+                                Filtros aplicados
                               </span>
                               <button
                                 type="button"
                                 onClick={onNavigateToCatalog}
                                 className="text-xs font-extrabold text-[#E60012] hover:underline flex items-center gap-1"
                               >
-                                Ver Repuestos <ArrowRight className="w-3.5 h-3.5" />
+                                Ver Repuestos{" "}
+                                <ArrowRight className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           )}
@@ -558,36 +649,52 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
           )}
 
           {/* TAB 3: MIS PEDIDOS */}
-          {activeTab === 'orders' && (
+          {activeTab === "orders" && (
             <div>
               <div className="flex items-center justify-between pb-6 mb-6 border-b border-slate-100">
                 <div>
-                  <h2 className="text-xl font-black text-slate-900">Histórico de Pedidos & Garantía OEM</h2>
-                  <p className="text-xs text-slate-500">Facturación y certificados de compatibilidad emitidos para tus vehículos</p>
+                  <h2 className="text-xl font-black text-slate-900">
+                    Histórico de Pedidos & Garantía OEM
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Facturación y certificados de compatibilidad emitidos para
+                    tus vehículos
+                  </p>
                 </div>
               </div>
 
-              <OrdersTable orders={orders} onNavigateToCatalog={onNavigateToCatalog} />
+              <OrdersTable
+                orders={orders}
+                onNavigateToCatalog={onNavigateToCatalog}
+              />
             </div>
           )}
 
           {/* TAB 4: REPUESTOS GUARDADOS / FAVORITOS */}
 
-          {activeTab === 'favorites' && (
+          {activeTab === "favorites" && (
             <div>
               <div className="flex items-center justify-between pb-6 mb-6 border-b border-slate-100">
                 <div>
-                  <h2 className="text-xl font-black text-slate-900">Repuestos Guardados & Deseos</h2>
-                  <p className="text-xs text-slate-500">Piezas guardadas para comprar más adelante o consultar en talleres</p>
+                  <h2 className="text-xl font-black text-slate-900">
+                    Repuestos Guardados & Deseos
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Piezas guardadas para comprar más adelante o consultar en
+                    talleres
+                  </p>
                 </div>
               </div>
 
               {favoriteParts.length === 0 ? (
                 <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
                   <Heart className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                  <h3 className="text-sm font-bold text-slate-800">No tienes repuestos guardados</h3>
+                  <h3 className="text-sm font-bold text-slate-800">
+                    No tienes repuestos guardados
+                  </h3>
                   <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto mb-4">
-                    Haz clic en el ícono de corazón en los productos del catálogo para guardarlos aquí.
+                    Haz clic en el ícono de corazón en los productos del
+                    catálogo para guardarlos aquí.
                   </p>
                   <button
                     type="button"
@@ -605,7 +712,10 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                     const availMeta = AVAILABILITY_META[availabilityStatus];
 
                     return (
-                      <div key={part.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-between hover:shadow-md transition-all">
+                      <div
+                        key={part.id}
+                        className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-between hover:shadow-md transition-all"
+                      >
                         <div>
                           <div className="flex items-start justify-between gap-2 mb-2">
                             <span className="font-mono text-[11px] font-bold text-[#E60012] bg-red-50 px-2 py-0.5 rounded border border-red-100">
@@ -623,15 +733,26 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
                           <div className="flex gap-3 my-2">
                             {shouldShowProductImages() ? (
-                              <img src={part.image} alt={part.name} className="w-16 h-16 rounded-xl object-cover border border-slate-100 bg-slate-50 shrink-0" />
+                              <img
+                                src={part.image}
+                                alt={part.name}
+                                className="w-16 h-16 rounded-xl object-cover border border-slate-100 bg-slate-50 shrink-0"
+                              />
                             ) : (
-                              <ProductImageFallback part={part} size="sm" className="w-16 h-16 shrink-0" />
+                              <ProductImageFallback
+                                part={part}
+                                size="sm"
+                                className="w-16 h-16 shrink-0"
+                              />
                             )}
                             <div>
-
-                              <h4 className="text-xs font-bold text-slate-900 line-clamp-2">{part.name}</h4>
+                              <h4 className="text-xs font-bold text-slate-900 line-clamp-2">
+                                {part.name}
+                              </h4>
                               <div className="mt-1">
-                                <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded border ${availMeta.bgClass} ${availMeta.textClass} ${availMeta.borderClass}`}>
+                                <span
+                                  className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded border ${availMeta.bgClass} ${availMeta.textClass} ${availMeta.borderClass}`}
+                                >
                                   {availMeta.label}
                                 </span>
                               </div>
@@ -659,7 +780,6 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               )}
             </div>
           )}
-
         </div>
       </div>
     </div>

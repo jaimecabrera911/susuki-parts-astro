@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { AiTwotoneSafetyCertificate } from "react-icons/ai";
 import { TbAlertHexagonFilled } from "react-icons/tb";
-import { FaCartPlus } from "react-icons/fa6";
+import { FaCartPlus, FaMotorcycle } from "react-icons/fa6";
 import type {
   SuzukiPart,
   ActiveMotorcycle,
@@ -353,7 +353,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               className="flex-1 py-2.5 px-3 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs uppercase rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
               title="Debes confirmar tu moto antes de añadir"
             >
-              <TbAlertHexagonFilled className="w-5 h-5 shrink-0" />
+              <FaMotorcycle className="w-5 h-5 shrink-0" />
             </button>
           ) : !isCompatible ? (
             <button

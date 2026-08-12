@@ -3,7 +3,7 @@ import {
   models, modelYears,
   parts, partOemNumbers, partCompatibilities,
   schematics, schematicHotspots, schematicApplicableModels, schematicSections,
-  orderStatuses, carriers,
+  orderStatuses, carriers, modelCategories,
   orders, orderItems,
   users, userFavorites,
   shippingMethods, shippingZones, shippingZoneStates, shippingMethodZoneRates,
@@ -547,6 +547,36 @@ export async function seedCarriers(db: AppDb) {
     await upsertCarrier(db, c);
   }
   return { carriers: DEFAULT_CARRIERS.length };
+}
+
+export const DEFAULT_MODEL_CATEGORIES = [
+  { id: 'cat-naked-sport', name: 'Naked / Sport', order: 1 },
+  { id: 'cat-sport-fairing', name: 'Sport / Fairing', order: 2 },
+  { id: 'cat-superbike', name: 'Superbike', order: 3 },
+  { id: 'cat-adventure-tourer', name: 'Adventure / Tourer', order: 4 },
+  { id: 'cat-dual-sport-enduro', name: 'Dual Sport / Enduro', order: 5 },
+  { id: 'cat-custom-commuter', name: 'Custom / Commuter', order: 6 },
+  { id: 'cat-scooter', name: 'Scooter', order: 7 },
+  { id: 'cat-off-road-motocross', name: 'Off-Road / Motocross', order: 8 }
+];
+
+export async function upsertModelCategory(db: AppDb, body: any) {
+  const id = body.id || `cat-${body.name.toLowerCase().replace(/\s+/g, '-')}`;
+  const data = {
+    id,
+    name: body.name,
+    order: body.order ?? 0,
+    active: body.active !== undefined ? Boolean(body.active) : true
+  };
+  await db.insert(modelCategories).values(data).onConflictDoUpdate({ target: modelCategories.id, set: data });
+  return data;
+}
+
+export async function seedModelCategories(db: AppDb) {
+  for (const c of DEFAULT_MODEL_CATEGORIES) {
+    await upsertModelCategory(db, c);
+  }
+  return { categories: DEFAULT_MODEL_CATEGORIES.length };
 }
 
 export async function seedGeography(db: AppDb) {

@@ -62,7 +62,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
 
   // Filtered orders calculation
   const filteredOrders = useMemo(() => {
-    return allOrders.filter((order) => {
+    const filtered = allOrders.filter((order) => {
       const matchesSearch =
         order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (order.motorcycle &&
@@ -86,6 +86,14 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
         order.status.toLowerCase() === statusFilter.toLowerCase();
 
       return matchesSearch && matchesStatus;
+    });
+
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      if (isNaN(dateA)) return 1;
+      if (isNaN(dateB)) return -1;
+      return dateB - dateA;
     });
   }, [allOrders, searchTerm, statusFilter]);
 

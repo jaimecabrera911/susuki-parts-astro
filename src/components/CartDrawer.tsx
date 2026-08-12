@@ -8,7 +8,7 @@ import {
   MessageSquare,
   Eye,
 } from "lucide-react";
-import { FaCartShopping } from "react-icons/fa6";
+import { FaBasketShopping, FaCartShopping } from "react-icons/fa6";
 import { AiTwotoneSafetyCertificate } from "react-icons/ai";
 import type { CartItem, ActiveMotorcycle, SuzukiPart } from "../types";
 import { getPrimaryOem } from "../types";
@@ -311,8 +311,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   onClick={onProceedCheckout}
                   className="w-full py-3 min-h-[44px] bg-[#E60012] hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
                 >
+                  <FaBasketShopping />
                   <span>Completar Pedido</span>
-                  <ArrowRight className="w-4 h-4" aria-hidden="true" />
                 </button>
 
                 <a

@@ -1,35 +1,65 @@
-import React, { useState, useEffect } from 'react';
-import { Navbar } from './components/Navbar';
-import { CompatibilitySelector } from './components/CompatibilitySelector';
-import { TechnicalSearchCard } from './components/TechnicalSearchCard';
-import { IdentificationGuideModal } from './components/IdentificationGuideModal';
-import { GarageModal } from './components/GarageModal';
-import { ProductCard } from './components/ProductCard';
-import { ProductDetailModal } from './components/ProductDetailModal';
-import { ProductDetailPage } from './components/ProductDetailPage';
-import { ExplodedView } from './components/ExplodedView';
-import { AIAssistantModal } from './components/AIAssistantModal';
-import { CartDrawer } from './components/CartDrawer';
-import { CheckoutModal } from './components/CheckoutModal';
-import { CheckoutPage } from './components/CheckoutPage';
-import { FavoritesPage } from './components/FavoritesPage';
-import { OrdersModal } from './components/OrdersModal';
+import React, { useState, useEffect } from "react";
+import { Navbar } from "./components/Navbar";
+import { CompatibilitySelector } from "./components/CompatibilitySelector";
+import { TechnicalSearchCard } from "./components/TechnicalSearchCard";
+import { IdentificationGuideModal } from "./components/IdentificationGuideModal";
+import { GarageModal } from "./components/GarageModal";
+import { ProductCard } from "./components/ProductCard";
+import { ProductDetailModal } from "./components/ProductDetailModal";
+import { ProductDetailPage } from "./components/ProductDetailPage";
+import { ExplodedView } from "./components/ExplodedView";
+import { AIAssistantModal } from "./components/AIAssistantModal";
+import { CartDrawer } from "./components/CartDrawer";
+import { CheckoutModal } from "./components/CheckoutModal";
+import { CheckoutPage } from "./components/CheckoutPage";
+import { FavoritesPage } from "./components/FavoritesPage";
+import { OrdersModal } from "./components/OrdersModal";
 
+import { UserProfilePage } from "./components/UserProfilePage";
+import { AuthModal } from "./components/AuthModal";
+import { AuthRequired } from "./components/AuthRequired";
+import { CatalogSidebarFilter } from "./components/CatalogSidebarFilter";
+import { ProductCatalogSkeletonGrid } from "./components/SkeletonLoaders";
 
-import { UserProfilePage } from './components/UserProfilePage';
-import { AuthModal } from './components/AuthModal';
-import { AuthRequired } from './components/AuthRequired';
-import { CatalogSidebarFilter } from './components/CatalogSidebarFilter';
-import { ProductCatalogSkeletonGrid } from './components/SkeletonLoaders';
+import { WhatsAppWidget } from "./components/WhatsAppWidget";
+import type {
+  ActiveMotorcycle,
+  SuzukiPart,
+  CartItem,
+  AvailabilityStatus,
+  UserProfile,
+  SuzukiModel,
+  ExplodedDiagram,
+  Order,
+} from "./types";
+import {
+  getAvailabilityStatus,
+  AVAILABILITY_META,
+  matchesOem,
+  getPrimaryOem,
+} from "./types";
+import {
+  ShieldCheck,
+  Wrench,
+  ArrowRight,
+  Layers,
+  FileSearch,
+  Sparkles,
+  CheckCircle2,
+  ArrowUpDown,
+} from "lucide-react";
+import { FaCartShopping } from "react-icons/fa6";
 
-import { WhatsAppWidget } from './components/WhatsAppWidget';
-import type { ActiveMotorcycle, SuzukiPart, CartItem, AvailabilityStatus, UserProfile, SuzukiModel, ExplodedDiagram, Order } from './types';
-import { getAvailabilityStatus, AVAILABILITY_META, matchesOem, getPrimaryOem } from './types';
-import { ShieldCheck, Wrench, ArrowRight, Layers, FileSearch, Sparkles, CheckCircle2, ArrowUpDown } from 'lucide-react';
-import { FaCartShopping } from 'react-icons/fa6';
-
-
-import { fetchOrders, saveUserApi, saveGarageApi, deleteGarageApi, fetchGarages, fetchModels, fetchParts, fetchSchematics } from './services/api';
+import {
+  fetchOrders,
+  saveUserApi,
+  saveGarageApi,
+  deleteGarageApi,
+  fetchGarages,
+  fetchModels,
+  fetchParts,
+  fetchSchematics,
+} from "./services/api";
 
 export default function App() {
   const [models, setModels] = useState<SuzukiModel[]>([]);
@@ -39,12 +69,15 @@ export default function App() {
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
   // Dynamic Catalog Filter States
-  const [availabilityFilter, setAvailabilityFilter] = useState<Set<AvailabilityStatus>>(
-    () => new Set<AvailabilityStatus>(['in_stock', 'international', 'on_order'])
+  const [availabilityFilter, setAvailabilityFilter] = useState<
+    Set<AvailabilityStatus>
+  >(
+    () =>
+      new Set<AvailabilityStatus>(["in_stock", "international", "on_order"]),
   );
   const [maxPriceFilter, setMaxPriceFilter] = useState(5000000);
   const [minPriceFilter, setMinPriceFilter] = useState(0);
-  const [sortBy, setSortBy] = useState('relevance');
+  const [sortBy, setSortBy] = useState("relevance");
 
   useEffect(() => {
     async function loadStorefrontData() {
@@ -53,21 +86,24 @@ export default function App() {
         const [liveModels, liveParts, liveSchematics] = await Promise.all([
           fetchModels().catch(() => []),
           fetchParts().catch(() => []),
-          fetchSchematics().catch(() => [])
+          fetchSchematics().catch(() => []),
         ]);
         if (liveModels && liveModels.length > 0) setModels(liveModels);
         if (liveParts && liveParts.length > 0) {
-          setParts(liveParts.map((p: any) => ({
-            ...p,
-            taxable: p.taxable !== false,
-            priceIncludesTax: p.priceIncludesTax === true
-          })));
+          setParts(
+            liveParts.map((p: any) => ({
+              ...p,
+              taxable: p.taxable !== false,
+              priceIncludesTax: p.priceIncludesTax === true,
+            })),
+          );
           const maxP = Math.max(...liveParts.map((p: any) => p.price), 5000000);
           setMaxPriceFilter(maxP);
         }
-        if (liveSchematics && liveSchematics.length > 0) setSchematics(liveSchematics);
+        if (liveSchematics && liveSchematics.length > 0)
+          setSchematics(liveSchematics);
       } catch (err) {
-        console.error('Error loading live storefront data:', err);
+        console.error("Error loading live storefront data:", err);
       } finally {
         setIsLoadingData(false);
       }
@@ -76,31 +112,40 @@ export default function App() {
   }, []);
 
   // State for active motorcycle in garage
-  const [activeMotorcycle, setActiveMotorcycle] = useState<ActiveMotorcycle | null>(() => {
-    const saved = localStorage.getItem('sz_active_moto');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { return null; }
-    }
-    return null;
-  });
+  const [activeMotorcycle, setActiveMotorcycle] =
+    useState<ActiveMotorcycle | null>(() => {
+      const saved = localStorage.getItem("sz_active_moto");
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          return null;
+        }
+      }
+      return null;
+    });
 
   const [savedGarages, setSavedGarages] = useState<ActiveMotorcycle[]>(() => {
-    const saved = localStorage.getItem('sz_saved_garages');
+    const saved = localStorage.getItem("sz_saved_garages");
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { return []; }
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return [];
+      }
     }
     return [];
   });
 
   // Auth & Login State
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    const saved = localStorage.getItem('sz_is_logged_in');
-    return saved !== null ? saved === 'true' : false;
+    const saved = localStorage.getItem("sz_is_logged_in");
+    return saved !== null ? saved === "true" : false;
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem('sz_is_logged_in', isLoggedIn ? 'true' : 'false');
+    localStorage.setItem("sz_is_logged_in", isLoggedIn ? "true" : "false");
   }, [isLoggedIn]);
 
   // Mirrors isLoggedIn for use inside the URL-routing effect (registered with [])
@@ -111,49 +156,53 @@ export default function App() {
 
   // User Profile State
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem('sz_user_profile');
+    const saved = localStorage.getItem("sz_user_profile");
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
     }
     return {
-      id: '',
-      fullName: '',
-      email: '',
-      phone: '',
-      documentId: '',
-      city: '',
-      address: '',
-      postalCode: '',
+      id: "",
+      fullName: "",
+      email: "",
+      phone: "",
+      documentId: "",
+      city: "",
+      address: "",
+      postalCode: "",
       favoritePartIds: [],
-      createdAt: ''
+      createdAt: "",
     };
   });
 
   useEffect(() => {
-    localStorage.setItem('sz_user_profile', JSON.stringify(userProfile));
+    localStorage.setItem("sz_user_profile", JSON.stringify(userProfile));
   }, [userProfile]);
 
   const handleLoginSuccess = (user: UserProfile) => {
     setUserProfile(user);
     setIsLoggedIn(true);
     isLoggedInRef.current = true;
-    navigateToTab('account');
+    navigateToTab("account");
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
     isLoggedInRef.current = false;
-    navigateToTab('garage');
+    navigateToTab("garage");
   };
 
   const handleToggleFavorite = (partId: string) => {
-    setUserProfile(prev => {
+    setUserProfile((prev) => {
       const exists = prev.favoritePartIds.includes(partId);
       const updatedFavorites = exists
-        ? prev.favoritePartIds.filter(id => id !== partId)
+        ? prev.favoritePartIds.filter((id) => id !== partId)
         : [...prev.favoritePartIds, partId];
       const updatedProfile = { ...prev, favoritePartIds: updatedFavorites };
-      saveUserApi(updatedProfile, true).catch(err => console.error('Error guardando favoritos en BD:', err));
+      saveUserApi(updatedProfile, true).catch((err) =>
+        console.error("Error guardando favoritos en BD:", err),
+      );
       return updatedProfile;
     });
   };
@@ -163,48 +212,71 @@ export default function App() {
     try {
       await saveUserApi(updated, true);
     } catch (err) {
-      console.error('Error guardando perfil en BD:', err);
+      console.error("Error guardando perfil en BD:", err);
     }
   };
 
-
   // App Navigation & Modal States
-  const [activeTab, setActiveTab] = useState<'garage' | 'catalog' | 'schematics' | 'orders' | 'product-page' | 'account' | 'checkout' | 'favorites'>('garage');
+  const [activeTab, setActiveTab] = useState<
+    | "garage"
+    | "catalog"
+    | "schematics"
+    | "orders"
+    | "product-page"
+    | "account"
+    | "checkout"
+    | "favorites"
+  >("garage");
 
-  const [selectedPagePart, setSelectedPagePart] = useState<SuzukiPart | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedPagePart, setSelectedPagePart] = useState<SuzukiPart | null>(
+    null,
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [onlyCompatible, setOnlyCompatible] = useState(true);
 
   const handleResetFilters = () => {
-    setSelectedCategory('all');
-    setAvailabilityFilter(new Set<AvailabilityStatus>(['in_stock', 'international', 'on_order']));
-    const maxP = Math.max(...parts.map(p => p.price), 5000000);
+    setSelectedCategory("all");
+    setAvailabilityFilter(
+      new Set<AvailabilityStatus>(["in_stock", "international", "on_order"]),
+    );
+    const maxP = Math.max(...parts.map((p) => p.price), 5000000);
     setMaxPriceFilter(maxP);
     setMinPriceFilter(0);
-    setSearchQuery('');
-    setSortBy('relevance');
+    setSearchQuery("");
+    setSortBy("relevance");
   };
 
-  const navigateToTab = (tab: 'garage' | 'catalog' | 'schematics' | 'orders' | 'product-page' | 'account' | 'checkout' | 'favorites', pathOverride?: string) => {
+  const navigateToTab = (
+    tab:
+      | "garage"
+      | "catalog"
+      | "schematics"
+      | "orders"
+      | "product-page"
+      | "account"
+      | "checkout"
+      | "favorites",
+    pathOverride?: string,
+  ) => {
     // Clear schematic targets when leaving the schematics view to avoid stale pre-selection
-    if (tab !== 'schematics' && !pathOverride) {
+    if (tab !== "schematics" && !pathOverride) {
       setSchematicTargetId(undefined);
       setSchematicTargetPartId(undefined);
     }
     setActiveTab(tab);
-    let targetPath = '/garaje';
-    if (tab === 'catalog') targetPath = '/catalogo';
-    else if (tab === 'schematics') targetPath = pathOverride || '/despieces';
-    else if (tab === 'orders') targetPath = '/pedidos';
-    else if (tab === 'account') targetPath = '/cuenta';
-    else if (tab === 'checkout') targetPath = '/completar-pedido';
-    else if (tab === 'favorites') targetPath = '/favoritos';
+    let targetPath = "/garaje";
+    if (tab === "catalog") targetPath = "/catalogo";
+    else if (tab === "schematics") targetPath = pathOverride || "/despieces";
+    else if (tab === "orders") targetPath = "/pedidos";
+    else if (tab === "account") targetPath = "/cuenta";
+    else if (tab === "checkout") targetPath = "/completar-pedido";
+    else if (tab === "favorites") targetPath = "/favoritos";
     else if (pathOverride) targetPath = pathOverride;
 
     if (window.location.pathname !== targetPath) {
-      window.history.pushState(null, '', targetPath);
-      window.dispatchEvent(new Event('popstate'));
+      window.history.pushState(null, "", targetPath);
+      window.dispatchEvent(new Event("popstate"));
     }
   };
 
@@ -215,99 +287,131 @@ export default function App() {
       const hash = window.location.hash.toLowerCase();
 
       // Check product page route (/producto/REF or #producto=REF)
-      if (pathname.startsWith('/producto/')) {
-        const oem = decodeURIComponent(pathname.replace('/producto/', ''));
-        const found = parts.find(
-          p => matchesOem(p, oem) || p.id === oem
-        );
+      if (pathname.startsWith("/producto/")) {
+        const oem = decodeURIComponent(pathname.replace("/producto/", ""));
+        const found = parts.find((p) => matchesOem(p, oem) || p.id === oem);
         if (found) {
           setSelectedPagePart(found);
-          setActiveTab('product-page');
+          setActiveTab("product-page");
           return;
         }
-      } else if (hash.startsWith('#producto=')) {
-        const oem = decodeURIComponent(hash.replace('#producto=', ''));
-        const found = parts.find(
-          p => matchesOem(p, oem) || p.id === oem
-        );
+      } else if (hash.startsWith("#producto=")) {
+        const oem = decodeURIComponent(hash.replace("#producto=", ""));
+        const found = parts.find((p) => matchesOem(p, oem) || p.id === oem);
         if (found) {
           setSelectedPagePart(found);
-          setActiveTab('product-page');
+          setActiveTab("product-page");
           return;
         }
       }
 
       // Check schematics detail route (/despieces/CODE or #despieces=CODE)
-      if (pathname.startsWith('/despieces/')) {
-        const code = decodeURIComponent(window.location.pathname.replace(/^\/despieces\//i, ''));
-        if (code && code !== 'catalogo' && code !== 'all') {
+      if (pathname.startsWith("/despieces/")) {
+        const code = decodeURIComponent(
+          window.location.pathname.replace(/^\/despieces\//i, ""),
+        );
+        if (code && code !== "catalogo" && code !== "all") {
           setSchematicTargetId(code);
-          setActiveTab('schematics');
+          setActiveTab("schematics");
           return;
         } else {
           setSchematicTargetId(undefined);
-          setActiveTab('schematics');
+          setActiveTab("schematics");
           return;
         }
-      } else if (hash.startsWith('#despieces=')) {
-        const code = decodeURIComponent(hash.replace('#despieces=', ''));
-        if (code && code !== 'catalogo' && code !== 'all') {
+      } else if (hash.startsWith("#despieces=")) {
+        const code = decodeURIComponent(hash.replace("#despieces=", ""));
+        if (code && code !== "catalogo" && code !== "all") {
           setSchematicTargetId(code);
-          setActiveTab('schematics');
+          setActiveTab("schematics");
           return;
         }
       }
 
       // Check clean path names
-      if (pathname === '/catalogo' || hash === '#catalogo' || hash === '#catalog') {
-        setActiveTab('catalog');
-      } else if (pathname === '/despieces' || pathname === '/despieces/catalogo' || hash === '#despieces' || hash === '#schematics') {
+      if (
+        pathname === "/catalogo" ||
+        hash === "#catalogo" ||
+        hash === "#catalog"
+      ) {
+        setActiveTab("catalog");
+      } else if (
+        pathname === "/despieces" ||
+        pathname === "/despieces/catalogo" ||
+        hash === "#despieces" ||
+        hash === "#schematics"
+      ) {
         setSchematicTargetId(undefined);
-        setActiveTab('schematics');
-      } else if (pathname === '/pedidos' || hash === '#pedidos' || hash === '#orders') {
-        setActiveTab('orders');
+        setActiveTab("schematics");
+      } else if (
+        pathname === "/pedidos" ||
+        hash === "#pedidos" ||
+        hash === "#orders"
+      ) {
+        setActiveTab("orders");
         if (!isLoggedInRef.current) setIsAuthModalOpen(true);
-      } else if (pathname === '/cuenta' || pathname === '/usuario' || hash === '#cuenta' || hash === '#perfil') {
-        setActiveTab('account');
+      } else if (
+        pathname === "/cuenta" ||
+        pathname === "/usuario" ||
+        hash === "#cuenta" ||
+        hash === "#perfil"
+      ) {
+        setActiveTab("account");
         if (!isLoggedInRef.current) setIsAuthModalOpen(true);
-      } else if (pathname === '/completar-pedido' || hash === '#completar-pedido' || hash === '#checkout') {
-        setActiveTab('checkout');
-      } else if (pathname === '/favoritos' || hash === '#favoritos' || hash === '#favorites') {
-        setActiveTab('favorites');
+      } else if (
+        pathname === "/completar-pedido" ||
+        hash === "#completar-pedido" ||
+        hash === "#checkout"
+      ) {
+        setActiveTab("checkout");
+      } else if (
+        pathname === "/favoritos" ||
+        hash === "#favoritos" ||
+        hash === "#favorites"
+      ) {
+        setActiveTab("favorites");
         if (!isLoggedInRef.current) setIsAuthModalOpen(true);
-      } else if (pathname === '/garaje' || pathname === '/' || hash === '#garaje' || hash === '#garage') {
-        if (pathname === '/') {
-          window.history.replaceState(null, '', '/garaje');
+      } else if (
+        pathname === "/garaje" ||
+        pathname === "/" ||
+        hash === "#garaje" ||
+        hash === "#garage"
+      ) {
+        if (pathname === "/") {
+          window.history.replaceState(null, "", "/garaje");
         }
-        setActiveTab('garage');
+        setActiveTab("garage");
       }
     };
 
-
     handleLocationChange();
-    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener("popstate", handleLocationChange);
 
-    window.addEventListener('hashchange', handleLocationChange);
+    window.addEventListener("hashchange", handleLocationChange);
     return () => {
-      window.removeEventListener('popstate', handleLocationChange);
-      window.removeEventListener('hashchange', handleLocationChange);
+      window.removeEventListener("popstate", handleLocationChange);
+      window.removeEventListener("hashchange", handleLocationChange);
     };
   }, []);
 
   const handleOpenProductPage = (part: SuzukiPart) => {
     setSelectedPagePart(part);
-    setActiveTab('product-page');
-    window.history.pushState(null, '', `/producto/${encodeURIComponent(getPrimaryOem(part))}`);
+    setActiveTab("product-page");
+    window.history.pushState(
+      null,
+      "",
+      `/producto/${encodeURIComponent(getPrimaryOem(part))}`,
+    );
   };
 
   const handleBackFromProductPage = () => {
     setSelectedPagePart(null);
-    navigateToTab('catalog');
+    navigateToTab("catalog");
   };
 
   // Cart & Orders State
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem('sz_cart_items');
+    const saved = localStorage.getItem("sz_cart_items");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -318,14 +422,19 @@ export default function App() {
   });
 
   const syncedCartItems = React.useMemo(() => {
-    return cartItems.map(item => {
-      const live = parts.find(p => p.id === item.part.id || (item.part.oemNumbers && p.oemNumbers.includes(item.part.oemNumbers[0])));
+    return cartItems.map((item) => {
+      const live = parts.find(
+        (p) =>
+          p.id === item.part.id ||
+          (item.part.oemNumbers &&
+            p.oemNumbers.includes(item.part.oemNumbers[0])),
+      );
       return live ? { ...item, part: live } : item;
     });
   }, [cartItems, parts]);
 
   useEffect(() => {
-    localStorage.setItem('sz_cart_items', JSON.stringify(cartItems));
+    localStorage.setItem("sz_cart_items", JSON.stringify(cartItems));
   }, [cartItems]);
 
   // Load orders from Neon DB API on mount
@@ -335,13 +444,12 @@ export default function App() {
         const fetched = await fetchOrders();
         setOrders(fetched);
       } catch (err) {
-        console.error('Error cargando órdenes:', err);
+        console.error("Error cargando órdenes:", err);
         setOrders([]);
       }
     };
     loadAllOrders();
   }, []);
-
 
   // Modals
   const [isGarageModalOpen, setIsGarageModalOpen] = useState(false);
@@ -349,50 +457,60 @@ export default function App() {
   const [isAIOpen, setIsAIOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [selectedPartDetail, setSelectedPartDetail] = useState<SuzukiPart | null>(null);
-  const [schematicTargetId, setSchematicTargetId] = useState<string | undefined>(undefined);
-  const [schematicTargetPartId, setSchematicTargetPartId] = useState<string | undefined>(undefined);
+  const [selectedPartDetail, setSelectedPartDetail] =
+    useState<SuzukiPart | null>(null);
+  const [schematicTargetId, setSchematicTargetId] = useState<
+    string | undefined
+  >(undefined);
+  const [schematicTargetPartId, setSchematicTargetPartId] = useState<
+    string | undefined
+  >(undefined);
 
   // Save motorcycle in localStorage
   useEffect(() => {
     if (activeMotorcycle) {
-      localStorage.setItem('sz_active_moto', JSON.stringify(activeMotorcycle));
+      localStorage.setItem("sz_active_moto", JSON.stringify(activeMotorcycle));
       // Add to saved garages list if not present
-      setSavedGarages(prev => {
-        const exists = prev.some(m => m.modelId === activeMotorcycle.modelId && m.year === activeMotorcycle.year && m.version === activeMotorcycle.version);
+      setSavedGarages((prev) => {
+        const exists = prev.some(
+          (m) =>
+            m.modelId === activeMotorcycle.modelId &&
+            m.year === activeMotorcycle.year &&
+            m.version === activeMotorcycle.version,
+        );
         if (exists) return prev;
         const updated = [activeMotorcycle, ...prev];
-        localStorage.setItem('sz_saved_garages', JSON.stringify(updated));
+        localStorage.setItem("sz_saved_garages", JSON.stringify(updated));
         return updated;
       });
     } else {
-      localStorage.removeItem('sz_active_moto');
+      localStorage.removeItem("sz_active_moto");
     }
   }, [activeMotorcycle]);
 
   const handleSelectMotorcycle = (moto: ActiveMotorcycle) => {
     setActiveMotorcycle(moto);
     setOnlyCompatible(true);
-    navigateToTab('catalog');
+    navigateToTab("catalog");
 
     setTimeout(() => {
-      const target = document.getElementById('catalog-products-section');
+      const target = document.getElementById("catalog-products-section");
       if (target) {
-        target.scrollIntoView({ behavior: 'smooth' });
+        target.scrollIntoView({ behavior: "smooth" });
       } else {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
     }, 50);
   };
 
   const handleGoToProducts = () => {
-    navigateToTab('catalog');
+    navigateToTab("catalog");
     setTimeout(() => {
-      const target = document.getElementById('catalog-products-section');
+      const target = document.getElementById("catalog-products-section");
       if (target) {
-        target.scrollIntoView({ behavior: 'smooth' });
+        target.scrollIntoView({ behavior: "smooth" });
       } else {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
     }, 50);
   };
@@ -402,10 +520,20 @@ export default function App() {
   };
 
   const handleRemoveFromGarage = (moto: ActiveMotorcycle) => {
-    const updated = savedGarages.filter(m => !(m.modelId === moto.modelId && m.year === moto.year && m.version === moto.version));
+    const updated = savedGarages.filter(
+      (m) =>
+        !(
+          m.modelId === moto.modelId &&
+          m.year === moto.year &&
+          m.version === moto.version
+        ),
+    );
     setSavedGarages(updated);
-    localStorage.setItem('sz_saved_garages', JSON.stringify(updated));
-    if (activeMotorcycle?.modelId === moto.modelId && activeMotorcycle?.year === moto.year) {
+    localStorage.setItem("sz_saved_garages", JSON.stringify(updated));
+    if (
+      activeMotorcycle?.modelId === moto.modelId &&
+      activeMotorcycle?.year === moto.year
+    ) {
       setActiveMotorcycle(updated[0] || null);
     }
   };
@@ -417,10 +545,14 @@ export default function App() {
       return;
     }
 
-    setCartItems(prev => {
-      const existing = prev.find(item => item.part.id === part.id);
+    setCartItems((prev) => {
+      const existing = prev.find((item) => item.part.id === part.id);
       if (existing) {
-        return prev.map(item => item.part.id === part.id ? { ...item, quantity: item.quantity + 1 } : item);
+        return prev.map((item) =>
+          item.part.id === part.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item,
+        );
       } else {
         return [...prev, { part, quantity: 1, motorcycle: activeMotorcycle }];
       }
@@ -430,77 +562,85 @@ export default function App() {
   };
 
   const handleUpdateQuantity = (partId: string, delta: number) => {
-    setCartItems(prev => prev.map(item => {
-      if (item.part.id === partId) {
-        const newQty = item.quantity + delta;
-        return newQty > 0 ? { ...item, quantity: newQty } : item;
-      }
-      return item;
-    }));
+    setCartItems((prev) =>
+      prev.map((item) => {
+        if (item.part.id === partId) {
+          const newQty = item.quantity + delta;
+          return newQty > 0 ? { ...item, quantity: newQty } : item;
+        }
+        return item;
+      }),
+    );
   };
 
   const handleRemoveCartItem = (partId: string) => {
-    setCartItems(prev => prev.filter(item => item.part.id !== partId));
+    setCartItems((prev) => prev.filter((item) => item.part.id !== partId));
   };
 
   const handleOrderComplete = (newOrder: Order) => {
-    setOrders(prev => [newOrder, ...prev]);
+    setOrders((prev) => [newOrder, ...prev]);
     setCartItems([]);
-    navigateToTab('orders');
+    navigateToTab("orders");
   };
 
   // Filter Parts List
-  const filteredParts = parts.filter(part => {
-    // Search query match
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchOem = matchesOem(part, q);
-      const matchName = part.name.toLowerCase().includes(q);
-      const matchCategory = part.category.toLowerCase().includes(q);
-      if (!matchName && !matchOem && !matchCategory) return false;
-    }
+  const filteredParts = parts
+    .filter((part) => {
+      // Search query match
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchOem = matchesOem(part, q);
+        const matchName = part.name.toLowerCase().includes(q);
+        const matchCategory = part.category.toLowerCase().includes(q);
+        if (!matchName && !matchOem && !matchCategory) return false;
+      }
 
-    // Category filter
-    if (selectedCategory !== 'all' && part.category !== selectedCategory) {
-      return false;
-    }
+      // Category filter
+      if (selectedCategory !== "all" && part.category !== selectedCategory) {
+        return false;
+      }
 
-    // Price range filter
-    if (part.price < minPriceFilter || part.price > maxPriceFilter) return false;
+      // Price range filter
+      if (part.price < minPriceFilter || part.price > maxPriceFilter)
+        return false;
 
-    // Availability filter (multi-select)
-    if (!availabilityFilter.has(getAvailabilityStatus(part))) return false;
+      // Availability filter (multi-select)
+      if (!availabilityFilter.has(getAvailabilityStatus(part))) return false;
 
-    // Compatible filter toggle
-    if (onlyCompatible && activeMotorcycle) {
-      const isCompat = part.compatibility.some(c => {
-        if (c.modelId !== activeMotorcycle.modelId) return false;
-        if ((c.yearStart && activeMotorcycle.year < c.yearStart) || (c.yearEnd && activeMotorcycle.year > c.yearEnd)) return false;
-        if (c.version && c.version !== activeMotorcycle.version) return false;
-        return true;
-      });
-      if (!isCompat) return false;
-    }
+      // Compatible filter toggle
+      if (onlyCompatible && activeMotorcycle) {
+        const isCompat = part.compatibility.some((c) => {
+          if (c.modelId !== activeMotorcycle.modelId) return false;
+          if (
+            (c.yearStart && activeMotorcycle.year < c.yearStart) ||
+            (c.yearEnd && activeMotorcycle.year > c.yearEnd)
+          )
+            return false;
+          if (c.version && c.version !== activeMotorcycle.version) return false;
+          return true;
+        });
+        if (!isCompat) return false;
+      }
 
-    return true;
-  }).sort((a, b) => {
-    if (sortBy === 'price-asc') return a.price - b.price;
-    if (sortBy === 'price-desc') return b.price - a.price;
-    if (sortBy === 'name') return a.name.localeCompare(b.name);
-    // Default (relevance): prioriza disponibles sin ocultar el resto
-    const aStatus = AVAILABILITY_META[getAvailabilityStatus(a)].sortOrder;
-    const bStatus = AVAILABILITY_META[getAvailabilityStatus(b)].sortOrder;
-    if (aStatus !== bStatus) return aStatus - bStatus;
-    return a.name.localeCompare(b.name);
-  });
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === "price-asc") return a.price - b.price;
+      if (sortBy === "price-desc") return b.price - a.price;
+      if (sortBy === "name") return a.name.localeCompare(b.name);
+      // Default (relevance): prioriza disponibles sin ocultar el resto
+      const aStatus = AVAILABILITY_META[getAvailabilityStatus(a)].sortOrder;
+      const bStatus = AVAILABILITY_META[getAvailabilityStatus(b)].sortOrder;
+      if (aStatus !== bStatus) return aStatus - bStatus;
+      return a.name.localeCompare(b.name);
+    });
 
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col font-sans antialiased selection:bg-[#E60012] selection:text-white">
-      
       {/* Top Header Navbar */}
       <Navbar
         activeMotorcycle={activeMotorcycle}
-        cartCount={cartItems.reduce((a, b) => a + b.quantity, 0)}
+        cartCount={cartItems.length}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         activeTab={activeTab}
@@ -515,15 +655,11 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-
-
       {/* Main View Switcher */}
       <main className="flex-1">
-        
         {/* Tab 1: Garage & Quick Home View */}
-        {activeTab === 'garage' && (
+        {activeTab === "garage" && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
-            
             {/* Primary Motorcycle Compatibility Selector */}
             <CompatibilitySelector
               activeMotorcycle={activeMotorcycle}
@@ -548,14 +684,14 @@ export default function App() {
                     Repuestos Destacados para Tu Moto
                   </h3>
                   <p className="text-xs text-slate-500 mt-1">
-                    {activeMotorcycle 
-                      ? `Mostrando repuestos verificados para ${activeMotorcycle.brand} ${activeMotorcycle.modelName} (${activeMotorcycle.year})` 
-                      : 'Piezas originales más solicitadas con certificación de compatibilidad Suzuki'}
+                    {activeMotorcycle
+                      ? `Mostrando repuestos compatibles para ${activeMotorcycle.brand} ${activeMotorcycle.modelName} (${activeMotorcycle.year})`
+                      : "Piezas originales más solicitadas con certificación de compatibilidad Suzuki"}
                   </p>
                 </div>
 
                 <button
-                  onClick={() => navigateToTab('catalog')}
+                  onClick={() => navigateToTab("catalog")}
                   className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-colors flex items-center justify-center gap-2"
                 >
                   <span>Explorar Catálogo Completo</span>
@@ -565,36 +701,45 @@ export default function App() {
 
               {/* Grid of Parts */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {parts.filter(part => {
-                  if (!activeMotorcycle) return true;
-                  return part.compatibility.some(c => {
-                    if (c.modelId !== activeMotorcycle.modelId) return false;
-                    if ((c.yearStart && activeMotorcycle.year < c.yearStart) || (c.yearEnd && activeMotorcycle.year > c.yearEnd)) return false;
-                    if (c.version && c.version !== activeMotorcycle.version) return false;
-                    return true;
-                  });
-                }).slice(0, 4).map(part => (
-                  <ProductCard
-                    key={part.id}
-                    part={part}
-                    activeMotorcycle={activeMotorcycle}
-                    onOpenDetail={(p) => setSelectedPartDetail(p)}
-                    onAddToCart={handleAddToCart}
-                    onOpenGarageModal={() => setIsGarageModalOpen(true)}
-                    isFavorite={userProfile.favoritePartIds.includes(part.id)}
-                    onToggleFavorite={handleToggleFavorite}
-                  />
-                ))}
+                {parts
+                  .filter((part) => {
+                    if (!activeMotorcycle) return true;
+                    return part.compatibility.some((c) => {
+                      if (c.modelId !== activeMotorcycle.modelId) return false;
+                      if (
+                        (c.yearStart && activeMotorcycle.year < c.yearStart) ||
+                        (c.yearEnd && activeMotorcycle.year > c.yearEnd)
+                      )
+                        return false;
+                      if (c.version && c.version !== activeMotorcycle.version)
+                        return false;
+                      return true;
+                    });
+                  })
+                  .slice(0, 4)
+                  .map((part) => (
+                    <ProductCard
+                      key={part.id}
+                      part={part}
+                      activeMotorcycle={activeMotorcycle}
+                      onOpenDetail={(p) => setSelectedPartDetail(p)}
+                      onAddToCart={handleAddToCart}
+                      onOpenGarageModal={() => setIsGarageModalOpen(true)}
+                      isFavorite={userProfile.favoritePartIds.includes(part.id)}
+                      onToggleFavorite={handleToggleFavorite}
+                    />
+                  ))}
               </div>
             </div>
-
           </div>
         )}
 
         {/* Tab 2: Full Catalog View with Left Dynamic Sidebar */}
-        {activeTab === 'catalog' && (
-          <div id="catalog-products-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            
+        {activeTab === "catalog" && (
+          <div
+            id="catalog-products-section"
+            className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6"
+          >
             {/* Catalog Top Header Bar */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs">
               <div>
@@ -605,14 +750,22 @@ export default function App() {
                   </span>
                 </h1>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Filtra por categoría, precio, modelo y repuestos 100% compatibles con tu garaje.
+                  Filtra por categoría, precio, modelo y repuestos 100%
+                  compatibles con tu moto.
                 </p>
               </div>
 
               {/* Sort Dropdown */}
               <div className="flex items-center gap-2.5 self-start md:self-auto">
-                <label htmlFor="catalog-sort-select" className="text-xs font-extrabold text-slate-700 uppercase tracking-wider shrink-0 flex items-center gap-1">
-                  <ArrowUpDown className="w-3.5 h-3.5 text-[#E60012]" aria-hidden="true" /> Ordenar:
+                <label
+                  htmlFor="catalog-sort-select"
+                  className="text-xs font-extrabold text-slate-700 uppercase tracking-wider shrink-0 flex items-center gap-1"
+                >
+                  <ArrowUpDown
+                    className="w-3.5 h-3.5 text-[#E60012]"
+                    aria-hidden="true"
+                  />{" "}
+                  Ordenar:
                 </label>
                 <select
                   id="catalog-sort-select"
@@ -630,7 +783,6 @@ export default function App() {
 
             {/* Catalog Main Layout: Dynamic Sidebar on Left + Product Grid on Right */}
             <div className="flex flex-col lg:flex-row gap-8 items-start">
-              
               {/* Left Dynamic Sidebar Filter */}
               <CatalogSidebarFilter
                 selectedCategory={selectedCategory}
@@ -662,10 +814,16 @@ export default function App() {
                   <ProductCatalogSkeletonGrid count={6} />
                 ) : filteredParts.length === 0 ? (
                   <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 max-w-lg mx-auto">
-                    <ShieldCheck className="w-12 h-12 text-slate-400 mx-auto mb-3" aria-hidden="true" />
-                    <h3 className="text-base font-bold text-slate-800">No se encontraron repuestos</h3>
+                    <ShieldCheck
+                      className="w-12 h-12 text-slate-400 mx-auto mb-3"
+                      aria-hidden="true"
+                    />
+                    <h3 className="text-base font-bold text-slate-800">
+                      No se encontraron repuestos
+                    </h3>
                     <p className="text-xs text-slate-500 mt-1">
-                      Ningún repuesto coincide con los criterios seleccionados (modelo, precio, categoría o compatibilidad).
+                      Ningún repuesto coincide con los criterios seleccionados
+                      (modelo, precio, categoría o compatibilidad).
                     </p>
                     <button
                       type="button"
@@ -677,7 +835,7 @@ export default function App() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {filteredParts.map(part => (
+                    {filteredParts.map((part) => (
                       <ProductCard
                         key={part.id}
                         part={part}
@@ -685,21 +843,21 @@ export default function App() {
                         onOpenDetail={(p) => setSelectedPartDetail(p)}
                         onAddToCart={handleAddToCart}
                         onOpenGarageModal={() => setIsGarageModalOpen(true)}
-                        isFavorite={userProfile.favoritePartIds.includes(part.id)}
+                        isFavorite={userProfile.favoritePartIds.includes(
+                          part.id,
+                        )}
                         onToggleFavorite={handleToggleFavorite}
                       />
                     ))}
                   </div>
                 )}
               </div>
-
             </div>
-
           </div>
         )}
 
         {/* Tab 3: Interactive Exploded View Diagram Schematics */}
-        {activeTab === 'schematics' && (
+        {activeTab === "schematics" && (
           <ExplodedView
             activeMotorcycle={activeMotorcycle}
             onAddToCart={handleAddToCart}
@@ -715,19 +873,22 @@ export default function App() {
         )}
 
         {/* Tab 4: Orders History */}
-        {!isLoggedIn && (activeTab === 'orders' || activeTab === 'account' || activeTab === 'favorites') && (
-          <AuthRequired
-            onLogin={() => setIsAuthModalOpen(true)}
-            onGoHome={() => navigateToTab('garage')}
-          />
-        )}
+        {!isLoggedIn &&
+          (activeTab === "orders" ||
+            activeTab === "account" ||
+            activeTab === "favorites") && (
+            <AuthRequired
+              onLogin={() => setIsAuthModalOpen(true)}
+              onGoHome={() => navigateToTab("garage")}
+            />
+          )}
 
-        {activeTab === 'orders' && isLoggedIn && (
+        {activeTab === "orders" && isLoggedIn && (
           <OrdersModal orders={orders} />
         )}
 
         {/* Tab 5: User Profile & Account Dashboard */}
-        {activeTab === 'account' && isLoggedIn && (
+        {activeTab === "account" && isLoggedIn && (
           <UserProfilePage
             userProfile={userProfile}
             onUpdateProfile={handleUpdateProfile}
@@ -736,24 +897,30 @@ export default function App() {
             onSelectActiveBike={handleSelectMotorcycle}
             onOpenGarageModal={() => setIsGarageModalOpen(true)}
             onRemoveGarageBike={(modelId, year) => {
-              const updated = savedGarages.filter(m => !(m.modelId === modelId && m.year === year));
+              const updated = savedGarages.filter(
+                (m) => !(m.modelId === modelId && m.year === year),
+              );
               setSavedGarages(updated);
-              localStorage.setItem('sz_saved_garages', JSON.stringify(updated));
-              deleteGarageApi(`${modelId}-${year}`).catch(err => console.error('Error eliminando garaje de BD:', err));
+              localStorage.setItem("sz_saved_garages", JSON.stringify(updated));
+              deleteGarageApi(`${modelId}-${year}`).catch((err) =>
+                console.error("Error eliminando garaje de BD:", err),
+              );
             }}
             orders={orders}
-            favoriteParts={parts.filter(p => userProfile.favoritePartIds.includes(p.id))}
+            favoriteParts={parts.filter((p) =>
+              userProfile.favoritePartIds.includes(p.id),
+            )}
             onToggleFavorite={handleToggleFavorite}
             onAddToCart={handleAddToCart}
-            onNavigateToCatalog={() => navigateToTab('catalog')}
-            onNavigateToSchematics={() => navigateToTab('schematics')}
+            onNavigateToCatalog={() => navigateToTab("catalog")}
+            onNavigateToSchematics={() => navigateToTab("schematics")}
             onLogout={handleLogout}
           />
         )}
 
         {/* Tab 6: Standalone Full Product Page View */}
 
-        {activeTab === 'product-page' && selectedPagePart && (
+        {activeTab === "product-page" && selectedPagePart && (
           <ProductDetailPage
             part={selectedPagePart}
             activeMotorcycle={activeMotorcycle}
@@ -766,45 +933,52 @@ export default function App() {
             onViewSchematics={(sId, pId) => {
               setSchematicTargetId(sId);
               setSchematicTargetPartId(pId);
-              navigateToTab('schematics', `/despieces/${encodeURIComponent(sId)}`);
+              navigateToTab(
+                "schematics",
+                `/despieces/${encodeURIComponent(sId)}`,
+              );
             }}
             onSelectRelatedPart={(p) => {
               setSelectedPagePart(p);
-              window.history.pushState(null, '', `/producto/${encodeURIComponent(getPrimaryOem(p))}`);
+              window.history.pushState(
+                null,
+                "",
+                `/producto/${encodeURIComponent(getPrimaryOem(p))}`,
+              );
             }}
           />
         )}
 
         {/* Tab 7: Dedicated Checkout Page (/completar-pedido) */}
-        {activeTab === 'checkout' && (
+        {activeTab === "checkout" && (
           <CheckoutPage
             cartItems={syncedCartItems}
             activeMotorcycle={activeMotorcycle}
             userProfile={userProfile}
             isLoggedIn={isLoggedIn}
             onOrderComplete={(order) => {
-              setOrders(prev => [order, ...prev]);
+              setOrders((prev) => [order, ...prev]);
             }}
             onClearCart={() => setCartItems([])}
-            onNavigateToCatalog={() => navigateToTab('catalog')}
-            onNavigateToOrders={() => navigateToTab('orders')}
+            onNavigateToCatalog={() => navigateToTab("catalog")}
+            onNavigateToOrders={() => navigateToTab("orders")}
           />
         )}
 
         {/* Tab 8: Dedicated Favorites Page (/favoritos) */}
-        {activeTab === 'favorites' && isLoggedIn && (
+        {activeTab === "favorites" && isLoggedIn && (
           <FavoritesPage
-            favoriteParts={parts.filter(p => userProfile.favoritePartIds.includes(p.id))}
+            favoriteParts={parts.filter((p) =>
+              userProfile.favoritePartIds.includes(p.id),
+            )}
             activeMotorcycle={activeMotorcycle}
             onOpenDetail={(p) => setSelectedPartDetail(p)}
             onAddToCart={handleAddToCart}
             onOpenGarageModal={() => setIsGarageModalOpen(true)}
             onToggleFavorite={handleToggleFavorite}
-            onNavigateToCatalog={() => navigateToTab('catalog')}
+            onNavigateToCatalog={() => navigateToTab("catalog")}
           />
         )}
-
-
       </main>
 
       {/* Global Modals & Drawers */}
@@ -824,7 +998,6 @@ export default function App() {
         models={models}
       />
 
-
       <IdentificationGuideModal
         isOpen={isTutorialOpen}
         onClose={() => setIsTutorialOpen(false)}
@@ -843,7 +1016,7 @@ export default function App() {
           setSelectedPartDetail(null);
           setSchematicTargetId(sId);
           setSchematicTargetPartId(pId);
-          navigateToTab('schematics', `/despieces/${encodeURIComponent(sId)}`);
+          navigateToTab("schematics", `/despieces/${encodeURIComponent(sId)}`);
         }}
         onSelectRelatedPart={(p) => setSelectedPartDetail(p)}
         onOpenAsPage={handleOpenProductPage}
@@ -859,7 +1032,6 @@ export default function App() {
         onOpenGarageModal={() => setIsGarageModalOpen(true)}
       />
 
-
       <CartDrawer
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
@@ -868,28 +1040,26 @@ export default function App() {
         onRemoveItem={handleRemoveCartItem}
         onProceedCheckout={() => {
           setIsCartOpen(false);
-          navigateToTab('checkout');
+          navigateToTab("checkout");
         }}
         onViewPartDetail={(part) => setSelectedPartDetail(part)}
         activeMotorcycle={activeMotorcycle}
       />
 
-
       {/* Floating Cart Button */}
       <button
         type="button"
         onClick={() => setIsCartOpen(true)}
-        aria-label={`Abrir carrito (${cartItems.reduce((a, b) => a + b.quantity, 0)} repuestos)`}
+        aria-label={`Abrir carrito (${cartItems.length} repuestos)`}
         className="fixed right-5 top-1/2 -translate-y-1/2 z-40 w-14 h-14 flex items-center justify-center bg-[#E60012] hover:bg-[#b5000b] text-white rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#E60012]/40"
       >
         <FaCartShopping className="w-6 h-6" aria-hidden="true" />
-        {cartItems.reduce((a, b) => a + b.quantity, 0) > 0 && (
+        {cartItems.length > 0 && (
           <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-white text-[#E60012] text-[11px] font-black flex items-center justify-center border border-[#E60012]/20 shadow-sm">
-            {cartItems.reduce((a, b) => a + b.quantity, 0)}
+            {cartItems.length}
           </span>
         )}
       </button>
-
 
       {/* Floating WhatsApp Widget */}
       <WhatsAppWidget
@@ -897,23 +1067,33 @@ export default function App() {
         onOpenGarageModal={() => setIsGarageModalOpen(true)}
       />
 
-
-
       {/* Footer strictly formatted as user design */}
       <footer className="bg-slate-200/80 border-t border-slate-300 mt-16 py-10 text-slate-700 text-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
-            <div className="font-extrabold text-slate-900 uppercase text-sm mb-2">SUZUKI REPUESTOS COLOMBIA</div>
+            <div className="font-extrabold text-slate-900 uppercase text-sm mb-2">
+              SUZUKI REPUESTOS COLOMBIA
+            </div>
             <p className="text-slate-600 text-[11px] leading-relaxed">
-              © 2026 SUZUKI REPUESTOS COLOMBIA | INDUSTRIAL PRECISION<br />
-              Sistema oficial de consulta y suministro de repuestos con garantía de ajuste técnico OEM.
+              © 2026 SUZUKI REPUESTOS COLOMBIA | INDUSTRIAL PRECISION
+              <br />
+              Sistema oficial de consulta y suministro de repuestos con garantía
+              de ajuste técnico OEM.
             </p>
           </div>
 
           <div className="md:text-right space-y-1">
-            <div className="font-extrabold text-slate-800 text-[11px] uppercase mb-2">LEGAL & INFO</div>
+            <div className="font-extrabold text-slate-800 text-[11px] uppercase mb-2">
+              LEGAL & INFO
+            </div>
             <div className="space-y-1 text-slate-700">
-              <button type="button" onClick={() => setIsTutorialOpen(true)} className="hover:text-[#E60012] block text-left md:ml-auto cursor-pointer underline">Technical Specifications</button>
+              <button
+                type="button"
+                onClick={() => setIsTutorialOpen(true)}
+                className="hover:text-[#E60012] block text-left md:ml-auto cursor-pointer underline"
+              >
+                Technical Specifications
+              </button>
               <span className="block">OEM Verification Process</span>
               <span className="block">Shipping Policy & Warranty</span>
               <span className="block">Privacy Compliance</span>
@@ -921,7 +1101,6 @@ export default function App() {
           </div>
         </div>
       </footer>
-
     </div>
   );
 }

@@ -210,7 +210,7 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
     }
 
     const newHotspot = {
-      partId: partIdInput || parts[0]?.id || "part-01",
+      partId: partIdInput || parts[0]?.id || "",
       itemNumber: itemNumberInput,
       x: pendingHotspot.x,
       y: pendingHotspot.y,
@@ -284,7 +284,7 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
       category: category.trim(),
       section,
       applicableModelIds,
-      modelTarget: modelTarget.trim() || "Aplica a modelos Suzuki",
+      modelTarget: modelTarget.trim(),
       diagramImage: diagramImage.trim(),
       description: description.trim(),
       hotspots,

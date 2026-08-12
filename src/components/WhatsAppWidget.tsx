@@ -199,7 +199,7 @@ export const WhatsAppWidget: React.FC<WhatsAppWidgetProps> = ({
           isOpen ? "Cerrar consulta por WhatsApp" : "Consultar por WhatsApp"
         }
       >
-        <IoChatbubbleEllipses />
+        <IoChatbubbleEllipses className="w-5 h-5 shrink-0" />
 
         <span className="font-extrabold text-xs tracking-wider hidden sm:inline uppercase">
           Consultar WhatsApp

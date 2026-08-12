@@ -19,6 +19,12 @@ export async function fetchCategories() {
   return json.data || [];
 }
 
+export async function fetchModelCategories() {
+  const res = await fetch('/api/model-categories');
+  const json = await res.json();
+  return json.data || [];
+}
+
 export async function fetchParts(params?: { category?: string; query?: string; oem?: string }) {
   let url = '/api/parts';
   if (params) {

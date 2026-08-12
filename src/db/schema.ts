@@ -50,6 +50,16 @@ export const categories = pgTable('categories', {
   parentIdx: index('idx_categories_parent_id').on(table.parentId)
 }));
 
+// 3b. Model Categories Table (motorcycle category catalog for models)
+export const modelCategories = pgTable('model_categories', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  order: integer('order').notNull().default(0),
+  active: boolean('active').notNull().default(true)
+}, (table) => ({
+  activeIdx: index('idx_model_categories_active').on(table.active)
+}));
+
 // 5. OEM Spare Parts Table
 export const parts = pgTable('parts', {
   id: text('id').primaryKey(),

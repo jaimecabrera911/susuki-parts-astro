@@ -36,6 +36,16 @@ INSERT INTO "categories" ("id", "name", "slug", "icon_name", "description", "act
 INSERT INTO "categories" ("id", "name", "slug", "icon_name", "description", "active", "order", "parent_id") VALUES ('sub-embrague', 'Discos de Embrague & Clutch', 'discos-embrague', NULL, 'Discos de pasta, prensa, resortes y separadores.', TRUE, 0, 'cat-transmision') ON CONFLICT (id) DO NOTHING;
 INSERT INTO "categories" ("id", "name", "slug", "icon_name", "description", "active", "order", "parent_id") VALUES ('sub-bujias', 'Bujías NGK & Bobinas', 'bujias-bobinas', NULL, 'Bujías Iridium IX y bobinas de encendido de alta potencia.', TRUE, 0, 'cat-electrico') ON CONFLICT (id) DO NOTHING;
 
+-- Table: model_categories (8 rows)
+INSERT INTO "model_categories" ("id", "name", "order", "active") VALUES ('cat-naked-sport', 'Naked / Sport', 1, TRUE) ON CONFLICT (id) DO NOTHING;
+INSERT INTO "model_categories" ("id", "name", "order", "active") VALUES ('cat-sport-fairing', 'Sport / Fairing', 2, TRUE) ON CONFLICT (id) DO NOTHING;
+INSERT INTO "model_categories" ("id", "name", "order", "active") VALUES ('cat-superbike', 'Superbike', 3, TRUE) ON CONFLICT (id) DO NOTHING;
+INSERT INTO "model_categories" ("id", "name", "order", "active") VALUES ('cat-adventure-tourer', 'Adventure / Tourer', 4, TRUE) ON CONFLICT (id) DO NOTHING;
+INSERT INTO "model_categories" ("id", "name", "order", "active") VALUES ('cat-dual-sport-enduro', 'Dual Sport / Enduro', 5, TRUE) ON CONFLICT (id) DO NOTHING;
+INSERT INTO "model_categories" ("id", "name", "order", "active") VALUES ('cat-custom-commuter', 'Custom / Commuter', 6, TRUE) ON CONFLICT (id) DO NOTHING;
+INSERT INTO "model_categories" ("id", "name", "order", "active") VALUES ('cat-scooter', 'Scooter', 7, TRUE) ON CONFLICT (id) DO NOTHING;
+INSERT INTO "model_categories" ("id", "name", "order", "active") VALUES ('cat-off-road-motocross', 'Off-Road / Motocross', 8, TRUE) ON CONFLICT (id) DO NOTHING;
+
 -- Table: models (9 rows)
 INSERT INTO "models" ("id", "brand_id", "name", "category", "image", "active", "notes", "versions") VALUES ('gsxr-1000', 'suzuki', 'GSX-R1000 Performance', 'Superdeportiva', '/motorcycles/gsx-r1000.png', TRUE, 'Modelo superdeportivo de pista.', ARRAY['RR', 'R']) ON CONFLICT (id) DO NOTHING;
 INSERT INTO "models" ("id", "brand_id", "name", "category", "image", "active", "notes", "versions") VALUES ('dr-650-se', 'suzuki', 'DR 650 SE', 'Dual Sport / Enduro', '/motorcycles/dr-650.png', TRUE, 'Modelo verificado con catálogo oficial OEM.', ARRAY['Dual Sport']) ON CONFLICT (id) DO NOTHING;

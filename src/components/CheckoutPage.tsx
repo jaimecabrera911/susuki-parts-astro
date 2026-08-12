@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  ShoppingBag, 
-  ShieldCheck, 
-  Building2, 
-  Copy, 
-  Check, 
-  ArrowRight, 
-  Clock, 
-  CheckCircle2, 
-  Printer, 
-  User, 
-  Mail, 
-  Phone, 
-  FileText, 
-  MapPin, 
+import React, { useState, useEffect } from "react";
+import {
+  ShoppingBag,
+  ShieldCheck,
+  Building2,
+  Copy,
+  Check,
+  ArrowRight,
+  Clock,
+  CheckCircle2,
+  Printer,
+  User,
+  Mail,
+  Phone,
+  FileText,
+  MapPin,
   CreditCard,
   Truck,
   Calendar,
@@ -23,39 +23,65 @@ import {
   AlertCircle,
   Wrench,
   Tag,
-  Percent
-} from 'lucide-react';
-import type { CartItem, ActiveMotorcycle, UserProfile, Order, ShippingMethod, ShippingZone, CityRecord, TaxConfig, Coupon } from '../types';
-import { getPrimaryOem } from '../types';
-import { formatCurrency } from '../utils/formatCurrency';
-import { BANK_DETAILS } from '../data/bankDetails';
-import { shouldShowProductImages, STORE_DEFAULT_LOCATION } from '../utils/config';
-import { ProductImageFallback } from './ProductImageFallback';
-import { LocationSelector } from './LocationSelector';
-import { saveOrderApi, fetchShippingMethods, fetchCities, fetchShippingZones, fetchDefaultStatusName, fetchDefaultCarrierName } from '../services/api';
+  Percent,
+} from "lucide-react";
+import type {
+  CartItem,
+  ActiveMotorcycle,
+  UserProfile,
+  Order,
+  ShippingMethod,
+  ShippingZone,
+  CityRecord,
+  TaxConfig,
+  Coupon,
+} from "../types";
+import { getPrimaryOem } from "../types";
+import { formatCurrency } from "../utils/formatCurrency";
+import { BANK_DETAILS } from "../data/bankDetails";
+import {
+  shouldShowProductImages,
+  STORE_DEFAULT_LOCATION,
+} from "../utils/config";
+import { ProductImageFallback } from "./ProductImageFallback";
+import { LocationSelector } from "./LocationSelector";
+import {
+  saveOrderApi,
+  fetchShippingMethods,
+  fetchCities,
+  fetchShippingZones,
+  fetchDefaultStatusName,
+  fetchDefaultCarrierName,
+} from "../services/api";
 
-import { DEFAULT_TAX_CONFIG, INITIAL_COUPONS } from '../data/taxCouponsData';
-import { calculateCartTotals } from '../utils/taxCalculator';
+import { DEFAULT_TAX_CONFIG, INITIAL_COUPONS } from "../data/taxCouponsData";
+import { calculateCartTotals } from "../utils/taxCalculator";
 
 export function getShippingMethodCost(
   method: ShippingMethod | null | undefined,
   department: string,
   rawSubtotal: number,
-  zones: ShippingZone[]
+  zones: ShippingZone[],
 ): number {
   if (!method) return 0;
-  if (method.carrier === 'Retiro en tienda') return 0;
-  if (method.freeShippingThreshold && rawSubtotal >= method.freeShippingThreshold) return 0;
+  if (method.carrier === "Retiro en tienda") return 0;
+  if (
+    method.freeShippingThreshold &&
+    rawSubtotal >= method.freeShippingThreshold
+  )
+    return 0;
 
   const deptClean = department.trim().toLowerCase();
   if (deptClean && zones && zones.length > 0) {
     // Find matching zone for department
-    const matchedZone = zones.find(z => 
-      z.active && z.departments.some(d => d.trim().toLowerCase() === deptClean)
+    const matchedZone = zones.find(
+      (z) =>
+        z.active &&
+        z.departments.some((d) => d.trim().toLowerCase() === deptClean),
     );
-    
+
     if (matchedZone && method.zoneRates && method.zoneRates.length > 0) {
-      const zRate = method.zoneRates.find(zr => zr.zoneId === matchedZone.id);
+      const zRate = method.zoneRates.find((zr) => zr.zoneId === matchedZone.id);
       if (zRate !== undefined && zRate.price !== undefined) {
         return zRate.price;
       }
@@ -63,9 +89,13 @@ export function getShippingMethodCost(
 
     // Catch-all zone (empty departments array)
     if (!matchedZone && method.zoneRates && method.zoneRates.length > 0) {
-      const catchAllZone = zones.find(z => z.active && z.departments.length === 0);
+      const catchAllZone = zones.find(
+        (z) => z.active && z.departments.length === 0,
+      );
       if (catchAllZone) {
-        const zRate = method.zoneRates.find(zr => zr.zoneId === catchAllZone.id);
+        const zRate = method.zoneRates.find(
+          (zr) => zr.zoneId === catchAllZone.id,
+        );
         if (zRate !== undefined && zRate.price !== undefined) {
           return zRate.price;
         }
@@ -88,21 +118,51 @@ interface CheckoutPageProps {
 }
 
 // Carrier badge styles
-const CARRIER_BADGES: Record<string, { bg: string; text: string; border: string }> = {
-  'Servientrega': { bg: 'bg-emerald-50 text-emerald-700', text: 'text-emerald-700', border: 'border-emerald-200' },
-  'Inter Rapidísimo': { bg: 'bg-amber-50 text-amber-800', text: 'text-amber-800', border: 'border-amber-200' },
-  'Coordinadora': { bg: 'bg-blue-50 text-blue-700', text: 'text-blue-700', border: 'border-blue-200' },
-  'Envía': { bg: 'bg-purple-50 text-purple-700', text: 'text-purple-700', border: 'border-purple-200' },
-  'TCC': { bg: 'bg-rose-50 text-rose-700', text: 'text-rose-700', border: 'border-rose-200' },
-  'Retiro en tienda': { bg: 'bg-sky-50 text-sky-700', text: 'text-sky-700', border: 'border-sky-200' }
+const CARRIER_BADGES: Record<
+  string,
+  { bg: string; text: string; border: string }
+> = {
+  Servientrega: {
+    bg: "bg-emerald-50 text-emerald-700",
+    text: "text-emerald-700",
+    border: "border-emerald-200",
+  },
+  "Inter Rapidísimo": {
+    bg: "bg-amber-50 text-amber-800",
+    text: "text-amber-800",
+    border: "border-amber-200",
+  },
+  Coordinadora: {
+    bg: "bg-blue-50 text-blue-700",
+    text: "text-blue-700",
+    border: "border-blue-200",
+  },
+  Envía: {
+    bg: "bg-purple-50 text-purple-700",
+    text: "text-purple-700",
+    border: "border-purple-200",
+  },
+  TCC: {
+    bg: "bg-rose-50 text-rose-700",
+    text: "text-rose-700",
+    border: "border-rose-200",
+  },
+  "Retiro en tienda": {
+    bg: "bg-sky-50 text-sky-700",
+    text: "text-sky-700",
+    border: "border-sky-200",
+  },
 };
 
 // Relative delivery date calculator
-function getEstimatedDeliveryInfo(estimatedDays: number, dispatchDays: string[] = ['1', '2', '3', '4', '5']) {
+function getEstimatedDeliveryInfo(
+  estimatedDays: number,
+  dispatchDays: string[] = ["1", "2", "3", "4", "5"],
+) {
   if (estimatedDays === 0) {
     return {
-      arrivalText: '¡Disponible HOY mismo para retiro!',
-      dispatchNotice: 'Retiro presencial inmediato en sede central'
+      arrivalText: "¡Disponible HOY mismo para retiro!",
+      dispatchNotice: "Retiro presencial inmediato en sede central",
     };
   }
 
@@ -112,7 +172,9 @@ function getEstimatedDeliveryInfo(estimatedDays: number, dispatchDays: string[] 
   // Advance to next allowed dispatch day if today isn't one
   let daysAdvanced = 0;
   while (daysAdvanced < 7) {
-    const currentDayNum = String(startDate.getDay() === 0 ? 7 : startDate.getDay());
+    const currentDayNum = String(
+      startDate.getDay() === 0 ? 7 : startDate.getDay(),
+    );
     if (dispatchDays.includes(currentDayNum)) {
       break;
     }
@@ -128,11 +190,16 @@ function getEstimatedDeliveryInfo(estimatedDays: number, dispatchDays: string[] 
   const maxArrival = new Date(startDate);
   maxArrival.setDate(maxArrival.getDate() + estimatedDays + 1);
 
-  const formatShort = (d: Date) => d.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' });
+  const formatShort = (d: Date) =>
+    d.toLocaleDateString("es-CO", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    });
 
   const dispatchNotice = isTodayDispatch
-    ? 'Despacho estimado: Hoy mismo'
-    : `Despacho estimado: Próximo ${startDate.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric' })}`;
+    ? "Despacho estimado: Hoy mismo"
+    : `Despacho estimado: Próximo ${startDate.toLocaleDateString("es-CO", { weekday: "long", day: "numeric" })}`;
 
   const arrivalText = `Llega entre el ${formatShort(minArrival)} y el ${formatShort(maxArrival)}`;
 
@@ -147,7 +214,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   onOrderComplete,
   onClearCart,
   onNavigateToCatalog,
-  onNavigateToOrders
+  onNavigateToOrders,
 }) => {
   // Effective motorcycle details
   const effectiveBike: ActiveMotorcycle | null = activeMotorcycle;
@@ -157,27 +224,30 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
   // Form fields
   const [formData, setFormData] = useState({
-    fullName: (isLoggedIn && userProfile?.fullName) ? userProfile.fullName : '',
-    email: (isLoggedIn && userProfile?.email) ? userProfile.email : '',
-    phone: (isLoggedIn && userProfile?.phone) ? userProfile.phone : '',
-    documentId: (isLoggedIn && userProfile?.documentId) ? userProfile.documentId : '',
+    fullName: isLoggedIn && userProfile?.fullName ? userProfile.fullName : "",
+    email: isLoggedIn && userProfile?.email ? userProfile.email : "",
+    phone: isLoggedIn && userProfile?.phone ? userProfile.phone : "",
+    documentId:
+      isLoggedIn && userProfile?.documentId ? userProfile.documentId : "",
     country: STORE_DEFAULT_LOCATION.country,
-    department: (isLoggedIn && userProfile?.department) ? userProfile.department : '',
-    city: (isLoggedIn && userProfile?.city) ? userProfile.city : '',
-    address: (isLoggedIn && userProfile?.address) ? userProfile.address : '',
-    postalCode: (isLoggedIn && userProfile?.postalCode) ? userProfile.postalCode : ''
+    department:
+      isLoggedIn && userProfile?.department ? userProfile.department : "",
+    city: isLoggedIn && userProfile?.city ? userProfile.city : "",
+    address: isLoggedIn && userProfile?.address ? userProfile.address : "",
+    postalCode:
+      isLoggedIn && userProfile?.postalCode ? userProfile.postalCode : "",
   });
 
   // Dynamic DB State — loaded from API, no hardcoded defaults
   const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
   const [shippingZones, setShippingZones] = useState<ShippingZone[]>([]);
-  const [selectedShippingId, setSelectedShippingId] = useState<string>('');
+  const [selectedShippingId, setSelectedShippingId] = useState<string>("");
   const [citiesList, setCitiesList] = useState<CityRecord[]>([]);
 
   // Pre-fill form if user logs in or profile updates
   useEffect(() => {
     if (userProfile && isLoggedIn) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         fullName: userProfile.fullName || prev.fullName,
         email: userProfile.email || prev.email,
@@ -186,7 +256,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         department: userProfile.department || prev.department,
         city: userProfile.city || prev.city,
         address: userProfile.address || prev.address,
-        postalCode: userProfile.postalCode || prev.postalCode
+        postalCode: userProfile.postalCode || prev.postalCode,
       }));
     }
   }, [userProfile, isLoggedIn]);
@@ -194,7 +264,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   // Load Shipping Methods, Zones & Cities from DB via API
   useEffect(() => {
     fetchShippingMethods()
-      .then(data => {
+      .then((data) => {
         if (data && data.length > 0) {
           const active = data.filter((m: ShippingMethod) => m.active);
           const list = active.length > 0 ? active : data;
@@ -204,74 +274,96 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
           }
         }
       })
-      .catch(err => console.error('Error cargando envíos en checkout:', err));
+      .catch((err) => console.error("Error cargando envíos en checkout:", err));
 
     fetchShippingZones()
-      .then(data => {
+      .then((data) => {
         setShippingZones(data.filter((z: ShippingZone) => z.active));
       })
-      .catch(err => console.error('Error cargando zonas de envío en checkout:', err));
+      .catch((err) =>
+        console.error("Error cargando zonas de envío en checkout:", err),
+      );
 
     fetchCities()
-      .then(data => {
+      .then((data) => {
         if (data && data.length > 0) {
           setCitiesList(data.filter((c: CityRecord) => c.active));
         }
       })
-      .catch(err => console.error('Error cargando ciudades en checkout:', err));
+      .catch((err) =>
+        console.error("Error cargando ciudades en checkout:", err),
+      );
   }, []);
 
   // Tax Config & Coupons State
   const [taxConfig, setTaxConfig] = useState<TaxConfig>(() => {
-    const saved = localStorage.getItem('sz_tax_config');
+    const saved = localStorage.getItem("sz_tax_config");
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
     }
     return DEFAULT_TAX_CONFIG;
   });
 
   const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>(() => {
-    const saved = localStorage.getItem('sz_coupons');
+    const saved = localStorage.getItem("sz_coupons");
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
     }
     return INITIAL_COUPONS;
   });
 
-  const [couponInput, setCouponInput] = useState('');
+  const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
-  const [couponMessage, setCouponMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [couponMessage, setCouponMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   useEffect(() => {
-    fetch('/api/settings')
-      .then(r => r.json())
-      .then(res => { if (res?.success && res.data) setTaxConfig(res.data); })
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res?.success && res.data) setTaxConfig(res.data);
+      })
       .catch(() => {});
 
-    fetch('/api/coupons')
-      .then(r => r.json())
-      .then(res => { if (res?.success && Array.isArray(res.data)) setAvailableCoupons(res.data); })
+    fetch("/api/coupons")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res?.success && Array.isArray(res.data))
+          setAvailableCoupons(res.data);
+      })
       .catch(() => {});
   }, []);
 
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [defaultCarrier, setDefaultCarrier] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState("");
+  const [defaultCarrier, setDefaultCarrier] = useState<string>("");
 
   useEffect(() => {
     let cancelled = false;
     fetchDefaultCarrierName()
-      .then(name => { if (!cancelled) setDefaultCarrier(name); })
+      .then((name) => {
+        if (!cancelled) setDefaultCarrier(name);
+      })
       .catch(() => {});
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (errorMessage) setErrorMessage('');
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errorMessage) setErrorMessage("");
   };
 
   const handleCopy = (text: string, fieldId: string) => {
@@ -282,16 +374,26 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   };
 
   // Subtotal, Shipping & Financial Breakdown Calculations
-  const rawSubtotal = effectiveCartItems.reduce((acc, item) => acc + (item.part.price * item.quantity), 0);
-  const selectedShipping = shippingMethods.find(m => m.id === selectedShippingId) || shippingMethods[0];
-  const actualShippingCost = getShippingMethodCost(selectedShipping, formData.department, rawSubtotal, shippingZones);
+  const rawSubtotal = effectiveCartItems.reduce(
+    (acc, item) => acc + item.part.price * item.quantity,
+    0,
+  );
+  const selectedShipping =
+    shippingMethods.find((m) => m.id === selectedShippingId) ||
+    shippingMethods[0];
+  const actualShippingCost = getShippingMethodCost(
+    selectedShipping,
+    formData.department,
+    rawSubtotal,
+    shippingZones,
+  );
 
   const totals = calculateCartTotals(
     effectiveCartItems,
     taxConfig.taxRate,
     taxConfig.active,
     appliedCoupon,
-    actualShippingCost
+    actualShippingCost,
   );
 
   const subtotalAmount = totals.subtotal;
@@ -305,52 +407,67 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     const codeClean = couponInput.trim().toUpperCase();
     if (!codeClean) return;
 
-    const coupon = availableCoupons.find(c => c.code.toUpperCase() === codeClean && c.active);
+    const coupon = availableCoupons.find(
+      (c) => c.code.toUpperCase() === codeClean && c.active,
+    );
     if (!coupon) {
-      setCouponMessage({ type: 'error', text: 'El código de cupón no es válido o ha expirado.' });
+      setCouponMessage({
+        type: "error",
+        text: "El código de cupón no es válido o ha expirado.",
+      });
       return;
     }
 
     if (coupon.minPurchase && subtotalAmount < coupon.minPurchase) {
       setCouponMessage({
-        type: 'error',
-        text: `Este cupón requiere una compra mínima de ${formatCurrency(coupon.minPurchase)}.`
+        type: "error",
+        text: `Este cupón requiere una compra mínima de ${formatCurrency(coupon.minPurchase)}.`,
       });
       return;
     }
 
     setAppliedCoupon(coupon);
     setCouponMessage({
-      type: 'success',
-      text: `¡Cupón ${coupon.code} aplicado con éxito! (${coupon.type === 'percentage' ? `${coupon.value}% OFF` : formatCurrency(coupon.value)})`
+      type: "success",
+      text: `¡Cupón ${coupon.code} aplicado con éxito! (${coupon.type === "percentage" ? `${coupon.value}% OFF` : formatCurrency(coupon.value)})`,
     });
   };
 
   const handleRemoveCoupon = () => {
     setAppliedCoupon(null);
-    setCouponInput('');
+    setCouponInput("");
     setCouponMessage(null);
   };
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.fullName || !formData.email || !formData.phone || !formData.documentId || !formData.city || !formData.address) {
-      setErrorMessage('Por favor completa todos los campos requeridos para el despacho.');
+    if (
+      !formData.fullName ||
+      !formData.email ||
+      !formData.phone ||
+      !formData.documentId ||
+      !formData.city ||
+      !formData.address
+    ) {
+      setErrorMessage(
+        "Por favor completa todos los campos requeridos para el despacho.",
+      );
       return;
     }
 
     setIsSubmitting(true);
 
-    const orderId = 'SZ-ORD-' + Math.floor(100000 + Math.random() * 900000);
-    const guaranteeCode = 'SZ-CERT-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-    const orderDate = new Date().toLocaleString('es-CO', { 
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric', 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true 
+    const orderId = "SZ-ORD-" + Math.floor(100000 + Math.random() * 900000);
+    const guaranteeCode =
+      "SZ-CERT-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+    const orderDate = new Date().toLocaleString("es-CO", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
     });
 
     const newOrder: Order = {
@@ -373,13 +490,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
       taxAmount: taxAmount,
       totalPrice: totalAmount,
       shippingCost: actualShippingCost,
-      shippingMethodName: selectedShipping?.name || 'Envío Estándar',
-      shippingCarrier: selectedShipping?.carrier || (await fetchDefaultCarrierName()),
+      shippingMethodName: selectedShipping?.name || "No especificado",
+      shippingCarrier:
+        selectedShipping?.carrier || (await fetchDefaultCarrierName()),
       motorcycle: effectiveBike,
       guaranteeCode,
-      paymentMethod: 'transferencia',
-      status: (await fetchDefaultStatusName()) || 'Pendiente de pago',
-      paymentReference: orderId
+      paymentMethod: "transferencia",
+      status: (await fetchDefaultStatusName()) || "Pendiente de pago",
+      paymentReference: orderId,
     };
 
     try {
@@ -387,10 +505,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
       await saveOrderApi(newOrder);
 
       // 2. Save to localStorage as immediate client backup
-      const stored = JSON.parse(localStorage.getItem('sz_user_orders') || '[]');
-      localStorage.setItem('sz_user_orders', JSON.stringify([newOrder, ...stored]));
+      const stored = JSON.parse(localStorage.getItem("sz_user_orders") || "[]");
+      localStorage.setItem(
+        "sz_user_orders",
+        JSON.stringify([newOrder, ...stored]),
+      );
     } catch (err) {
-      console.error('Error guardando pedido en BD:', err);
+      console.error("Error guardando pedido en BD:", err);
     }
 
     setCompletedOrder(newOrder);
@@ -407,9 +528,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
           <div className="w-16 h-16 rounded-2xl bg-red-50 text-[#E60012] flex items-center justify-center mx-auto mb-4 border border-red-100">
             <ShoppingBag className="w-8 h-8" />
           </div>
-          <h2 className="text-2xl font-black text-slate-900 font-display">Tu carrito está vacío</h2>
+          <h2 className="text-2xl font-black text-slate-900 font-display">
+            Tu carrito está vacío
+          </h2>
           <p className="text-xs text-slate-500 mt-2 leading-relaxed font-sans">
-            No tienes repuestos agregados para completar tu pedido. Explora nuestro catálogo de repuestos genuinos Suzuki con garantía de ajuste por modelo.
+            No tienes repuestos agregados para completar tu pedido. Explora
+            nuestro catálogo de repuestos genuinos Suzuki con garantía de ajuste
+            por modelo.
           </p>
           <button
             type="button"
@@ -429,7 +554,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
-          
           {/* Header Status Banner */}
           <div className="bg-slate-900 text-white p-6 sm:p-8 relative overflow-hidden">
             <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -445,22 +569,35 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       {completedOrder.status}
                     </span>
                   </div>
-                  <h1 className="text-xl sm:text-2xl font-black tracking-tight mt-1 font-display">¡Pedido Registrado Exitosamente!</h1>
-                  <p className="text-xs text-slate-300 font-sans">Realiza la transferencia bancaria para confirmar la preparación de tu despacho.</p>
+                  <h1 className="text-xl sm:text-2xl font-black tracking-tight mt-1 font-display">
+                    ¡Pedido Registrado Exitosamente!
+                  </h1>
+                  <p className="text-xs text-slate-300 font-sans">
+                    Realiza la transferencia bancaria para confirmar la
+                    preparación de tu despacho.
+                  </p>
                 </div>
               </div>
 
               <div className="bg-slate-800/90 backdrop-blur-xs p-3 sm:p-4 rounded-2xl border border-slate-700 text-center min-w-[160px]">
-                <span className="text-[10px] font-mono font-bold uppercase text-slate-400 block tracking-wider">Nº DE ORDEN</span>
+                <span className="text-[10px] font-mono font-bold uppercase text-slate-400 block tracking-wider">
+                  Nº DE ORDEN
+                </span>
                 <div className="flex items-center justify-center gap-1.5 mt-0.5">
-                  <span className="font-mono font-black text-amber-400 text-lg">{completedOrder.id}</span>
+                  <span className="font-mono font-black text-amber-400 text-lg">
+                    {completedOrder.id}
+                  </span>
                   <button
                     type="button"
-                    onClick={() => handleCopy(completedOrder.id, 'orderId')}
+                    onClick={() => handleCopy(completedOrder.id, "orderId")}
                     className="text-slate-400 hover:text-white transition-colors"
                     title="Copiar Número de Orden"
                   >
-                    {copiedField === 'orderId' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    {copiedField === "orderId" ? (
+                      <Check className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -469,7 +606,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
           {/* Body Content */}
           <div className="p-6 sm:p-8 space-y-6">
-            
             {/* Customer & Shipping Data Card */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 text-xs">
               <div>
@@ -495,10 +631,17 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 </span>
                 <div className="font-semibold text-slate-800 flex items-start gap-1.5 text-xs">
                   <MapPin className="w-4 h-4 text-[#E60012] shrink-0 mt-0.5" />
-                  <span>{completedOrder.shippingAddress} ({completedOrder.postalCode})</span>
+                  <span>
+                    {completedOrder.shippingAddress} (
+                    {completedOrder.postalCode})
+                  </span>
                 </div>
                 <div className="text-slate-500 mt-1.5 font-mono text-[11px]">
-                  Transportadora: <strong className="text-slate-800">{completedOrder.shippingCarrier || defaultCarrier}</strong> ({completedOrder.shippingMethodName})
+                  Transportadora:{" "}
+                  <strong className="text-slate-800">
+                    {completedOrder.shippingCarrier || defaultCarrier}
+                  </strong>{" "}
+                  ({completedOrder.shippingMethodName})
                 </div>
               </div>
             </div>
@@ -507,31 +650,35 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black uppercase text-slate-900 tracking-wider block font-display">
-                  REPUESTOS INCLUIDOS EN LA ORDEN ({completedOrder.items.length}):
-                </span>
-                <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold uppercase px-2 py-0.5 rounded-lg flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  Ajuste OEM Verificado
+                  REPUESTOS INCLUIDOS EN LA ORDEN ({completedOrder.items.length}
+                  ):
                 </span>
               </div>
 
               <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1 custom-scrollbar">
                 {completedOrder.items.map((item, idx) => (
-                  <div key={idx} className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2.5">
-                    
+                  <div
+                    key={idx}
+                    className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2.5"
+                  >
                     {/* Top Row: Image + Name + OEM Monospace Badge */}
                     <div className="flex items-start gap-3">
                       {shouldShowProductImages() ? (
-                        <img src={item.part.image} alt={item.part.name} className="w-14 h-14 rounded-xl object-cover bg-slate-50 border border-slate-200 shrink-0 shadow-xs" />
+                        <img
+                          src={item.part.image}
+                          alt={item.part.name}
+                          className="w-14 h-14 rounded-xl object-cover bg-slate-50 border border-slate-200 shrink-0 shadow-xs"
+                        />
                       ) : (
-                        <ProductImageFallback part={item.part} size="sm" className="w-14 h-14 shrink-0 rounded-xl" />
+                        <ProductImageFallback
+                          part={item.part}
+                          size="sm"
+                          className="w-14 h-14 shrink-0 rounded-xl"
+                        />
                       )}
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-mono text-[10px] font-bold text-[#E60012] bg-red-50 border border-red-200 px-2 py-0.5 rounded-md inline-block">
-                            OEM: {getPrimaryOem(item.part)}
-                          </span>
                           <span className="text-[10px] font-mono font-bold text-slate-500 uppercase">
                             {item.part.category}
                           </span>
@@ -540,45 +687,47 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                           {item.part.name}
                         </h4>
                       </div>
-                    </div>
 
-                    {/* Compatibility Status Badge */}
-                    <div className="bg-emerald-50/90 border border-emerald-200 text-emerald-800 rounded-xl px-2.5 py-1.5 text-[11px] font-bold flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span className="truncate">
-                          Garantizado para Suzuki {item.motorcycle?.modelName || completedOrder.motorcycle?.modelName || 'GSX-R1000'} ({item.motorcycle?.year || completedOrder.motorcycle?.year || 2021})
-                        </span>
-                      </div>
-                      <span className="text-[9px] uppercase tracking-wider font-mono font-black text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded shrink-0">
-                        AJUSTE OEM OK
-                      </span>
-                    </div>
-
-                    {/* Technical Specifications Highlights (Geist Monospace) */}
-                    {item.part.specs && item.part.specs.length > 0 && (
-                      <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-200 text-[11px] font-mono space-y-0.5">
-                        <span className="text-[9px] font-bold uppercase text-slate-400 block tracking-wider font-sans">ESPECIFICACIONES TÉCNICAS:</span>
-                        <div className="grid grid-cols-2 gap-x-2 text-slate-700">
-                          {item.part.specs.slice(0, 4).map((spec, sIdx) => (
-                            <div key={sIdx} className="truncate">
-                              <span className="text-slate-400">{spec.label}:</span> <span className="font-bold text-slate-900">{spec.value}</span>
-                            </div>
-                          ))}
+                      {/* Compatibility Status Badge */}
+                      <div className="bg-emerald-50/90 border border-emerald-200 text-emerald-800 rounded-xl px-2.5 py-1.5 text-[11px] font-bold shrink-0 ml-2">
+                        <div className="flex items-center gap-1.5">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span className="truncate">
+                            {[
+                              item.motorcycle?.brand ||
+                                completedOrder.motorcycle?.brand,
+                              item.motorcycle?.modelName ||
+                                completedOrder.motorcycle?.modelName,
+                              (item.motorcycle?.year ||
+                                completedOrder.motorcycle?.year) &&
+                                `(${
+                                  item.motorcycle?.year ||
+                                  completedOrder.motorcycle?.year
+                                })`,
+                            ]
+                              .filter(Boolean)
+                              .join(" ") || "Moto no especificada"}
+                          </span>
                         </div>
                       </div>
-                    )}
+                    </div>
 
                     {/* Quantity & Item Line Subtotal */}
                     <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
                       <span className="text-slate-600 font-medium">
-                        Cantidad: <strong className="text-slate-900 font-mono font-bold">{item.quantity}</strong> × <span className="font-mono">{formatCurrency(item.part.price)}</span>
+                        Cantidad:{" "}
+                        <strong className="text-slate-900 font-mono font-bold">
+                          {item.quantity}
+                        </strong>{" "}
+                        ×{" "}
+                        <span className="font-mono">
+                          {formatCurrency(item.part.price)}
+                        </span>
                       </span>
                       <span className="font-mono font-black text-slate-900 text-sm">
                         {formatCurrency(item.part.price * item.quantity)}
                       </span>
                     </div>
-
                   </div>
                 ))}
               </div>
@@ -587,32 +736,46 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 text-xs space-y-2 font-mono">
                 <div className="flex items-center justify-between text-slate-600">
                   <span>Subtotal Repuestos OEM:</span>
-                  <span className="font-bold text-slate-900">{formatCurrency(completedOrder.subtotal ?? completedOrder.totalPrice)}</span>
+                  <span className="font-bold text-slate-900">
+                    {formatCurrency(
+                      completedOrder.subtotal ?? completedOrder.totalPrice,
+                    )}
+                  </span>
                 </div>
                 {completedOrder.discount && completedOrder.discount > 0 ? (
                   <div className="flex items-center justify-between text-emerald-700 font-bold">
-                    <span>Descuento Promocional ({completedOrder.discountCode || 'Cupón'}):</span>
+                    <span>
+                      Descuento Promocional (
+                      {completedOrder.discountCode || "Cupón"}):
+                    </span>
                     <span>- {formatCurrency(completedOrder.discount)}</span>
                   </div>
                 ) : null}
                 {completedOrder.taxAmount && completedOrder.taxAmount > 0 ? (
                   <div className="flex items-center justify-between text-slate-600">
                     <span>Impuesto ({completedOrder.taxRate || 19}% IVA):</span>
-                    <span className="font-bold text-slate-900">+ {formatCurrency(completedOrder.taxAmount)}</span>
+                    <span className="font-bold text-slate-900">
+                      + {formatCurrency(completedOrder.taxAmount)}
+                    </span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between text-slate-600">
                   <span>Costo de Despacho Nacional:</span>
-                  <span className="font-bold text-slate-900">{completedOrder.shippingCost === 0 ? '¡Flete GRATIS!' : formatCurrency(completedOrder.shippingCost || 0)}</span>
+                  <span className="font-bold text-slate-900">
+                    {completedOrder.shippingCost === 0
+                      ? "¡Flete GRATIS!"
+                      : formatCurrency(completedOrder.shippingCost || 0)}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-slate-300 font-black text-sm text-slate-900 font-display">
                   <span>TOTAL LIQUIDADO DE LA ORDEN:</span>
-                  <span className="text-[#E60012] font-mono text-base">{formatCurrency(completedOrder.totalPrice)}</span>
+                  <span className="text-[#E60012] font-mono text-base">
+                    {formatCurrency(completedOrder.totalPrice)}
+                  </span>
                 </div>
               </div>
-
             </div>
-            
+
             {/* Bank Details Card */}
             <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-md border border-slate-800">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-800 pb-4 mb-4 gap-4">
@@ -621,51 +784,71 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                     <Building2 className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-black font-display">Datos Bancarios para Transferencia</h3>
-                    <p className="text-xs text-slate-400 font-sans">{BANK_DETAILS.instructions}</p>
+                    <h3 className="text-base font-black font-display">
+                      Datos Bancarios para Transferencia
+                    </h3>
+                    <p className="text-xs text-slate-400 font-sans">
+                      {BANK_DETAILS.instructions}
+                    </p>
                   </div>
                 </div>
                 <div className="text-left sm:text-right shrink-0">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block font-mono">TOTAL A TRANSFERIR</span>
-                  <span className="text-xl font-mono font-black text-emerald-400">{formatCurrency(completedOrder.totalPrice)}</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block font-mono">
+                    TOTAL A TRANSFERIR
+                  </span>
+                  <span className="text-xl font-mono font-black text-emerald-400">
+                    {formatCurrency(completedOrder.totalPrice)}
+                  </span>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 <div className="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/80">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block font-mono">TITULAR DE LA CUENTA</span>
-                  <span className="font-extrabold text-white text-xs block mt-0.5">{BANK_DETAILS.accountHolder}</span>
-                  <span className="text-slate-300 block text-[11px] font-mono mt-0.5">NIT: {BANK_DETAILS.nit}</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block font-mono">
+                    TITULAR DE LA CUENTA
+                  </span>
+                  <span className="font-extrabold text-white text-xs block mt-0.5">
+                    {BANK_DETAILS.accountHolder}
+                  </span>
+                  <span className="text-slate-300 block text-[11px] font-mono mt-0.5">
+                    NIT: {BANK_DETAILS.nit}
+                  </span>
                 </div>
                 <div className="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/80">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block font-mono">BANCO & TIPO DE CUENTA</span>
-                  <span className="font-black text-white text-xs block mt-0.5">{BANK_DETAILS.bankName}</span>
-                  <span className="text-slate-300 block text-[11px] mt-0.5">{BANK_DETAILS.accountType}</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block font-mono">
+                    BANCO & TIPO DE CUENTA
+                  </span>
+                  <span className="font-black text-white text-xs block mt-0.5">
+                    {BANK_DETAILS.bankName}
+                  </span>
+                  <span className="text-slate-300 block text-[11px] mt-0.5">
+                    {BANK_DETAILS.accountType}
+                  </span>
                 </div>
                 <div className="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/80">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block font-mono">NÚMERO DE CUENTA</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block font-mono">
+                    NÚMERO DE CUENTA
+                  </span>
                   <div className="flex items-center justify-between mt-0.5">
-                    <span className="font-mono font-black text-amber-400 text-sm sm:text-base">{BANK_DETAILS.accountNumber}</span>
+                    <span className="font-mono font-black text-amber-400 text-sm sm:text-base">
+                      {BANK_DETAILS.accountNumber}
+                    </span>
                     <button
                       type="button"
-                      onClick={() => handleCopy(BANK_DETAILS.accountNumber, 'accountNumber')}
+                      onClick={() =>
+                        handleCopy(BANK_DETAILS.accountNumber, "accountNumber")
+                      }
                       className="text-slate-400 hover:text-white p-1 cursor-pointer"
                       title="Copiar Número de Cuenta"
                     >
-                      {copiedField === 'accountNumber' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                      {copiedField === "accountNumber" ? (
+                        <Check className="w-4 h-4 text-emerald-400" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
                 </div>
-              </div>
-
-              {/* Guarantee Code Badge inside Bank Card */}
-              <div className="mt-4 p-3.5 bg-slate-800/60 rounded-xl border border-slate-700/70 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-300 gap-2">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Código Certificado de Garantía Suzuki:</span>
-                  <strong className="font-mono text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">{completedOrder.guaranteeCode || 'SZ-CERT-OFFICIAL'}</strong>
-                </div>
-                <span className="font-bold text-emerald-400 font-mono">{completedOrder.shippingCost === 0 ? '¡Flete GRATIS!' : `Flete: ${formatCurrency(completedOrder.shippingCost || 0)}`}</span>
               </div>
             </div>
 
@@ -688,7 +871,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 Volver a la Tienda
               </button>
             </div>
-
           </div>
         </div>
       </div>
@@ -698,18 +880,19 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   // MAIN CHECKOUT FORM & DETAIL PROCESS
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      
       {/* Page Header */}
       <div className="mb-6">
         <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#E60012] uppercase tracking-wider mb-1">
           <ShieldCheck className="w-4 h-4 text-[#E60012]" />
-          <span>CHECKOUT SEGURO SUZUKI GENUINE PARTS</span>
+          <span>CHECKOUT SEGURO SUZUKI REPUESTOS COLOMBIA</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-display">Finalizar Compra & Despacho</h1>
-        <p className="text-xs text-slate-500 mt-1 font-sans">Completa los datos de envío para calcular dinámicamente tu pedido con certificación OEM.</p>
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-display">
+          Finalizar Compra & Despacho
+        </h1>
+        <p className="text-xs text-slate-500 mt-1 font-sans">
+          Completa los datos de envío para calcular dinámicamente tu pedido.
+        </p>
       </div>
-
-
 
       {errorMessage && (
         <div className="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200">
@@ -719,12 +902,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
         {/* LEFT COLUMN: Customer & Address Form + Shipping Methods Selector (lg:col-span-7) */}
         <div className="lg:col-span-7 space-y-6">
-          
           <form onSubmit={handleSubmitOrder} className="space-y-6">
-            
             {/* Form Section 1: Personal & Billing Info */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs">
               <div className="flex items-center gap-3 border-b border-slate-100 pb-4 mb-6">
@@ -732,15 +912,23 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   <User className="w-5 h-5 text-[#E60012]" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black text-slate-900 font-display">1. Datos del Cliente & Facturación</h2>
-                  <p className="text-xs text-slate-500 font-sans">Información requerida para la factura legal de repuestos OEM</p>
+                  <h2 className="text-lg font-black text-slate-900 font-display">
+                    1. Datos del Cliente & Facturación
+                  </h2>
+                  <p className="text-xs text-slate-500 font-sans">
+                    Información requerida para la factura legal
+                  </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
-                  <label htmlFor="fullName" className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                    Nombre Completo / Razón Social <span className="text-red-500">*</span>
+                  <label
+                    htmlFor="fullName"
+                    className="block text-xs font-bold uppercase text-slate-700 mb-1"
+                  >
+                    Nombre Completo / Razón Social{" "}
+                    <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -758,7 +946,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 </div>
 
                 <div>
-                  <label htmlFor="email" className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                  <label
+                    htmlFor="email"
+                    className="block text-xs font-bold uppercase text-slate-700 mb-1"
+                  >
                     Correo Electrónico <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -777,8 +968,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 </div>
 
                 <div>
-                  <label htmlFor="phone" className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                    Teléfono Móvil (WhatsApp) <span className="text-red-500">*</span>
+                  <label
+                    htmlFor="phone"
+                    className="block text-xs font-bold uppercase text-slate-700 mb-1"
+                  >
+                    Teléfono Móvil (WhatsApp){" "}
+                    <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -796,8 +991,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label htmlFor="documentId" className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                    Cédula / NIT (Facturación) <span className="text-red-500">*</span>
+                  <label
+                    htmlFor="documentId"
+                    className="block text-xs font-bold uppercase text-slate-700 mb-1"
+                  >
+                    Cédula / NIT (Facturación){" "}
+                    <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -823,8 +1022,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   <MapPin className="w-5 h-5 text-blue-700" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black text-slate-900 font-display">2. Ubicación & Dirección de Destino</h2>
-                  <p className="text-xs text-slate-500 font-sans">Selección en cascada de Departamento / Estado y Ciudad de despacho (Colombia)</p>
+                  <h2 className="text-lg font-black text-slate-900 font-display">
+                    2. Ubicación & Dirección de Destino
+                  </h2>
+                  <p className="text-xs text-slate-500 font-sans">
+                    Selección en cascada de Departamento / Estado y Ciudad de
+                    despacho
+                  </p>
                 </div>
               </div>
 
@@ -835,11 +1039,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 city={formData.city}
                 citiesList={citiesList}
                 onChange={({ country, department, city }) => {
-                  setFormData(prev => ({
+                  setFormData((prev) => ({
                     ...prev,
                     country,
                     department,
-                    city
+                    city,
                   }));
                 }}
                 className="mb-4"
@@ -848,8 +1052,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Dirección Completa */}
                 <div className="sm:col-span-2">
-                  <label htmlFor="address" className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                    Dirección Completa de Despacho / Taller <span className="text-red-500">*</span>
+                  <label
+                    htmlFor="address"
+                    className="block text-xs font-bold uppercase text-slate-700 mb-1"
+                  >
+                    Dirección Completa de Despacho / Taller{" "}
+                    <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -868,7 +1076,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
                 {/* Código Postal */}
                 <div>
-                  <label htmlFor="postalCode" className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                  <label
+                    htmlFor="postalCode"
+                    className="block text-xs font-bold uppercase text-slate-700 mb-1"
+                  >
                     Código Postal <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -882,7 +1093,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
                   />
                 </div>
-
               </div>
             </div>
 
@@ -893,19 +1103,35 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   <Truck className="w-5 h-5 text-sky-700" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black text-slate-900 font-display">3. Selecciona la Opción de Envío</h2>
-                  <p className="text-xs text-slate-500 font-sans">Transportadoras con número de guía rastreable en tiempo real</p>
+                  <h2 className="text-lg font-black text-slate-900 font-display">
+                    3. Selecciona la Opción de Envío
+                  </h2>
+                  <p className="text-xs text-slate-500 font-sans">
+                    Transportadoras con número de guía rastreable en tiempo real
+                  </p>
                 </div>
               </div>
 
               <div className="space-y-3">
-                {shippingMethods.map(method => {
+                {shippingMethods.map((method) => {
                   const isSelected = selectedShippingId === method.id;
-                  const badge = CARRIER_BADGES[method.carrier] || { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200' };
-                  
-                  const effectivePrice = getShippingMethodCost(method, formData.department, rawSubtotal, shippingZones);
+                  const badge = CARRIER_BADGES[method.carrier] || {
+                    bg: "bg-slate-100",
+                    text: "text-slate-700",
+                    border: "border-slate-200",
+                  };
 
-                  const deliveryInfo = getEstimatedDeliveryInfo(method.estimatedDays, method.dispatchDays);
+                  const effectivePrice = getShippingMethodCost(
+                    method,
+                    formData.department,
+                    rawSubtotal,
+                    shippingZones,
+                  );
+
+                  const deliveryInfo = getEstimatedDeliveryInfo(
+                    method.estimatedDays,
+                    method.dispatchDays,
+                  );
 
                   return (
                     <div
@@ -913,8 +1139,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       onClick={() => setSelectedShippingId(method.id)}
                       className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
                         isSelected
-                          ? 'border-sky-500 bg-sky-50/40 shadow-sm'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                          ? "border-sky-500 bg-sky-50/40 shadow-sm"
+                          : "border-slate-200 bg-white hover:border-slate-300"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -929,20 +1155,28 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                           />
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className={`px-2 py-0.5 text-[10px] font-black uppercase rounded border ${badge.bg} ${badge.text} ${badge.border}`}>
+                              <span
+                                className={`px-2 py-0.5 text-[10px] font-black uppercase rounded border ${badge.bg} ${badge.text} ${badge.border}`}
+                              >
                                 {method.carrier}
                               </span>
-                              <span className="font-bold text-slate-900 text-sm font-display">{method.name}</span>
+                              <span className="font-bold text-slate-900 text-sm font-display">
+                                {method.name}
+                              </span>
                             </div>
 
-                            <p className="text-xs text-slate-600 mt-1">{method.description}</p>
+                            <p className="text-xs text-slate-600 mt-1">
+                              {method.description}
+                            </p>
 
                             {/* Human Arrival Date Notice */}
                             <div className="flex items-center gap-2 mt-2 text-xs font-semibold text-sky-700">
                               <Calendar className="w-3.5 h-3.5 text-sky-600" />
                               <span>{deliveryInfo.arrivalText}</span>
                             </div>
-                            <span className="text-[11px] text-slate-400 block mt-0.5">{deliveryInfo.dispatchNotice}</span>
+                            <span className="text-[11px] text-slate-400 block mt-0.5">
+                              {deliveryInfo.dispatchNotice}
+                            </span>
                           </div>
                         </div>
 
@@ -971,8 +1205,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   <CreditCard className="w-5 h-5 text-amber-700" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black text-slate-900 font-display">4. Método de Pago</h2>
-                  <p className="text-xs text-slate-500 font-sans">Transferencia segura Bancolombia con código de reserva</p>
+                  <h2 className="text-lg font-black text-slate-900 font-display">
+                    4. Método de Pago
+                  </h2>
+                  <p className="text-xs text-slate-500 font-sans">
+                    Transferencia segura Bancolombia con código de reserva
+                  </p>
                 </div>
               </div>
 
@@ -986,9 +1224,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   readOnly
                   className="mt-1 w-4 h-4 text-[#E60012] focus:ring-[#E60012]"
                 />
-                <label htmlFor="transferencia" className="cursor-pointer w-full">
+                <label
+                  htmlFor="transferencia"
+                  className="cursor-pointer w-full"
+                >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-black text-slate-900 text-sm font-display">Transferencia Bancaria (Bancolombia)</span>
+                    <span className="font-black text-slate-900 text-sm font-display">
+                      Transferencia Bancaria (Bancolombia)
+                    </span>
                     <span className="bg-amber-200 text-amber-900 text-[10px] font-black uppercase px-2 py-0.5 rounded font-mono">
                       Recomendado
                     </span>
@@ -996,19 +1239,30 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   <div className="mt-2.5 p-3 bg-white/80 rounded-xl border border-amber-300/80 text-xs space-y-1">
                     <div className="flex items-center justify-between font-mono">
                       <span className="text-slate-500 font-bold">Titular:</span>
-                      <strong className="text-slate-900 font-extrabold">{BANK_DETAILS.accountHolder}</strong>
+                      <strong className="text-slate-900 font-extrabold">
+                        {BANK_DETAILS.accountHolder}
+                      </strong>
                     </div>
                     <div className="flex items-center justify-between font-mono">
                       <span className="text-slate-500 font-bold">NIT:</span>
-                      <strong className="text-slate-900">{BANK_DETAILS.nit}</strong>
+                      <strong className="text-slate-900">
+                        {BANK_DETAILS.nit}
+                      </strong>
                     </div>
                     <div className="flex items-center justify-between font-mono">
-                      <span className="text-slate-500 font-bold">Nº Cuenta (Ahorros):</span>
-                      <strong className="text-amber-800 font-black">{BANK_DETAILS.accountNumber}</strong>
+                      <span className="text-slate-500 font-bold">
+                        Nº Cuenta (Ahorros):
+                      </span>
+                      <strong className="text-amber-800 font-black">
+                        {BANK_DETAILS.accountNumber}
+                      </strong>
                     </div>
                   </div>
                   <p className="text-[11px] text-slate-600 mt-2 leading-relaxed">
-                    Al confirmar el pedido recibirás el número de orden y la cuenta Bancolombia habilitada. Tu pedido quedará en <strong>"Pendiente de pago"</strong> hasta verificar la transferencia.
+                    Al confirmar el pedido recibirás el número de orden y la
+                    cuenta Bancolombia habilitada. Tu pedido quedará en{" "}
+                    <strong>"Pendiente de pago"</strong> hasta verificar la
+                    transferencia.
                   </p>
                 </label>
               </div>
@@ -1029,16 +1283,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 </>
               )}
             </button>
-
           </form>
-
         </div>
 
         {/* RIGHT COLUMN: Order Breakdown Summary (100% DESIGN.md Compliant) */}
         <div className="lg:col-span-5 space-y-6">
-          
           <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs sticky top-24">
-            
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
               <div>
                 <h3 className="text-base font-black text-slate-900 font-display">
@@ -1048,22 +1298,28 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   {effectiveCartItems.length} REPUESTOS SUZUKI GENUINE
                 </span>
               </div>
-              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold uppercase px-2.5 py-1 rounded-lg flex items-center gap-1 shrink-0">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                Ajuste 100% OEM
-              </span>
             </div>
 
             {/* Simplified Item List Breakdown */}
             <div className="space-y-2.5 max-h-[480px] overflow-y-auto pr-1 custom-scrollbar">
               {effectiveCartItems.map((item, idx) => (
-                <div key={idx} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 hover:border-slate-300 transition-all flex items-center gap-3">
-                  
+                <div
+                  key={idx}
+                  className="p-3 bg-slate-50 rounded-2xl border border-slate-200 hover:border-slate-300 transition-all flex items-center gap-3"
+                >
                   {/* Part Thumbnail */}
                   {shouldShowProductImages() ? (
-                    <img src={item.part.image} alt={item.part.name} className="w-12 h-12 rounded-xl object-cover bg-white border border-slate-200 shrink-0 shadow-2xs" />
+                    <img
+                      src={item.part.image}
+                      alt={item.part.name}
+                      className="w-12 h-12 rounded-xl object-cover bg-white border border-slate-200 shrink-0 shadow-2xs"
+                    />
                   ) : (
-                    <ProductImageFallback part={item.part} size="sm" className="w-12 h-12 shrink-0 rounded-xl" />
+                    <ProductImageFallback
+                      part={item.part}
+                      size="sm"
+                      className="w-12 h-12 shrink-0 rounded-xl"
+                    />
                   )}
 
                   {/* Info & Meta */}
@@ -1075,17 +1331,28 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       {(item.motorcycle || effectiveBike) && (
                         <span className="text-[9px] font-mono text-emerald-700 font-semibold flex items-center gap-0.5 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
                           <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
-                          {item.motorcycle?.modelName || effectiveBike?.modelName}
+                          {item.motorcycle?.modelName ||
+                            effectiveBike?.modelName}
                         </span>
                       )}
                     </div>
 
-                    <h4 className="font-bold text-slate-900 text-xs mt-1 leading-tight truncate font-display" title={item.part.name}>
+                    <h4
+                      className="font-bold text-slate-900 text-xs mt-1 leading-tight truncate font-display"
+                      title={item.part.name}
+                    >
                       {item.part.name}
                     </h4>
 
                     <div className="text-[11px] text-slate-500 font-medium mt-1">
-                      Cant: <strong className="text-slate-900 font-mono font-bold">{item.quantity}</strong> × <span className="font-mono text-slate-600">{formatCurrency(item.part.price)}</span>
+                      Cant:{" "}
+                      <strong className="text-slate-900 font-mono font-bold">
+                        {item.quantity}
+                      </strong>{" "}
+                      ×{" "}
+                      <span className="font-mono text-slate-600">
+                        {formatCurrency(item.part.price)}
+                      </span>
                     </div>
                   </div>
 
@@ -1095,7 +1362,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       {formatCurrency(item.part.price * item.quantity)}
                     </span>
                   </div>
-
                 </div>
               ))}
             </div>
@@ -1110,9 +1376,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between gap-2 text-xs">
                     <div className="flex items-center gap-2">
                       <Tag className="w-4 h-4 text-emerald-600" />
-                      <span className="font-mono font-black text-emerald-900">{appliedCoupon.code}</span>
+                      <span className="font-mono font-black text-emerald-900">
+                        {appliedCoupon.code}
+                      </span>
                       <span className="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded font-bold">
-                        {appliedCoupon.type === 'percentage' ? `${appliedCoupon.value}% OFF` : `-${formatCurrency(appliedCoupon.value)}`}
+                        {appliedCoupon.type === "percentage"
+                          ? `${appliedCoupon.value}% OFF`
+                          : `-${formatCurrency(appliedCoupon.value)}`}
                       </span>
                     </div>
                     <button
@@ -1145,9 +1415,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 )}
 
                 {couponMessage && (
-                  <p className={`text-[11px] font-medium leading-tight mt-1 ${
-                    couponMessage.type === 'success' ? 'text-emerald-700' : 'text-rose-600'
-                  }`}>
+                  <p
+                    className={`text-[11px] font-medium leading-tight mt-1 ${
+                      couponMessage.type === "success"
+                        ? "text-emerald-700"
+                        : "text-rose-600"
+                    }`}
+                  >
                     {couponMessage.text}
                   </p>
                 )}
@@ -1158,30 +1432,43 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
             <div className="mt-5 pt-4 border-t border-slate-200 space-y-2.5 text-xs">
               <div className="flex items-center justify-between text-slate-600 font-mono">
                 <span>Subtotal Repuestos OEM:</span>
-                <span className="font-bold text-slate-900">{formatCurrency(subtotalAmount)}</span>
+                <span className="font-bold text-slate-900">
+                  {formatCurrency(subtotalAmount)}
+                </span>
               </div>
 
               {discountAmount > 0 && (
                 <div className="flex items-center justify-between text-emerald-700 font-mono font-bold">
-                  <span>Descuento ({appliedCoupon?.code || 'Promocional'}):</span>
+                  <span>
+                    Descuento ({appliedCoupon?.code || "Promocional"}):
+                  </span>
                   <span>- {formatCurrency(discountAmount)}</span>
                 </div>
               )}
 
               <div className="flex items-center justify-between text-slate-600 font-mono">
-                <span>Impuesto ({taxConfig.active ? `${taxConfig.taxRate}% ${taxConfig.taxName}` : 'Desactivado'}):</span>
+                <span>
+                  Impuesto (
+                  {taxConfig.active
+                    ? `${taxConfig.taxRate}% ${taxConfig.taxName}`
+                    : "Desactivado"}
+                  ):
+                </span>
                 <span className="font-bold text-slate-900">
-                  {taxConfig.active ? `+ ${formatCurrency(taxAmount)}` : '$0'}
+                  {taxConfig.active ? `+ ${formatCurrency(taxAmount)}` : "$0"}
                 </span>
               </div>
 
               <div className="flex items-center justify-between text-slate-600 font-mono">
                 <span className="flex items-center gap-1 font-sans">
-                  <Truck className="w-3.5 h-3.5 text-sky-600" /> Despacho ({selectedShipping?.carrier}):
+                  <Truck className="w-3.5 h-3.5 text-sky-600" /> Despacho (
+                  {selectedShipping?.carrier}):
                 </span>
                 <span className="font-bold">
                   {actualShippingCost === 0 ? (
-                    <span className="text-emerald-600 font-black font-mono">¡Flete GRATIS!</span>
+                    <span className="text-emerald-600 font-black font-mono">
+                      ¡Flete GRATIS!
+                    </span>
                   ) : (
                     formatCurrency(actualShippingCost)
                   )}
@@ -1190,7 +1477,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
               <div className="flex items-center justify-between text-base font-black text-slate-900 pt-3 border-t border-slate-300 font-display">
                 <span>Total a Pagar:</span>
-                <span className="font-mono text-[#E60012] text-xl font-black">{formatCurrency(totalAmount)}</span>
+                <span className="font-mono text-[#E60012] text-xl font-black">
+                  {formatCurrency(totalAmount)}
+                </span>
               </div>
             </div>
 
@@ -1202,21 +1491,15 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
                   <span>Garantía de Ajuste Suzuki</span>
                 </div>
-                <span className="font-mono text-[10px] font-black text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
-                  CERT-OEM-SZ
-                </span>
               </div>
               <p className="text-[11px] text-slate-300 leading-relaxed relative z-10 font-sans">
-                Cada repuesto despachado cuenta con número de referencia OEM verificado y garantía legal de ajuste por modelo de motocicleta.
+                Cada repuesto despachado cuenta con número de referencia OEM
+                verificado y garantía legal de ajuste por modelo de motocicleta.
               </p>
             </div>
-
           </div>
-
         </div>
-
       </div>
     </div>
   );
 };
-

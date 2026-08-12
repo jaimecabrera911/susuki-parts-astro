@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
 import { orders, orderItems } from '../../db/schema';
-import { eq, like, or } from 'drizzle-orm';
+import { eq, like, or, desc } from 'drizzle-orm';
 import { upsertOrder } from '../../db/writers';
 
 export const GET: APIRoute = async ({ url }) => {
@@ -12,7 +12,7 @@ export const GET: APIRoute = async ({ url }) => {
 
     let rawData;
     if (status) {
-      rawData = await db.select().from(orders).where(eq(orders.status, status));
+      rawData = await db.select().from(orders).where(eq(orders.status, status)).orderBy(desc(orders.date));
     } else if (query) {
       const q = `%${query}%`;
       rawData = await db.select().from(orders).where(
@@ -23,9 +23,9 @@ export const GET: APIRoute = async ({ url }) => {
           like(orders.documentId, q),
           like(orders.trackingNumber, q)
         )
-      );
+      ).orderBy(desc(orders.date));
     } else {
-      rawData = await db.select().from(orders);
+      rawData = await db.select().from(orders).orderBy(desc(orders.date));
     }
 
     const itemsAll = await db.select().from(orderItems);
