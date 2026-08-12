@@ -12,6 +12,7 @@ import {
 import { eq, and } from 'drizzle-orm';
 import { DEFAULT_SHIPPING_ZONES, DEFAULT_SHIPPING_METHODS, DEFAULT_COLOMBIAN_CITIES, COLOMBIAN_DEPARTMENTS } from '../data/initialShippingAndCities';
 import { STORE_DEFAULT_LOCATION } from '../utils/config';
+import { hashPassword } from '../utils/password';
 
 export function parseJson(val: any, fallback: any = []) {
   if (!val) return fallback;
@@ -260,7 +261,17 @@ export async function upsertUser(db: AppDb, body: any) {
     if (!isNaN(parsed.getTime())) createdAt = parsed;
   }
 
-  const data = {
+  let passwordHash: string | null = body.passwordHash || null;
+  if (body.password) {
+    passwordHash = hashPassword(body.password);
+  }
+
+  // If no password set yet for admin or newly created user, assign standard default
+  if (!passwordHash && !body.id) {
+    passwordHash = hashPassword(body.role === 'admin' ? 'Admin2026!' : 'Suzuki2026!');
+  }
+
+  const data: any = {
     id,
     fullName: body.fullName,
     email: body.email,
@@ -276,7 +287,22 @@ export async function upsertUser(db: AppDb, body: any) {
     notes: body.notes || ''
   };
 
+  if (passwordHash) {
+    data.passwordHash = passwordHash;
+  }
+
   await db.transaction(async (tx) => {
+    // If updating, fetch existing passwordHash if not provided
+    if (!data.passwordHash) {
+      const existing = await tx.select().from(users).where(eq(users.id, id));
+      if (existing.length > 0 && existing[0].passwordHash) {
+        data.passwordHash = existing[0].passwordHash;
+      } else {
+        // Fallback default password if missing
+        data.passwordHash = hashPassword(data.role === 'admin' ? 'Admin2026!' : 'Suzuki2026!');
+      }
+    }
+
     await tx.insert(users).values(data).onConflictDoUpdate({ target: users.id, set: data });
 
     await tx.delete(userFavorites).where(eq(userFavorites.userId, id));

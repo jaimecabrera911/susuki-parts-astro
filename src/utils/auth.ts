@@ -1,9 +1,5 @@
 import type { UserProfile } from '../types';
 
-// Client-side auth helpers. The app persists an ad-hoc session in localStorage
-// (sz_is_logged_in / sz_user_profile). Server-side/auth-protected flows can
-// strengthen this later; these helpers centralize the reads for route guards.
-
 export function getStoredLogin(): boolean {
   if (typeof window === 'undefined') return false;
   return localStorage.getItem('sz_is_logged_in') === 'true';
@@ -22,6 +18,40 @@ export function getStoredUser(): UserProfile | null {
     // ignore malformed profile
   }
   return null;
+}
+
+export function getStoredJwtToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('sz_jwt_token');
+}
+
+export function setStoredSession(user: UserProfile, token?: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('sz_is_logged_in', 'true');
+  localStorage.setItem('sz_user_profile', JSON.stringify(user));
+  if (token) {
+    localStorage.setItem('sz_jwt_token', token);
+  }
+}
+
+export function clearStoredSession(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('sz_is_logged_in');
+  localStorage.removeItem('sz_user_profile');
+  localStorage.removeItem('sz_jwt_token');
+}
+
+export function getAuthHeaders(): Record<string, string> {
+  const token = getStoredJwtToken();
+  if (token) {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
+  }
+  return {
+    'Content-Type': 'application/json'
+  };
 }
 
 export function isAdminUser(user?: UserProfile | null): boolean {

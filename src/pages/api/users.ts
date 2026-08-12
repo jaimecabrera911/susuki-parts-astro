@@ -35,10 +35,13 @@ export const GET: APIRoute = async ({ url }) => {
       favoritesByUser.set(f.userId, arr);
     }
 
-    const formatted = rawData.map(u => ({
-      ...u,
-      favoritePartIds: favoritesByUser.get(u.id) || []
-    }));
+    const formatted = rawData.map(u => {
+      const { passwordHash, ...safeUser } = u;
+      return {
+        ...safeUser,
+        favoritePartIds: favoritesByUser.get(u.id) || []
+      };
+    });
 
     return new Response(JSON.stringify({ success: true, count: formatted.length, data: formatted }), {
       headers: { 'Content-Type': 'application/json' }

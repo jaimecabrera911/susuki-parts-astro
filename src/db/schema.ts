@@ -300,7 +300,8 @@ export const users = pgTable('users', {
   avatarUrl: text('avatar_url'),
   role: text('role').notNull().default('customer'),
   active: boolean('active').notNull().default(true),
-  notes: text('notes')
+  notes: text('notes'),
+  passwordHash: text('password_hash')
 }, (table) => ({
   emailIdx: index('idx_users_email').on(table.email),
   docIdx: index('idx_users_document_id').on(table.documentId)

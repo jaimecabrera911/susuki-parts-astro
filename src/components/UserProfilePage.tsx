@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { UserAvatar } from "./UserAvatar";
 import {
   User,
   ShieldCheck,
@@ -150,11 +151,12 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex items-center gap-4 sm:gap-6">
             <div className="relative">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-[#E60012] to-red-700 flex items-center justify-center text-white text-2xl sm:text-3xl font-black shadow-lg ring-4 ring-white/10">
-                {userProfile.fullName
-                  ? userProfile.fullName.charAt(0).toUpperCase()
-                  : "U"}
-              </div>
+              <UserAvatar
+                avatarUrl={userProfile.avatarUrl}
+                fullName={userProfile.fullName}
+                className="w-16 h-16 sm:w-20 sm:h-20 ring-4 ring-white/10"
+                textClassName="text-2xl sm:text-3xl font-black"
+              />
               <div
                 className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full border-2 border-slate-900"
                 title="Usuario Verificado"

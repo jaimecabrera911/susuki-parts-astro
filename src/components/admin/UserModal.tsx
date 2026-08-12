@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, User, CheckCircle2 } from "lucide-react";
+import { X, User, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import type { UserProfile } from "../../types";
 import { LocationSelector } from "../LocationSelector";
 import { fetchCities } from "../../services/api";
@@ -40,6 +40,8 @@ export const UserModal: React.FC<UserModalProps> = ({
     userToEdit?.active !== undefined ? userToEdit.active : true,
   );
   const [notes, setNotes] = useState(userToEdit?.notes || "");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [citiesList, setCitiesList] = useState<
     {
       id: string;
@@ -88,6 +90,7 @@ export const UserModal: React.FC<UserModalProps> = ({
       setRole("customer");
       setActive(true);
       setNotes("");
+      setPassword("");
     }
   }, [userToEdit]);
 
@@ -115,6 +118,9 @@ export const UserModal: React.FC<UserModalProps> = ({
     };
     (saved as any).country = country;
     (saved as any).department = department;
+    if (password.trim()) {
+      (saved as any).password = password.trim();
+    }
     onSaveUser(saved);
     onClose();
   };
@@ -281,6 +287,29 @@ export const UserModal: React.FC<UserModalProps> = ({
                 <option value="true">Activa (Permite Compras)</option>
                 <option value="false">Inactiva / Bloqueada</option>
               </select>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase mb-1">
+                {userToEdit ? "Establecer Nueva Contraseña (Opcional)" : "Contraseña de Acceso *"}
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={userToEdit ? "Dejar en blanco para mantener contraseña actual" : "Ingresa contraseña segura"}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-3 pr-10 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#E60012]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-0.5 rounded-md transition-colors"
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             <div className="md:col-span-2">

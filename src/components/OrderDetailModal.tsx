@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { UserAvatar } from "./UserAvatar";
 import {
   X,
   ShieldCheck,
@@ -153,9 +154,9 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               <span className="text-[10px] font-mono font-black uppercase text-slate-400 tracking-wider block mb-1">
                 DESTINATARIO / CLIENTE
               </span>
-              <div className="font-extrabold text-slate-900 flex items-center gap-1.5 font-display text-sm">
-                <User className="w-4 h-4 text-slate-500" />
-                {order.customerName || "Cliente no registrado"}
+              <div className="font-extrabold text-slate-900 flex items-center gap-2 font-display text-sm">
+                <UserAvatar fullName={order.customerName} className="w-6 h-6" textClassName="text-[10px]" />
+                <span>{order.customerName || "Cliente no registrado"}</span>
               </div>
               {order.phone && (
                 <div className="text-slate-600 mt-1 flex items-center gap-1.5">

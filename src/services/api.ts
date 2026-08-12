@@ -318,3 +318,26 @@ export async function fetchDefaultCarrierName(): Promise<string> {
   );
 }
 
+// --- AUTHENTICATION & USER API HELPERS ---
+
+export async function loginApi(email: string, password?: string) {
+  const res = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+  return await res.json();
+}
+
+export async function verifyTokenApi(token: string) {
+  const res = await fetch('/api/auth/me', {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  return await res.json();
+}
+
+

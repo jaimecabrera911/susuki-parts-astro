@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Search, Wrench, Sparkles, Layers, Menu, X, Package, Clock, ShieldCheck, ChevronRight, User, LogIn, LogOut, ChevronDown, Heart } from 'lucide-react';
 import { FaCartShopping } from 'react-icons/fa6';
 import type { ActiveMotorcycle } from '../types';
+import { UserAvatar } from './UserAvatar';
 import logoImg from '../assets/logo.png';
 
 const logoUrl = typeof logoImg === 'string' ? logoImg : (logoImg?.src || '/src/assets/logo.png');
@@ -225,9 +226,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }`}
                   title="Mi Cuenta Suzuki"
                 >
-                  <div className="w-6 h-6 rounded-full bg-[#E60012] text-white flex items-center justify-center text-[10px] font-black shrink-0">
-                    {userName.charAt(0)}
-                  </div>
+                  <UserAvatar fullName={userName} className="w-6.5 h-6.5" textClassName="text-[10px]" />
                   <span className="hidden sm:inline font-semibold text-xs truncate max-w-[80px]">{userName.split(' ')[0]}</span>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                 </button>

@@ -1,5 +1,8 @@
-import React from 'react';
-import { Search, Plus, RefreshCw, ShieldCheck, Wrench } from 'lucide-react';
+import React, { useState, useEffect, useRef } from "react";
+import { Search, Plus, RefreshCw, ShieldCheck, Wrench, LogOut, ChevronDown, Store, User } from "lucide-react";
+import { UserAvatar } from "../UserAvatar";
+import { getStoredUser, clearStoredSession } from "../../utils/auth";
+import type { UserProfile } from "../../types";
 
 interface AdminHeaderProps {
   title: string;
@@ -9,6 +12,7 @@ interface AdminHeaderProps {
   onPrimaryAction?: () => void;
   primaryActionLabel?: string;
   onRefresh?: () => void;
+  user?: UserProfile | null;
 }
 
 export const AdminHeader: React.FC<AdminHeaderProps> = ({
@@ -17,9 +21,42 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   searchQuery,
   onSearchChange,
   onPrimaryAction,
-  primaryActionLabel = 'Nuevo Registro',
-  onRefresh
+  primaryActionLabel = "Nuevo Registro",
+  onRefresh,
+  user: propUser,
 }) => {
+  const [sessionUser, setSessionUser] = useState<UserProfile | null>(propUser || null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!propUser) {
+      const stored = getStoredUser();
+      if (stored) {
+        setSessionUser(stored);
+      }
+    }
+  }, [propUser]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    clearStoredSession();
+    window.location.href = "/";
+  };
+
+  const activeUser = propUser || sessionUser;
+  const displayName = activeUser?.fullName || "Administrador Suzuki Parts";
+  const displayEmail = activeUser?.email || "admin@suzukiparts.com.co";
+
   return (
     <header className="bg-white border-b border-slate-200 px-8 py-5 flex items-center justify-between sticky top-0 z-20 shadow-xs">
       <div>
@@ -28,7 +65,9 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           <span>/</span>
           <span className="text-[#E60012] font-black">{title}</span>
         </div>
-        <h1 className="text-2xl font-black text-slate-900 tracking-tight font-display">{title}</h1>
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight font-display">
+          {title}
+        </h1>
         <p className="text-xs text-slate-500 font-sans mt-0.5">{subtitle}</p>
       </div>
 
@@ -45,7 +84,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           />
           {searchQuery && (
             <button
-              onClick={() => onSearchChange('')}
+              onClick={() => onSearchChange("")}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700 font-bold"
             >
               ✕
@@ -58,7 +97,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           <button
             onClick={onRefresh}
             title="Recargar datos"
-            className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 transition-colors"
+            className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -68,25 +107,70 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
         {onPrimaryAction && (
           <button
             onClick={onPrimaryAction}
-            className="px-4 py-2.5 rounded-xl bg-[#E60012] hover:bg-[#b5000b] text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-all duration-150 flex items-center gap-2 active:scale-[0.98]"
+            className="px-4 py-2.5 rounded-xl bg-[#E60012] hover:bg-[#b5000b] text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-all duration-150 flex items-center gap-2 active:scale-[0.98] cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>{primaryActionLabel}</span>
           </button>
         )}
 
-        {/* Admin Avatar Badge */}
-        <div className="flex items-center gap-3 pl-3 border-l border-slate-200">
-          <div className="w-9 h-9 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-[#E60012] font-black text-xs shadow-xs">
-            AD
-          </div>
-          <div className="hidden lg:block">
-            <p className="text-xs font-bold text-slate-900 leading-tight">Admin Taller</p>
-            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-bold uppercase font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#059669]"></span>
-              Verificado
-            </span>
-          </div>
+        {/* Admin Avatar Badge - Dropdown for Session & Logout */}
+        <div className="relative pl-3 border-l border-slate-200" ref={dropdownRef}>
+          <button
+            type="button"
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="flex items-center gap-3 p-1.5 rounded-2xl hover:bg-slate-50 transition-colors cursor-pointer border border-transparent hover:border-slate-200"
+            title="Opciones de perfil y sesión"
+          >
+            <UserAvatar
+              avatarUrl={activeUser?.avatarUrl}
+              fullName={displayName}
+              className="w-9 h-9 rounded-xl"
+              textClassName="text-xs font-black"
+            />
+            <div className="hidden lg:block text-left">
+              <p className="text-xs font-bold text-slate-900 leading-tight">
+                {displayName}
+              </p>
+              <p className="text-[10px] text-slate-400 font-mono font-medium truncate max-w-[160px]">
+                {displayEmail}
+              </p>
+            </div>
+            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {dropdownOpen && (
+            <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+              <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/70">
+                <p className="text-xs font-black text-slate-900 truncate">{displayName}</p>
+                <p className="text-[10px] text-slate-500 font-mono truncate">{displayEmail}</p>
+                <span className="inline-flex items-center gap-1 text-[9px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-red-100 text-[#E60012] border border-red-200 mt-1">
+                  Administrador
+                </span>
+              </div>
+
+              <div className="py-1">
+                <a
+                  href="/"
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center gap-2 transition-colors"
+                >
+                  <Store className="w-3.5 h-3.5 text-[#E60012]" />
+                  <span>Volver a la Tienda</span>
+                </a>
+              </div>
+
+              <div className="pt-1 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-red-600" />
+                  <span>Cerrar Sesión</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>

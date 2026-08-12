@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, ShieldCheck, Mail, Lock, User, Phone, CheckCircle2, Sparkles, LogIn, ArrowRight, Zap } from 'lucide-react';
+import { X, ShieldCheck, Mail, Lock, User, Phone, CheckCircle2, Sparkles, LogIn, ArrowRight, Zap, Eye, EyeOff } from 'lucide-react';
 import type { UserProfile } from '../types';
-import { saveUserApi } from '../services/api';
-import { fetchUsers } from '../services/api';
+import { saveUserApi, loginApi } from '../services/api';
 import { STORE_DEFAULT_LOCATION } from '../utils/config';
+import { setStoredSession } from '../utils/auth';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -19,13 +19,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   
   // Form states
-  const [loginEmail, setLoginEmail] = useState('juan.perez@mototaller.com');
-  const [loginPassword, setLoginPassword] = useState('••••••••');
+  const [loginEmail, setLoginEmail] = useState('admin@suzukiparts.com.co');
+  const [loginPassword, setLoginPassword] = useState('Admin2026!');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   
   const [registerName, setRegisterName] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPhone, setRegisterPhone] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -51,47 +53,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Lookup an existing account by email so roles (e.g. admin) come from the DB
-      let account: UserProfile | undefined;
-      const matches = await fetchUsers(loginEmail);
-      const exact = matches.find(
-        (u: any) => u.email?.toLowerCase() === loginEmail.trim().toLowerCase()
-      );
-      if (exact) account = exact;
+      const res = await loginApi(loginEmail, loginPassword);
 
-      const profile: UserProfile = account ?? {
-        id: 'USR-8849',
-        fullName: loginEmail.includes('juan') ? 'Juan Pérez' : loginEmail.split('@')[0],
-        email: loginEmail,
-        phone: '+57 310 982 7311',
-        documentId: '1.098.472.910',
-        city: STORE_DEFAULT_LOCATION.city,
-        address: 'Av. Central #450, Taller Mecánico Motos',
-        postalCode: '110111',
-        favoritePartIds: ['suzuki-gsxr-1000-air-filter', 'suzuki-gixxer-150-brake-pads'],
-        createdAt: 'Marzo 2024'
-      };
-
+      if (res.success && res.user) {
+        setStoredSession(res.user, res.token);
+        setIsSubmitting(false);
+        onLoginSuccess(res.user);
+        onClose();
+      } else {
+        setIsSubmitting(false);
+        setErrorMsg(res.error || 'Correo o contraseña incorrectos.');
+      }
+    } catch (err: any) {
+      console.error('Error procesando inicio de sesión:', err);
       setIsSubmitting(false);
-      onLoginSuccess(profile);
-      onClose();
-    } catch (err) {
-      console.error('Error validando cuenta en BD:', err);
-      setIsSubmitting(false);
-      const demoUser: UserProfile = {
-        id: 'USR-8849',
-        fullName: loginEmail.includes('juan') ? 'Juan Pérez' : loginEmail.split('@')[0],
-        email: loginEmail,
-        phone: '+57 310 982 7311',
-        documentId: '1.098.472.910',
-        city: STORE_DEFAULT_LOCATION.city,
-        address: 'Av. Central #450, Taller Mecánico Motos',
-        postalCode: '110111',
-        favoritePartIds: ['suzuki-gsxr-1000-air-filter', 'suzuki-gixxer-150-brake-pads'],
-        createdAt: 'Marzo 2024'
-      };
-      onLoginSuccess(demoUser);
-      onClose();
+      setErrorMsg('Ocurrió un error al conectar con el servidor de autenticación.');
     }
   };
 
@@ -104,49 +80,63 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setErrorMsg('');
     setIsSubmitting(true);
 
-    const newUser: UserProfile = {
-      id: 'USR-' + Math.floor(1000 + Math.random() * 9000),
+    const newUserPayload = {
+      id: 'usr-' + Date.now(),
       fullName: registerName,
-      email: registerEmail,
+      email: registerEmail.trim().toLowerCase(),
       phone: registerPhone || '+57 300 000 0000',
       documentId: 'No registrado',
       city: STORE_DEFAULT_LOCATION.city,
       address: 'Dirección por definir',
       postalCode: '110111',
-      favoritePartIds: [],
+      password: registerPassword,
+      role: 'customer',
       createdAt: new Date().toISOString()
     };
 
     try {
-      await saveUserApi(newUser);
-    } catch (err) {
+      const saveRes = await saveUserApi(newUserPayload);
+      if (saveRes.success) {
+        // Automatically login to get JWT token
+        const loginRes = await loginApi(registerEmail, registerPassword);
+        if (loginRes.success && loginRes.user) {
+          setStoredSession(loginRes.user, loginRes.token);
+          setIsSubmitting(false);
+          onLoginSuccess(loginRes.user);
+          onClose();
+          return;
+        }
+      }
+      setIsSubmitting(false);
+      setErrorMsg(saveRes.error || 'No se pudo crear la cuenta.');
+    } catch (err: any) {
       console.error('Error registrando usuario en BD:', err);
+      setIsSubmitting(false);
+      setErrorMsg('Error al comunicarse con la base de datos.');
     }
-
-    setIsSubmitting(false);
-    onLoginSuccess(newUser);
-    onClose();
   };
 
-  const handleQuickDemoLogin = () => {
+  const handleQuickDemoLogin = async () => {
     setIsSubmitting(true);
-    setTimeout(() => {
+    setErrorMsg('');
+    setLoginEmail('admin@suzukiparts.com.co');
+    setLoginPassword('Admin2026!');
+
+    try {
+      const res = await loginApi('admin@suzukiparts.com.co', 'Admin2026!');
+      if (res.success && res.user) {
+        setStoredSession(res.user, res.token);
+        setIsSubmitting(false);
+        onLoginSuccess(res.user);
+        onClose();
+      } else {
+        setIsSubmitting(false);
+        setErrorMsg('Error al acceder con la cuenta Admin Demo.');
+      }
+    } catch {
       setIsSubmitting(false);
-      const demoUser: UserProfile = {
-        id: 'USR-8849',
-        fullName: 'Juan Pérez',
-        email: 'juan.perez@mototaller.com',
-        phone: '+57 310 982 7311',
-        documentId: '1.098.472.910',
-        city: STORE_DEFAULT_LOCATION.city,
-        address: 'Av. Central #450, Taller Mecánico Motos',
-        postalCode: '110111',
-        favoritePartIds: ['suzuki-gsxr-1000-air-filter', 'suzuki-gixxer-150-brake-pads'],
-        createdAt: 'Marzo 2024'
-      };
-      onLoginSuccess(demoUser);
-      onClose();
-    }, 500);
+      setErrorMsg('Error al conectar con la API de login demo.');
+    }
   };
 
   return (
@@ -248,12 +238,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   id="login-password"
-                  type="password"
+                  type={showLoginPassword ? "text" : "password"}
                   required
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
+                  className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowLoginPassword(!showLoginPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-0.5 rounded-md transition-colors"
+                  aria-label={showLoginPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
@@ -361,12 +359,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   id="reg-pass"
-                  type="password"
+                  type={showRegisterPassword ? "text" : "password"}
                   required
                   value={registerPassword}
                   onChange={(e) => setRegisterPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
+                  className="w-full pl-10 pr-10 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-0.5 rounded-md transition-colors"
+                  aria-label={showRegisterPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {showRegisterPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 

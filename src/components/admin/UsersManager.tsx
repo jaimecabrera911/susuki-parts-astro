@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Users, Search, UserCheck, Shield, Plus, Edit, Trash2, Mail, Phone, MapPin, CheckCircle2, XCircle } from 'lucide-react';
 import type { UserProfile } from '../../types';
+import { UserAvatar } from '../UserAvatar';
 
 interface UsersManagerProps {
   users: UserProfile[];
@@ -173,13 +174,12 @@ export const UsersManager: React.FC<UsersManagerProps> = ({
                   {/* User Name & Avatar */}
                   <td className="py-4 px-5">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 overflow-hidden shrink-0">
-                        {usr.avatarUrl ? (
-                          <img src={usr.avatarUrl} alt={usr.fullName} className="w-full h-full object-cover" />
-                        ) : (
-                          <Users className="w-5 h-5 text-slate-400 m-auto" />
-                        )}
-                      </div>
+                      <UserAvatar
+                        avatarUrl={usr.avatarUrl}
+                        fullName={usr.fullName}
+                        className="w-10 h-10"
+                        textClassName="text-xs font-black"
+                      />
                       <div>
                         <p className="font-extrabold text-slate-900 group-hover:text-[#E60012] transition-colors font-display text-xs">
                           {usr.fullName}

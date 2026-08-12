@@ -180,17 +180,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                   />
                   <span className="tracking-wide font-sans">{item.label}</span>
                 </div>
-                {item.count !== undefined && (
-                  <span
-                    className={`text-[11px] px-2 py-0.5 rounded-md font-mono font-bold border ${
-                      isActive
-                        ? 'bg-[#E60012] text-white border-[#E60012]'
-                        : item.badgeColor || 'bg-slate-100 text-slate-600 border-slate-200'
-                    }`}
-                  >
-                    {item.count}
-                  </span>
-                )}
               </a>
             );
           })}
