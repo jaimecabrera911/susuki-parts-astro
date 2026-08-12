@@ -27,6 +27,8 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({
   const [refundAmount, setRefundAmount] = useState<number>(returnItem.refundAmount || 0);
   const [refundMethod, setRefundMethod] = useState(returnItem.refundMethod || 'Transferencia bancaria');
   const [refundReference, setRefundReference] = useState(returnItem.refundReference || '');
+  const [replacementPartId, setReplacementPartId] = useState<string>(returnItem.replacementPartId || '');
+  const [storeCreditCode, setStoreCreditCode] = useState<string>(returnItem.storeCreditCode || '');
   const [returnCarrier, setReturnCarrier] = useState(returnItem.returnCarrier || 'Servientrega');
   const [returnTrackingNumber, setReturnTrackingNumber] = useState(returnItem.returnTrackingNumber || '');
 
@@ -43,6 +45,8 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({
       setRefundAmount(returnItem.refundAmount || 0);
       setRefundMethod(returnItem.refundMethod || 'Transferencia bancaria');
       setRefundReference(returnItem.refundReference || '');
+      setReplacementPartId(returnItem.replacementPartId || '');
+      setStoreCreditCode(returnItem.storeCreditCode || `BONO-SZ-${Math.floor(100000 + Math.random() * 900000)}`);
       setReturnCarrier(returnItem.returnCarrier || 'Servientrega');
       setReturnTrackingNumber(returnItem.returnTrackingNumber || '');
 
@@ -82,9 +86,11 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({
       status,
       resolutionType,
       restockInventory,
-      refundAmount: Number(refundAmount),
-      refundMethod,
-      refundReference: refundReference.trim(),
+      refundAmount: resolutionType === 'refund' || resolutionType === 'store_credit' ? Number(refundAmount) : 0,
+      refundMethod: resolutionType === 'refund' ? refundMethod : null,
+      refundReference: resolutionType === 'refund' ? refundReference.trim() : null,
+      replacementPartId: resolutionType === 'exchange' ? replacementPartId.trim() : null,
+      storeCreditCode: resolutionType === 'store_credit' ? storeCreditCode.trim() : null,
       returnCarrier: returnCarrier.trim(),
       returnTrackingNumber: returnTrackingNumber.trim(),
       notes: JSON.stringify(chatMessages),
@@ -254,6 +260,7 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({
                 <option value="refund">Reembolso de Dinero</option>
                 <option value="exchange">Cambio por otro Repuesto / Garantía</option>
                 <option value="store_credit">Bono de Compra en Tienda</option>
+                <option value="cancellation">Anulación de Pedido ($0 COP)</option>
               </select>
             </div>
 
@@ -276,82 +283,162 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({
               </select>
             </div>
 
-            {/* Refund Amount */}
-            <div>
-              <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                Monto del Reembolso ($ COP) *
-              </label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="number"
-                  min="0"
-                  value={refundAmount}
-                  onChange={(e) => setRefundAmount(Number(e.target.value))}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
-                />
-              </div>
-            </div>
+            {/* Campos condicionales para REEMBOLSO DE DINERO */}
+            {resolutionType === 'refund' && !isUnpaidOrder && (
+              <>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                    Monto del Reembolso ($ COP) *
+                  </label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="number"
+                      min="0"
+                      value={refundAmount}
+                      onChange={(e) => setRefundAmount(Number(e.target.value))}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
+                    />
+                  </div>
+                </div>
 
-            {/* Refund Method */}
-            <div>
-              <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                Método de Reembolso
-              </label>
-              <select
-                value={refundMethod}
-                onChange={(e) => setRefundMethod(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
-              >
-                <option value="Transferencia bancaria">Transferencia bancaria</option>
-                <option value="Nequi">Nequi</option>
-                <option value="Daviplata">Daviplata</option>
-                <option value="Tarjeta de crédito">Reembolso a Tarjeta de Crédito</option>
-                <option value="Bono de tienda">Bono de compra en tienda</option>
-              </select>
-            </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                    Método de Reembolso
+                  </label>
+                  <select
+                    value={refundMethod}
+                    onChange={(e) => setRefundMethod(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
+                  >
+                    <option value="Transferencia bancaria">Transferencia bancaria</option>
+                    <option value="Nequi">Nequi</option>
+                    <option value="Daviplata">Daviplata</option>
+                    <option value="Tarjeta de crédito">Reembolso a Tarjeta de Crédito</option>
+                  </select>
+                </div>
 
-            {/* Refund Reference */}
-            <div>
-              <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                Comprobante / Nro Transacción
-              </label>
-              <input
-                type="text"
-                value={refundReference}
-                onChange={(e) => setRefundReference(e.target.value)}
-                placeholder="Ej. TRX-9921401 / Nequi Ref"
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-mono font-medium text-slate-900 focus:outline-none focus:border-[#E60012]"
-              />
-            </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                    Comprobante / Nro Transacción Bancaria
+                  </label>
+                  <input
+                    type="text"
+                    value={refundReference}
+                    onChange={(e) => setRefundReference(e.target.value)}
+                    placeholder="Ej. TRX-9921401 / Nequi M-91240"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-mono font-medium text-slate-900 focus:outline-none focus:border-[#E60012]"
+                  />
+                </div>
+              </>
+            )}
 
-            {/* Return Carrier */}
-            <div>
-              <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                Transportadora de Retorno
-              </label>
-              <input
-                type="text"
-                value={returnCarrier}
-                onChange={(e) => setReturnCarrier(e.target.value)}
-                placeholder="Ej. Servientrega, Interrapidísimo"
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#E60012]"
-              />
-            </div>
+            {/* Campos condicionales para CAMBIO DE REPUESTO / GARANTÍA */}
+            {resolutionType === 'exchange' && (
+              <>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                    SKU / ID del Repuesto de Reemplazo
+                  </label>
+                  <input
+                    type="text"
+                    value={replacementPartId}
+                    onChange={(e) => setReplacementPartId(e.target.value)}
+                    placeholder="Ej. SZ-PART-1029 / SKU 59100-33820-000"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                    Transportadora de Envío (Nuevo Repuesto)
+                  </label>
+                  <input
+                    type="text"
+                    value={returnCarrier}
+                    onChange={(e) => setReturnCarrier(e.target.value)}
+                    placeholder="Ej. Servientrega, Interrapidísimo"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#E60012]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                    Guía de Despacho (Nuevo Repuesto)
+                  </label>
+                  <input
+                    type="text"
+                    value={returnTrackingNumber}
+                    onChange={(e) => setReturnTrackingNumber(e.target.value)}
+                    placeholder="Ej. 9948210391"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-mono font-medium text-slate-900 focus:outline-none focus:border-[#E60012]"
+                  />
+                </div>
+              </>
+            )}
 
-            {/* Return Tracking Number */}
-            <div>
-              <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                Guía de Devolución
-              </label>
-              <input
-                type="text"
-                value={returnTrackingNumber}
-                onChange={(e) => setReturnTrackingNumber(e.target.value)}
-                placeholder="Ej. 9948210391"
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-mono font-medium text-slate-900 focus:outline-none focus:border-[#E60012]"
-              />
-            </div>
+            {/* Campos condicionales para BONO DE TIENDA */}
+            {resolutionType === 'store_credit' && (
+              <>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                    Valor del Bono de Tienda ($ COP)
+                  </label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="number"
+                      min="0"
+                      value={refundAmount}
+                      onChange={(e) => setRefundAmount(Number(e.target.value))}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                    Código de Bono / Saldo a Favor
+                  </label>
+                  <input
+                    type="text"
+                    value={storeCreditCode}
+                    onChange={(e) => setStoreCreditCode(e.target.value)}
+                    placeholder="Ej. BONO-SZ-981240"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-emerald-700 focus:outline-none focus:border-[#E60012]"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Campos comunes de guía de devolución de retorno si aplica */}
+            {resolutionType !== 'exchange' && resolutionType !== 'cancellation' && !isUnpaidOrder && (
+              <>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                    Transportadora de Retorno
+                  </label>
+                  <input
+                    type="text"
+                    value={returnCarrier}
+                    onChange={(e) => setReturnCarrier(e.target.value)}
+                    placeholder="Ej. Servientrega"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#E60012]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                    Guía de Devolución
+                  </label>
+                  <input
+                    type="text"
+                    value={returnTrackingNumber}
+                    onChange={(e) => setReturnTrackingNumber(e.target.value)}
+                    placeholder="Ej. 9948210391"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-mono font-medium text-slate-900 focus:outline-none focus:border-[#E60012]"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {/* Switch para Restauración de Inventario */}
