@@ -50,6 +50,18 @@ export const POST: APIRoute = async ({ request }) => {
       throw new Error('Faltan datos obligatorios para registrar la devolución (orderId, customerName, email, reason)');
     }
 
+    // Check if order exists and validate return window if orderDate is passed
+    if (body.orderDate) {
+      const orderTime = new Date(body.orderDate).getTime();
+      if (!isNaN(orderTime)) {
+        const daysDiff = (Date.now() - orderTime) / (1000 * 60 * 60 * 24);
+        const maxDays = Number(body.maxDaysAllowed || 30);
+        if (daysDiff > maxDays) {
+          throw new Error(`El período máximo para solicitar una devolución (${maxDays} días) ha expirado para este pedido.`);
+        }
+      }
+    }
+
     const data = await upsertOrderReturn(db, body);
 
     return new Response(JSON.stringify({ success: true, data }), {

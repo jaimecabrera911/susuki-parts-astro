@@ -20,6 +20,9 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({
   if (!isOpen || !returnItem) return null;
 
   const [status, setStatus] = useState(returnItem.status || 'Pendiente');
+  const [qcStatus, setQcStatus] = useState<'pending' | 'passed' | 'failed'>(returnItem.qcStatus || 'pending');
+  const [qcNotes, setQcNotes] = useState<string>(returnItem.qcNotes || '');
+  const [bonusAmount, setBonusAmount] = useState<number>(returnItem.bonusAmount || 0);
   const [resolutionType, setResolutionType] = useState<string>(returnItem.resolutionType || 'refund');
   const [restockInventory, setRestockInventory] = useState<boolean>(
     returnItem.restockInventory !== undefined ? Boolean(returnItem.restockInventory) : false
@@ -40,6 +43,9 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({
   useEffect(() => {
     if (returnItem) {
       setStatus(returnItem.status || 'Pendiente');
+      setQcStatus(returnItem.qcStatus || 'pending');
+      setQcNotes(returnItem.qcNotes || '');
+      setBonusAmount(returnItem.bonusAmount || 0);
       setResolutionType(returnItem.resolutionType || 'refund');
       setRestockInventory(Boolean(returnItem.restockInventory));
       setRefundAmount(returnItem.refundAmount || 0);
@@ -84,6 +90,9 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({
     const updated = {
       ...returnItem,
       status,
+      qcStatus,
+      qcNotes,
+      bonusAmount,
       resolutionType,
       restockInventory,
       refundAmount: resolutionType === 'refund' || resolutionType === 'store_credit' ? Number(refundAmount) : 0,

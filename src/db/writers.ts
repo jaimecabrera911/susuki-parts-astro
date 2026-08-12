@@ -630,6 +630,15 @@ export async function upsertOrderReturn(db: AppDb, body: any) {
   const id = body.id || `SZ-RET-${Math.floor(100000 + Math.random() * 900000)}`;
   const date = body.createdAt ? new Date(body.createdAt) : new Date();
 
+  // Auto generate Store Credit Code if resolution is store_credit and none exists
+  let storeCreditCode = body.storeCreditCode || null;
+  const bonusAmount = Number(body.bonusAmount || 0);
+  const refundAmount = Number(body.refundAmount || 0);
+
+  if (body.resolutionType === 'store_credit' && !storeCreditCode && (body.status === 'Aprobada' || body.status === 'Reembolsada' || body.status === 'Pieza recibida')) {
+    storeCreditCode = `SZ-CREDIT-${Math.floor(100000 + Math.random() * 900000)}`;
+  }
+
   const data: any = {
     id,
     orderId: body.orderId,
@@ -642,14 +651,19 @@ export async function upsertOrderReturn(db: AppDb, body: any) {
     isPreDispatchCancel: Boolean(body.isPreDispatchCancel),
     isUnpaidCancel: Boolean(body.isUnpaidCancel),
     replacementPartId: body.replacementPartId || null,
-    storeCreditCode: body.storeCreditCode || null,
+    storeCreditCode,
+    bonusAmount,
     status: (Boolean(body.isUnpaidCancel) || Boolean(body.isPreDispatchCancel) || body.resolutionType === 'cancellation') ? 'Aprobada' : (body.status || 'Pendiente'),
-    refundAmount: Number(body.refundAmount || 0),
+    qcStatus: body.qcStatus || 'pending',
+    qcNotes: body.qcNotes || '',
+    refundAmount,
     refundMethod: body.refundMethod || null,
     refundReference: body.refundReference || null,
     returnCarrier: body.returnCarrier || null,
     returnTrackingNumber: body.returnTrackingNumber || null,
     restockInventory: Boolean(body.restockInventory),
+    evidencePhotos: Array.isArray(body.evidencePhotos) ? body.evidencePhotos : (typeof body.evidencePhotos === 'string' ? parseJson(body.evidencePhotos, []) : []),
+    itemDetailsJson: Array.isArray(body.itemDetailsJson) ? body.itemDetailsJson : (typeof body.itemDetailsJson === 'string' ? parseJson(body.itemDetailsJson, []) : []),
     itemsJson: Array.isArray(body.itemsJson) ? body.itemsJson : (typeof body.itemsJson === 'string' ? parseJson(body.itemsJson, []) : []),
     notes: body.notes || '',
     createdAt: date,
@@ -661,18 +675,20 @@ export async function upsertOrderReturn(db: AppDb, body: any) {
 
     // Automatically mark the order as Cancelado in DB if it's an unpaid cancellation or pre-dispatch cancel
     if (data.isUnpaidCancel || data.isPreDispatchCancel || data.resolutionType === 'cancellation') {
-      await tx.update(orders).set({ status: 'Cancelado', updatedAt: new Date() }).where(eq(orders.id, data.orderId));
+      await tx.update(orders).set({ status: 'Cancelado' }).where(eq(orders.id, data.orderId));
     }
 
-    // Handle inventory restocking if switch is enabled
-    if (data.restockInventory && (data.status === 'Reembolsada' || data.status === 'Pieza recibida' || data.status === 'Aprobada')) {
-      const items = data.itemsJson || [];
+    // Handle inventory restocking if switch is enabled and QC passed or status approved
+    if (data.restockInventory && (data.qcStatus === 'passed' || data.status === 'Reembolsada' || data.status === 'Pieza recibida')) {
+      const items = (data.itemDetailsJson && data.itemDetailsJson.length > 0) ? data.itemDetailsJson : (data.itemsJson || []);
       for (const item of items) {
-        if (item.partId && item.quantity) {
-          const existingPart = await tx.select().from(parts).where(eq(parts.id, item.partId));
+        const partId = item.partId || item.id;
+        const qty = Number(item.quantity || 1);
+        if (partId) {
+          const existingPart = await tx.select().from(parts).where(eq(parts.id, partId));
           if (existingPart.length > 0) {
             const currentStock = existingPart[0].stock ?? 0;
-            await tx.update(parts).set({ stock: currentStock + Number(item.quantity) }).where(eq(parts.id, item.partId));
+            await tx.update(parts).set({ stock: currentStock + qty }).where(eq(parts.id, partId));
           }
         }
       }

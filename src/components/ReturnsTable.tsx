@@ -11,7 +11,8 @@ import {
   Filter,
   DollarSign,
   FileText,
-  Package
+  Package,
+  X
 } from "lucide-react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatOrderDate } from "../utils/formatDate";
@@ -22,6 +23,8 @@ interface ReturnsTableProps {
   orders?: any[];
 }
 
+import { ReturnStatusTimeline } from "./ReturnStatusTimeline";
+
 export const ReturnsTable: React.FC<ReturnsTableProps> = ({ returnsList, orders = [] }) => {
   const allReturns = returnsList || [];
 
@@ -31,6 +34,9 @@ export const ReturnsTable: React.FC<ReturnsTableProps> = ({ returnsList, orders 
 
   // Selected Order Modal for detailed tracking
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  
+  // Selected Return for Timeline view
+  const [selectedReturn, setSelectedReturn] = useState<any | null>(null);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -280,12 +286,12 @@ export const ReturnsTable: React.FC<ReturnsTableProps> = ({ returnsList, orders 
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleOpenDetail(ret.orderId);
+                              setSelectedReturn(ret);
                             }}
-                            className="p-2 bg-[#0A3088] hover:bg-[#3d59b1] text-white rounded-xl transition-all cursor-pointer shadow-xs"
-                            title="Ver Pedido Original"
+                            className="px-3 py-1.5 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-xl transition-all cursor-pointer shadow-xs text-xs flex items-center gap-1.5"
+                            title="Trazabilidad & Timeline RMA"
                           >
-                            <FileText className="w-4 h-4" />
+                            <Eye className="w-3.5 h-3.5" /> Timeline RMA
                           </button>
 
                           <button
@@ -294,10 +300,10 @@ export const ReturnsTable: React.FC<ReturnsTableProps> = ({ returnsList, orders 
                               e.stopPropagation();
                               handleOpenDetail(ret.orderId);
                             }}
-                            className="p-2 bg-slate-100 hover:bg-[#E60012] hover:text-white text-slate-700 rounded-xl transition-all cursor-pointer shadow-2xs"
-                            title="Ver Detalle & Chat de Devolución"
+                            className="p-2 bg-slate-100 hover:bg-[#0A3088] hover:text-white text-slate-700 rounded-xl transition-all cursor-pointer shadow-2xs"
+                            title="Ver Pedido Original"
                           >
-                            <Eye className="w-4 h-4" />
+                            <FileText className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
@@ -354,6 +360,21 @@ export const ReturnsTable: React.FC<ReturnsTableProps> = ({ returnsList, orders 
           </div>
         )}
       </div>
+
+      {/* Timeline Modal */}
+      {selectedReturn && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto">
+          <div className="relative w-full max-w-xl my-8">
+            <button
+              onClick={() => setSelectedReturn(null)}
+              className="absolute -top-3 -right-3 z-10 p-2 bg-white text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-full shadow-lg border border-slate-200 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <ReturnStatusTimeline orderReturn={selectedReturn} />
+          </div>
+        </div>
+      )}
 
       {/* Selected Order Modal */}
       {selectedOrder && (

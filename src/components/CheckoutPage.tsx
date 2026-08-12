@@ -54,7 +54,7 @@ import {
   fetchDefaultCarrierName,
 } from "../services/api";
 
-import { DEFAULT_TAX_CONFIG, INITIAL_COUPONS } from "../data/taxCouponsData";
+import { DEFAULT_TAX_CONFIG } from "../data/taxCouponsData";
 import { calculateCartTotals } from "../utils/taxCalculator";
 
 export function getShippingMethodCost(
@@ -306,15 +306,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     return DEFAULT_TAX_CONFIG;
   });
 
-  const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>(() => {
-    const saved = localStorage.getItem("sz_coupons");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {}
-    }
-    return INITIAL_COUPONS;
-  });
+  const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
 
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);

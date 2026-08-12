@@ -20,7 +20,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     const cleanEmail = email.trim().toLowerCase();
     const userMatches = await db.select().from(users).where(eq(users.email, cleanEmail));
-    let user = userMatches[0];
+    let user: any = userMatches[0];
 
     // Case-insensitive fallback if exact lowercase match fails
     if (!user) {

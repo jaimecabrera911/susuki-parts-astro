@@ -923,7 +923,7 @@ export const AdminDashboard: React.FC = () => {
                 if (found) {
                   setOrderToEdit(found);
                 } else {
-                  setOrderToEdit({ id: orderId, customerName: 'Cliente', items: [], totalPrice: 0, status: 'Entregado' });
+                  setOrderToEdit({ id: orderId, date: new Date().toISOString(), customerName: 'Cliente', email: '', phone: '', documentId: '', city: '', shippingAddress: '', postalCode: '', items: [], totalPrice: 0, guaranteeCode: '', paymentMethod: 'transferencia', status: 'Entregado' } as any);
                 }
                 setIsOrderModalOpen(true);
               }}

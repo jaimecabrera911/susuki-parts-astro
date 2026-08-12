@@ -400,6 +400,11 @@ export const orderReturns = pgTable('order_returns', {
   returnCarrier: text('return_carrier'),
   returnTrackingNumber: text('return_tracking_number'),
   restockInventory: boolean('restock_inventory').notNull().default(false),
+  qcStatus: text('qc_status').notNull().default('pending'), // 'pending' | 'passed' | 'failed'
+  qcNotes: text('qc_notes'),
+  bonusAmount: doublePrecision('bonus_amount').default(0),
+  evidencePhotos: jsonb('evidence_photos').notNull().default([]),
+  itemDetailsJson: jsonb('item_details_json').notNull().default([]),
   itemsJson: jsonb('items_json').notNull().default([]),
   notes: text('notes'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -420,3 +425,20 @@ export const siteSettings = pgTable('site_settings', {
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 });
 
+// 16. Coupons / Discount Codes Table
+export const coupons = pgTable('coupons', {
+  id: text('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  type: text('type').notNull().default('percentage'), // 'percentage' | 'fixed'
+  value: doublePrecision('value').notNull().default(0),
+  minPurchase: doublePrecision('min_purchase').notNull().default(0),
+  maxUses: integer('max_uses'),           // null = unlimited
+  usedCount: integer('used_count').notNull().default(0),
+  expiresAt: timestamp('expires_at'),     // null = no expiry
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  codeIdx: uniqueIndex('idx_coupons_code').on(table.code),
+  activeIdx: index('idx_coupons_active').on(table.active)
+}));

@@ -370,5 +370,21 @@ export async function deleteReturnApi(id: string) {
   return await res.json();
 }
 
+export async function sendOrderMessageApi(orderId: string, text: string, sender: 'customer' | 'admin' = 'customer', senderName?: string, isPrivate = false) {
+  const res = await fetch('/api/orders/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      orderId,
+      text,
+      sender,
+      senderName,
+      isPrivate
+    })
+  });
+  return await res.json();
+}
+
+
 
 

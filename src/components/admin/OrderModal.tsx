@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, ShoppingCart, User, MapPin, Truck, ShieldCheck, CheckCircle2, Clock, Package, AlertCircle, FileText, ExternalLink } from 'lucide-react';
-import type { Order, OrderStatus } from '../../types';
+import { X, ShoppingCart, User, MapPin, Truck, ShieldCheck, CheckCircle2, Clock, Package, AlertCircle, FileText, ExternalLink, Lock, Globe, Send, MessageSquare } from 'lucide-react';
+import type { Order, OrderStatus, OrderMessage } from '../../types';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { fetchDefaultCarrierName } from '../../services/api';
+import { fetchDefaultCarrierName, sendOrderMessageApi } from '../../services/api';
+import { parseOrderNotes, formatOrderMessageTime } from '../../utils/orderNotes';
+import { getStoredUser } from '../../utils/auth';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -44,6 +46,41 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [trackingNumber, setTrackingNumber] = useState<string>(order.trackingNumber || '');
   const [notes, setNotes] = useState<string>(order.notes || '');
 
+  // Admin Order Chat & Private Notes State
+  const [orderMessages, setOrderMessages] = useState<OrderMessage[]>([]);
+  const [adminMsgText, setAdminMsgText] = useState<string>('');
+  const [isPrivateToggle, setIsPrivateToggle] = useState<boolean>(false);
+  const [isSubmittingAdminMsg, setIsSubmittingAdminMsg] = useState<boolean>(false);
+
+  const handleSendAdminMsg = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = adminMsgText.trim();
+    if (!trimmed || !order?.id || isSubmittingAdminMsg) return;
+
+    setIsSubmittingAdminMsg(true);
+    try {
+      // Always identify admin sender independently from customer session
+      // to avoid naming confusion when both sessions share localStorage.
+      const currentUser = getStoredUser();
+      const isCurrentUserAdmin = currentUser?.role === 'admin';
+      const adminName = isCurrentUserAdmin
+        ? (currentUser?.fullName || 'Soporte Suzuki')
+        : 'Soporte Suzuki (Admin)';
+
+      const res = await sendOrderMessageApi(order.id, trimmed, 'admin', adminName, isPrivateToggle);
+      if (res.success && Array.isArray(res.data)) {
+        setOrderMessages(res.data);
+        setAdminMsgText('');
+      } else if (!res.success) {
+        console.error('Error del servidor al enviar mensaje admin:', res.error);
+      }
+    } catch (err) {
+      console.error('Error enviando mensaje administrativo:', err);
+    } finally {
+      setIsSubmittingAdminMsg(false);
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
     fetch('/api/order-statuses')
@@ -72,6 +109,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       setShippingCarrier(order.shippingCarrier || '');
       setTrackingNumber(order.trackingNumber || '');
       setNotes(order.notes || '');
+      // Initialize chat messages from order notes on every order change
+      setOrderMessages(parseOrderNotes(order.notes, order.customerName));
     }
   }, [order]);
 
@@ -315,6 +354,114 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   placeholder="Añade notas sobre el empaque, guía de envío o soporte de pago..."
                   className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#E60012] resize-none"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Admin Order Chat & Internal Notes Panel */}
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-900 uppercase font-mono flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-[#0A3088]" />
+                <span>Historial de Conversación & Notas Internas de Bodega</span>
+              </span>
+              <span className="text-[10px] text-slate-500 font-mono font-bold">
+                {orderMessages.length} registros
+              </span>
+            </div>
+
+            <div className="space-y-2 max-h-52 overflow-y-auto pr-1 bg-white p-3 rounded-xl border border-slate-200">
+              {orderMessages.length === 0 ? (
+                <p className="text-slate-400 text-center py-3 font-mono text-[11px]">
+                  Sin mensajes ni notas registradas en este pedido.
+                </p>
+              ) : (
+                orderMessages.map((msg, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex flex-col ${msg.sender === 'admin' ? 'items-start' : 'items-end'}`}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1 text-[10px] font-mono text-slate-500">
+                      <span
+                        className={`font-bold px-1.5 py-0.5 rounded text-[9px] uppercase flex items-center gap-1 ${
+                          msg.isPrivate
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : msg.sender === 'admin'
+                            ? 'bg-sky-100 text-[#0A3088] border border-sky-200'
+                            : 'bg-slate-200 text-slate-800'
+                        }`}
+                      >
+                        {msg.isPrivate ? <Lock className="w-2.5 h-2.5" /> : <Globe className="w-2.5 h-2.5" />}
+                        {msg.isPrivate ? 'Nota Interna Bodega' : (msg.senderName || (msg.sender === 'admin' ? 'Soporte' : 'Cliente'))}
+                      </span>
+                      {msg.timestamp && (
+                        <>
+                          <span>•</span>
+                          <span className="text-[10px] text-slate-400 font-medium">{formatOrderMessageTime(msg.timestamp)}</span>
+                        </>
+                      )}
+                    </div>
+                    <div
+                      className={`p-2.5 rounded-2xl text-xs font-sans leading-relaxed shadow-2xs max-w-[85%] ${
+                        msg.isPrivate
+                          ? 'bg-amber-50 text-amber-950 border border-amber-200 rounded-tl-none font-medium'
+                          : msg.sender === 'admin'
+                          ? 'bg-[#0A3088] text-white rounded-tl-none'
+                          : 'bg-slate-100 text-slate-900 border border-slate-200 rounded-tr-none'
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Admin Message Input & Privacy Toggle Form */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[11px] font-mono font-bold text-slate-600">Tipo de mensaje a registrar:</span>
+                <div className="flex items-center gap-1 bg-slate-200/80 p-0.5 rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => setIsPrivateToggle(false)}
+                    className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase transition-colors flex items-center gap-1 ${
+                      !isPrivateToggle ? 'bg-[#0A3088] text-white' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Globe className="w-3 h-3" /> Público (Verá el Cliente)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsPrivateToggle(true)}
+                    className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase transition-colors flex items-center gap-1 ${
+                      isPrivateToggle ? 'bg-amber-500 text-slate-950' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Lock className="w-3 h-3" /> Nota Privada (Solo Bodega)
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={adminMsgText}
+                  onChange={(e) => setAdminMsgText(e.target.value)}
+                  placeholder={isPrivateToggle ? "Escribe una nota interna para el equipo de bodega..." : "Escribe una respuesta para el cliente..."}
+                  className="flex-1 bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-sans text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#E60012] focus:ring-2 focus:ring-[#E60012]/20"
+                />
+                <button
+                  type="button"
+                  onClick={handleSendAdminMsg}
+                  disabled={!adminMsgText.trim() || isSubmittingAdminMsg}
+                  className={`px-4 py-2 disabled:opacity-50 text-xs font-bold uppercase rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs ${
+                    isPrivateToggle ? 'bg-amber-500 hover:bg-amber-400 text-slate-950' : 'bg-[#E60012] hover:bg-red-700 text-white'
+                  }`}
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{isPrivateToggle ? 'Guardar Nota' : 'Enviar Respuesta'}</span>
+                </button>
               </div>
             </div>
           </div>

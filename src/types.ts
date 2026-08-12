@@ -273,4 +273,55 @@ export interface Order {
   notes?: string;
 }
 
+export interface OrderReturnItem {
+  partId: string;
+  name: string;
+  sku?: string;
+  oemNumber?: string;
+  price: number;
+  quantity: number;
+  reason?: string;
+  imageUrl?: string;
+}
+
+export interface OrderReturn {
+  id: string;
+  orderId: string;
+  customerName: string;
+  email: string;
+  phone: string;
+  documentId?: string;
+  reason: string;
+  resolutionType: 'refund' | 'exchange' | 'store_credit';
+  isPreDispatchCancel?: boolean;
+  isUnpaidCancel?: boolean;
+  replacementPartId?: string;
+  storeCreditCode?: string;
+  bonusAmount?: number;
+  status: string;
+  qcStatus?: 'pending' | 'passed' | 'failed';
+  qcNotes?: string;
+  refundAmount?: number;
+  refundMethod?: string;
+  refundReference?: string;
+  returnCarrier?: string;
+  returnTrackingNumber?: string;
+  restockInventory?: boolean;
+  evidencePhotos?: string[];
+  itemDetailsJson?: OrderReturnItem[];
+  itemsJson?: any[];
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface OrderMessage {
+  id: string;
+  sender: 'customer' | 'admin';
+  senderName: string;
+  text: string;
+  isPrivate?: boolean; // If true, visible only to admins (notas internas de bodega)
+  timestamp: string;
+}
+
 

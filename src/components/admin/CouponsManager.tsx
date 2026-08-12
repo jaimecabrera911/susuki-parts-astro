@@ -1,19 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Tag, Plus, Edit2, Trash2, CheckCircle2, XCircle, Search, ToggleLeft, ToggleRight, DollarSign, Percent } from 'lucide-react';
 import type { Coupon } from '../../types';
-import { INITIAL_COUPONS } from '../../data/taxCouponsData';
 import { formatCurrency } from '../../utils/formatCurrency';
 
 export const CouponsManager: React.FC = () => {
-  const [coupons, setCoupons] = useState<Coupon[]>(() => {
-    const saved = localStorage.getItem('sz_coupons');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {}
-    }
-    return INITIAL_COUPONS;
-  });
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,32 +19,37 @@ export const CouponsManager: React.FC = () => {
     active: true,
   });
 
+  // Load coupons from Neon DB via API
   useEffect(() => {
     async function loadCoupons() {
+      setIsLoading(true);
       try {
         const res = await fetch('/api/coupons').then(r => r.json()).catch(() => null);
         if (res?.success && Array.isArray(res.data)) {
           setCoupons(res.data);
-          localStorage.setItem('sz_coupons', JSON.stringify(res.data));
         }
       } catch (e) {
         console.error('Error cargando cupones:', e);
+      } finally {
+        setIsLoading(false);
       }
     }
     loadCoupons();
   }, []);
 
-  const saveToStorageAndApi = async (updated: Coupon[]) => {
-    setCoupons(updated);
-    localStorage.setItem('sz_coupons', JSON.stringify(updated));
+  /** Upsert a single coupon via API and refresh state from server response */
+  const upsertCoupon = async (coupon: Coupon) => {
     try {
-      await fetch('/api/coupons', {
+      const res = await fetch('/api/coupons', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated),
-      });
+        body: JSON.stringify(coupon),
+      }).then(r => r.json());
+      if (res?.success && Array.isArray(res.data)) {
+        setCoupons(res.data);
+      }
     } catch (e) {
-      console.error('Error guardando cupones en API:', e);
+      console.error('Error guardando cupón en API:', e);
     }
   };
 
@@ -83,34 +80,42 @@ export const CouponsManager: React.FC = () => {
     e.preventDefault();
     const cleanCode = formData.code.trim().toUpperCase();
 
-    if (editingCoupon) {
-      const updated = coupons.map(c => c.id === editingCoupon.id ? { ...editingCoupon, ...formData, code: cleanCode } : c);
-      await saveToStorageAndApi(updated);
-    } else {
-      const newCoupon: Coupon = {
-        id: `coup-${Date.now()}`,
-        code: cleanCode,
-        type: formData.type,
-        value: formData.value,
-        minPurchase: formData.minPurchase,
-        active: formData.active,
-        createdAt: new Date().toISOString(),
-      };
-      await saveToStorageAndApi([newCoupon, ...coupons]);
-    }
+    const coupon: Coupon = editingCoupon
+      ? { ...editingCoupon, ...formData, code: cleanCode }
+      : {
+          id: `coup-${Date.now()}`,
+          code: cleanCode,
+          type: formData.type,
+          value: formData.value,
+          minPurchase: formData.minPurchase,
+          active: formData.active,
+          createdAt: new Date().toISOString(),
+        };
 
+    await upsertCoupon(coupon);
     setIsModalOpen(false);
   };
 
   const handleToggleActive = async (id: string) => {
-    const updated = coupons.map(c => c.id === id ? { ...c, active: !c.active } : c);
-    await saveToStorageAndApi(updated);
+    const coupon = coupons.find(c => c.id === id);
+    if (!coupon) return;
+    await upsertCoupon({ ...coupon, active: !coupon.active });
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('¿Estás seguro de eliminar este cupón de descuento?')) return;
-    const updated = coupons.filter(c => c.id !== id);
-    await saveToStorageAndApi(updated);
+    try {
+      const res = await fetch('/api/coupons', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      }).then(r => r.json());
+      if (res?.success && Array.isArray(res.data)) {
+        setCoupons(res.data);
+      }
+    } catch (e) {
+      console.error('Error eliminando cupón:', e);
+    }
   };
 
   const filteredCoupons = coupons.filter(c => c.code.toLowerCase().includes(searchQuery.toLowerCase().trim()));
@@ -170,7 +175,16 @@ export const CouponsManager: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredCoupons.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-10 text-center text-slate-400 font-medium">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-slate-300 border-t-[#E60012] rounded-full animate-spin" />
+                      <span>Cargando cupones desde la base de datos...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredCoupons.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-10 text-center text-slate-400 font-medium">
                     No hay cupones de descuento registrados.
