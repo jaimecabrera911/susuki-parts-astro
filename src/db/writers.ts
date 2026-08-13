@@ -226,6 +226,7 @@ export async function upsertOrder(db: AppDb, body: any) {
     paymentReference: body.paymentReference || id,
     trackingNumber: body.trackingNumber || null,
     shippingCarrier: body.shippingCarrier || null,
+    trackingUrl: body.trackingUrl || null,
     notes: body.notes || ''
   };
 

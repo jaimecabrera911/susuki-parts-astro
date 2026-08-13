@@ -140,7 +140,11 @@ export async function saveOrderApi(order: any, isEdit = false) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(order)
   });
-  return await res.json();
+  const data = await res.json();
+  if (!res.ok || (data && data.success === false)) {
+    throw new Error(data?.error || `Error HTTP ${res.status} al guardar el pedido`);
+  }
+  return data;
 }
 
 export async function deleteOrderApi(id: string) {

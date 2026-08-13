@@ -195,6 +195,7 @@ export const orders = pgTable('orders', {
   paymentReference: text('payment_reference'),
   trackingNumber: text('tracking_number'),
   shippingCarrier: text('shipping_carrier'),
+  trackingUrl: text('tracking_url'),
   notes: text('notes')
 }, (table) => ({
   emailIdx: index('idx_orders_email').on(table.email),

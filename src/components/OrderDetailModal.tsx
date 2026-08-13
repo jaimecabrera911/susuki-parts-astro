@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { UserAvatar } from "./UserAvatar";
 import { ReturnRequestModal } from "./ReturnRequestModal";
 import { ReturnStatusTimeline } from "./ReturnStatusTimeline";
+import { OrderTrackingSection } from "./OrderTrackingSection";
 import {
   X,
   ShieldCheck,
@@ -300,6 +301,9 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Order Tracking Section */}
+          <OrderTrackingSection order={order} />
 
           {/* Bank Transfer Payment Card (Always visible if Pending or for reference) */}
           <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-md border border-slate-800">

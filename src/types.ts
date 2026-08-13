@@ -311,6 +311,7 @@ export interface Order {
   paymentReference?: string;
   shippingCarrier?: string;
   trackingNumber?: string;
+  trackingUrl?: string;
   notes?: string;
 }
 
