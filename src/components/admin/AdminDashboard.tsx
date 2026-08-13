@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { AdminSidebar, type AdminTab } from "./AdminSidebar";
+import { AdminDock } from "./AdminDock";
 import { AdminHeader } from "./AdminHeader";
 import { AdminMetrics } from "./AdminMetrics";
 import { BrandsManager } from "./BrandsManager";
@@ -781,7 +782,7 @@ export const AdminDashboard: React.FC = () => {
         />
 
         {/* Content Body */}
-        <main className="flex-1 p-8 overflow-y-auto max-w-7xl mx-auto w-full">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8 overflow-y-auto max-w-[1536px] mx-auto w-full">
           {/* Toast Notification Banner */}
           {toast && (
             <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 duration-200">
@@ -1109,6 +1110,9 @@ export const AdminDashboard: React.FC = () => {
         returnItem={returnToEdit}
         onSaveReturn={handleSaveReturn}
       />
+
+      {/* Slidable Admin Bottom Navigation Dock (< lg) */}
+      <AdminDock activeTab={activeTab} setActiveTab={handleSetActiveTab} />
       </div>
     </SiteSettingsProvider>
   );
