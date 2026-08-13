@@ -521,12 +521,12 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                 onMouseLeave={handleMouseUp}
                 className={`p-3 max-h-[520px] overflow-auto custom-scrollbar flex select-none ${
                   zoomLevel > 1
-                    ? (isDragging ? 'items-start justify-start cursor-grabbing' : 'items-start justify-start cursor-grab')
-                    : 'items-center justify-center'
+                    ? (isDragging ? 'cursor-grabbing' : 'cursor-grab')
+                    : 'cursor-default'
                 }`}
               >
                 <div
-                  className="relative transition-all duration-200"
+                  className="relative transition-all duration-200 m-auto"
                   style={{
                     width: zoomLevel > 1 ? `${zoomLevel * 100}%` : '100%',
                     minWidth: zoomLevel > 1 ? `${zoomLevel * 100}%` : '100%'
@@ -561,7 +561,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                         style={{
                           left: `${spot.x}%`,
                           top: `${spot.y}%`,
-                          transform: `translate(-50%, -50%) scale(${1 / Math.sqrt(zoomLevel)})`
+                          transform: `translate(-50%, -50%)`
                         }}
                         className={`absolute rounded-full flex items-center justify-center transition-all cursor-pointer focus-visible:outline-none ${pinClasses} ${
                           isSelected
@@ -569,13 +569,14 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                             : 'bg-white text-slate-900 ring-2 ring-slate-900 hover:bg-[#E60012] hover:text-white z-10'
                         }`}
                       >
-                        {/* Radar pulse effect */}
+                        {/* Radar pulse effect — inset expansion for centered circle */}
                         <span
-                          className={`absolute inset-0 rounded-full pointer-events-none ${
+                          className={`absolute rounded-full pointer-events-none ${
                             isSelected
-                              ? '-m-2.5 bg-[#E60012]/40 animate-ping'
-                              : '-m-1 bg-red-500/25 animate-pulse'
+                              ? 'bg-[#E60012]/35 animate-ping'
+                              : 'bg-red-500/20 animate-pulse'
                           }`}
+                          style={{ inset: isSelected ? '-10px' : '-6px' }}
                           aria-hidden="true"
                         />
 
