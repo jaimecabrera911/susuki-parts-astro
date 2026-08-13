@@ -23,7 +23,8 @@ export const STORE_BOOTSTRAP = {
     country: 'CO',
     department: '11',
     city: '11001'
-  }
+  },
+  timezone: 'America/Bogota'
 };
 
 export const FOOTER_BOOTSTRAP: FooterConfig = {
@@ -77,6 +78,7 @@ export const emptySiteSettings = (): SiteSettings => ({
   taxRate: 0,
   taxActive: false,
   returnMaxDays: 0,
+  timezone: '',
   footerConfig: undefined,
   updatedAt: ''
 });

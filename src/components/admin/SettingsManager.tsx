@@ -19,6 +19,7 @@ import {
   Music2,
   MessageCircle,
   Share2,
+  Clock,
 } from "lucide-react";
 import { FaFacebookF, FaInstagram, FaYoutube } from "react-icons/fa";
 import type {
@@ -45,6 +46,28 @@ const SUBTABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
   { id: "footer", label: "Footer", icon: Link2 },
 ];
 
+const TIMEZONES: { value: string; label: string }[] = [
+  { value: "America/Bogota", label: "Colombia (GMT-5) — America/Bogota" },
+  { value: "America/Lima", label: "Perú (GMT-5) — America/Lima" },
+  { value: "America/Mexico_City", label: "México (GMT-6) — America/Mexico_City" },
+  { value: "America/Santiago", label: "Chile (GMT-4) — America/Santiago" },
+  { value: "America/Caracas", label: "Venezuela (GMT-4) — America/Caracas" },
+  { value: "America/Buenos_Aires", label: "Argentina (GMT-3) — America/Buenos_Aires" },
+  { value: "America/Sao_Paulo", label: "Brasil (GMT-3) — America/Sao_Paulo" },
+  { value: "America/Guayaquil", label: "Ecuador (GMT-5) — America/Guayaquil" },
+  { value: "America/La_Paz", label: "Bolivia (GMT-4) — America/La_Paz" },
+  { value: "America/Asuncion", label: "Paraguay (GMT-4) — America/Asuncion" },
+  { value: "America/Montevideo", label: "Uruguay (GMT-3) — America/Montevideo" },
+  { value: "America/Panama", label: "Panamá (GMT-5) — America/Panama" },
+  { value: "America/Costa_Rica", label: "Costa Rica (GMT-6) — America/Costa_Rica" },
+  { value: "America/Guatemala", label: "Guatemala (GMT-6) — America/Guatemala" },
+  { value: "America/Managua", label: "Nicaragua (GMT-6) — America/Managua" },
+  { value: "America/Tegucigalpa", label: "Honduras (GMT-6) — America/Tegucigalpa" },
+  { value: "America/Santo_Domingo", label: "R. Dominicana (GMT-4) — America/Santo_Domingo" },
+  { value: "America/Havana", label: "Cuba (GMT-5) — America/Havana" },
+  { value: "America/Puerto_Rico", label: "Puerto Rico (GMT-4) — America/Puerto_Rico" },
+];
+
 const EMPTY_FOOTER: FooterConfig = {
   tagline: "",
   description: "",
@@ -69,6 +92,7 @@ const EMPTY_SETTINGS: SiteSettings = {
   taxRate: 0,
   taxActive: false,
   returnMaxDays: 0,
+  timezone: "America/Bogota",
   footerConfig: EMPTY_FOOTER,
 };
 
@@ -518,6 +542,28 @@ export const SettingsManager: React.FC = () => {
               <p className="text-[11px] text-slate-500 font-sans">
                 País, departamento y ciudad precargados en pedidos y perfiles de
                 usuario. Se eligen desde las ciudades registradas en la BD.
+              </p>
+            </div>
+
+            <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+              <span className="block text-xs font-extrabold text-slate-900 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-[#E60012]" />
+                Zona Horaria
+              </span>
+              <select
+                value={settings.timezone}
+                onChange={(e) => set("timezone", e.target.value)}
+                className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 font-mono focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
+              >
+                {TIMEZONES.map((tz) => (
+                  <option key={tz.value} value={tz.value}>
+                    {tz.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-slate-500 font-sans">
+                Hora local de la tienda. Define la hora límite de despacho en
+                pedidos y el aviso de "Se despacha hoy".
               </p>
             </div>
 

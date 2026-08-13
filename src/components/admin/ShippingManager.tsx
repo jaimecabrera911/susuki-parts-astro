@@ -26,6 +26,16 @@ const DAY_NAMES: Record<string, string> = {
   '1': 'LUN', '2': 'MAR', '3': 'MIÉ', '4': 'JUE', '5': 'VIE', '6': 'SÁB', '7': 'DOM'
 };
 
+function formatCutoffTime(cutoff: string): string {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(cutoff);
+  if (!m) return cutoff;
+  const hour = parseInt(m[1], 10);
+  const minute = m[2];
+  if (hour === 12) return `12:${minute} m.`;
+  if (hour > 12) return `${hour - 12}:${minute} p. m.`;
+  return `${hour}:${minute} a. m.`;
+}
+
 export const ShippingManager: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<'methods' | 'zones'>('methods');
   const [methods, setMethods] = useState<ShippingMethod[]>([]);
@@ -404,6 +414,18 @@ export const ShippingManager: React.FC = () => {
                           </div>
                         </div>
 
+                        {/* Dispatch cutoff if set */}
+                        {method.dispatchCutoff && (
+                          <div className="flex items-center justify-between text-slate-700 font-mono">
+                            <span className="text-slate-500 font-sans font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 text-amber-600" /> Hora Corte:
+                            </span>
+                            <span className="font-extrabold text-slate-900">
+                              {formatCutoffTime(method.dispatchCutoff)}
+                            </span>
+                          </div>
+                        )}
+
                         {/* Free threshold if set */}
                         {method.freeShippingThreshold && (
                           <div className="flex items-center justify-between text-[#059669] text-[11px] font-mono font-extrabold pt-1">
@@ -485,21 +507,48 @@ export const ShippingManager: React.FC = () => {
                   )}
 
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 mb-3 space-y-1.5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      DEPARTAMENTOS ASIGNADOS ({zone.departments.length}):
-                    </span>
-                    {zone.departments.length > 0 ? (
-                      <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto custom-scrollbar pr-1">
-                        {zone.departments.map(dept => (
-                          <span key={dept} className="px-2 py-0.5 text-[10px] bg-white border border-slate-200 text-slate-700 font-semibold rounded-md">
-                            {dept}
-                          </span>
-                        ))}
-                      </div>
+                    {zone.departments.length === 0 && zone.cities.length === 0 ? (
+                      <>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                          COBERTURA:
+                        </span>
+                        <p className="text-xs italic text-slate-500">
+                          Resto del país / Cobertura general (Catch-all).
+                        </p>
+                      </>
                     ) : (
-                      <p className="text-xs italic text-slate-500">
-                        Cobertura nacional / Todos los demás departamentos (Catch-all).
-                      </p>
+                      <>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                          DEPARTAMENTOS COMPLETOS ({zone.departments.length}):
+                        </span>
+                        {zone.departments.length > 0 ? (
+                          <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto custom-scrollbar pr-1">
+                            {zone.departments.map(dept => (
+                              <span key={dept} className="px-2 py-0.5 text-[10px] bg-white border border-slate-200 text-slate-700 font-semibold rounded-md">
+                                {dept}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs italic text-slate-500">Ninguno.</p>
+                        )}
+
+                        {zone.cities.length > 0 && (
+                          <>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block pt-1">
+                              CIUDADES PUNTUALES ({zone.cities.length}):
+                            </span>
+                            <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto custom-scrollbar pr-1">
+                              {zone.cities.map((c, idx) => (
+                                <span key={`${c.department}-${c.city}-${idx}`} className="px-2 py-0.5 text-[10px] bg-white border border-slate-200 text-slate-700 font-semibold rounded-md">
+                                  {c.city}
+                                  <span className="text-slate-400 font-normal"> · {c.department}</span>
+                                </span>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

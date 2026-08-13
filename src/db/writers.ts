@@ -6,7 +6,7 @@ import {
   orderStatuses, carriers, modelCategories,
   orders, orderItems, orderReturns, siteSettings,
   users, userFavorites,
-  shippingMethods, shippingZones, shippingZoneStates, shippingMethodZoneRates,
+  shippingMethods, shippingZones, shippingZoneStates, shippingZoneCities, shippingMethodZoneRates,
   countries, states, cities
 } from './schema';
 import { eq, and } from 'drizzle-orm';
@@ -343,6 +343,7 @@ export async function upsertShippingMethod(db: AppDb, body: any) {
     price: Number(body.price || 0),
     estimatedDays: Number(body.estimatedDays || 3),
     dispatchDays: Array.isArray(body.dispatchDays) ? body.dispatchDays : ['1', '2', '3', '4', '5'],
+    dispatchCutoff: body.dispatchCutoff || null,
     freeShippingThreshold: body.freeShippingThreshold !== undefined && body.freeShippingThreshold !== null ? Number(body.freeShippingThreshold) : null,
     active: body.active !== undefined ? Boolean(body.active) : true,
     createdAt: body.createdAt ? new Date(body.createdAt) : new Date()
@@ -367,6 +368,27 @@ export async function upsertShippingMethod(db: AppDb, body: any) {
   return data;
 }
 
+export async function resolveCityRef(db: AppDb, stateRef: any, cityName: string): Promise<string> {
+  const stateId = await resolveStateRef(db, stateRef);
+  if (!stateId) throw new Error('No se pudo resolver el departamento de la ciudad: ' + cityName);
+
+  const byName = await db
+    .select({ id: cities.id })
+    .from(cities)
+    .where(and(eq(cities.stateId, stateId), eq(cities.name, cityName)))
+    .limit(1);
+  if (byName.length > 0) return byName[0].id;
+
+  const byCode = await db
+    .select({ id: cities.id })
+    .from(cities)
+    .where(and(eq(cities.stateId, stateId), eq(cities.code, cityName)))
+    .limit(1);
+  if (byCode.length > 0) return byCode[0].id;
+
+  throw new Error(`La ciudad "${cityName}" no existe en la geografía del departamento seleccionado. Agrégala primero desde el catálogo de ciudades.`);
+}
+
 export async function upsertShippingZone(db: AppDb, body: any) {
   const id = body.id || `zone-${Date.now()}`;
   const data = {
@@ -377,11 +399,14 @@ export async function upsertShippingZone(db: AppDb, body: any) {
     createdAt: body.createdAt ? new Date(body.createdAt) : new Date()
   };
 
+  const completeDepartments = Array.isArray(body.departments) ? body.departments : [];
+  const pointCities = Array.isArray(body.cities) ? body.cities : [];
+
   await db.transaction(async (tx) => {
     await tx.insert(shippingZones).values(data).onConflictDoUpdate({ target: shippingZones.id, set: data });
 
     await tx.delete(shippingZoneStates).where(eq(shippingZoneStates.zoneId, id));
-    for (const dept of body.departments || []) {
+    for (const dept of completeDepartments) {
       const stateId = await resolveStateRef(tx as unknown as AppDb, dept);
       if (stateId) {
         await tx.insert(shippingZoneStates).values({
@@ -390,6 +415,16 @@ export async function upsertShippingZone(db: AppDb, body: any) {
           stateId
         }).onConflictDoNothing();
       }
+    }
+
+    await tx.delete(shippingZoneCities).where(eq(shippingZoneCities.zoneId, id));
+    for (const c of pointCities) {
+      const cityId = await resolveCityRef(tx as unknown as AppDb, c.department, c.city);
+      await tx.insert(shippingZoneCities).values({
+        id: generateUuidV7('szc'),
+        zoneId: id,
+        cityId
+      }).onConflictDoNothing();
     }
   });
 
@@ -760,6 +795,7 @@ export async function getSiteSettings(db: AppDb): Promise<SiteSettings> {
         taxRate: merged.taxRate !== undefined ? merged.taxRate : 19,
         taxActive: merged.taxActive !== undefined ? merged.taxActive : true,
         returnMaxDays: merged.returnMaxDays !== undefined ? merged.returnMaxDays : 30,
+        timezone: merged.timezone || STORE_BOOTSTRAP.timezone,
         footerConfig: merged.footerConfig || FOOTER_BOOTSTRAP,
         updatedAt: new Date()
       } as unknown as SiteSettings;
@@ -815,6 +851,7 @@ export async function getSiteSettings(db: AppDb): Promise<SiteSettings> {
     taxActive: true,
     returnMaxDays: 30,
     footerConfig: FOOTER_BOOTSTRAP,
+    timezone: STORE_BOOTSTRAP.timezone,
     updatedAt: new Date()
   } as unknown as SiteSettings;
 }
@@ -858,6 +895,7 @@ export async function upsertSiteSettings(db: AppDb, body: any) {
     taxRate: typeof body.taxRate === 'number' ? body.taxRate : existing.taxRate,
     taxActive,
     returnMaxDays: typeof body.returnMaxDays === 'number' ? body.returnMaxDays : existing.returnMaxDays,
+    timezone: typeof body.timezone === 'string' && body.timezone.trim() !== '' ? body.timezone : existing.timezone,
     footerConfig,
     updatedAt: new Date()
   };
@@ -874,7 +912,8 @@ export async function upsertSiteSettings(db: AppDb, body: any) {
         storeAddress: updatedData.storeAddress,
         defaultCountry: updatedData.defaultCountry,
         defaultDepartment: updatedData.defaultDepartment,
-        defaultCity: updatedData.defaultCity
+        defaultCity: updatedData.defaultCity,
+        timezone: updatedData.timezone
       }
     },
     {

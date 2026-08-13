@@ -6,6 +6,7 @@ export const DEFAULT_SHIPPING_ZONES: ShippingZone[] = [
     name: 'Zona Local (Bogotá & Cundinamarca)',
     description: 'Tarifas preferenciales para envíos locales y Sabana de Bogotá.',
     departments: ['Bogotá D.C.', 'Cundinamarca'],
+    cities: [],
     active: true
   },
   {
@@ -16,6 +17,7 @@ export const DEFAULT_SHIPPING_ZONES: ShippingZone[] = [
       'Antioquia', 'Valle del Cauca', 'Atlántico', 'Santander', 'Bolívar', 
       'Risaralda', 'Caldas', 'Quindío', 'Tolima', 'Huila', 'Meta', 'Norte de Santander'
     ],
+    cities: [],
     active: true
   },
   {
@@ -23,6 +25,7 @@ export const DEFAULT_SHIPPING_ZONES: ShippingZone[] = [
     name: 'Zona Especial / Resto del País',
     description: 'Cobertura nacional para el resto de departamentos y zonas reingresadas.',
     departments: [], // Vaciado = Cobertura general nacional
+    cities: [],
     active: true
   }
 ];

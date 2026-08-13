@@ -214,6 +214,7 @@ export const shippingMethods = pgTable('shipping_methods', {
   price: doublePrecision('price').notNull().default(0),
   estimatedDays: integer('estimated_days').notNull().default(3),
   dispatchDays: jsonb('dispatch_days').notNull().default(['1', '2', '3', '4', '5']), // 1=Mon, ..., 7=Sun
+  dispatchCutoff: text('dispatch_cutoff'), // "HH:MM" hora límite de despacho (opcional)
   freeShippingThreshold: doublePrecision('free_shipping_threshold'),
   active: boolean('active').notNull().default(true),
   createdAt: timestamp('created_at').defaultNow().notNull()
@@ -241,6 +242,17 @@ export const shippingZoneStates = pgTable('shipping_zone_states', {
   zoneIdx: index('idx_zone_states_zone_id').on(table.zoneId),
   stateIdx: index('idx_zone_states_state_id').on(table.stateId),
   uniqueZoneState: uniqueIndex('idx_zone_states_unique').on(table.zoneId, table.stateId)
+}));
+
+// 7b2b. Shipping Zone ↔ Cities Mapping Table (3NF Normalized)
+export const shippingZoneCities = pgTable('shipping_zone_cities', {
+  id: text('id').primaryKey(),
+  zoneId: text('zone_id').notNull().references(() => shippingZones.id, { onDelete: 'cascade' }),
+  cityId: text('city_id').notNull().references(() => cities.id, { onDelete: 'cascade' })
+}, (table) => ({
+  zoneIdx: index('idx_zone_cities_zone_id').on(table.zoneId),
+  cityIdx: index('idx_zone_cities_city_id').on(table.cityId),
+  uniqueZoneCity: uniqueIndex('idx_zone_cities_unique').on(table.zoneId, table.cityId)
 }));
 
 // 7b3. Shipping Method ↔ Zone Rates Table (3NF Normalized)

@@ -61,6 +61,7 @@ import { calculateCartTotals } from "../utils/taxCalculator";
 export function getShippingMethodCost(
   method: ShippingMethod | null | undefined,
   department: string,
+  city: string,
   rawSubtotal: number,
   zones: ShippingZone[],
 ): number {
@@ -73,33 +74,49 @@ export function getShippingMethodCost(
     return 0;
 
   const deptClean = department.trim().toLowerCase();
+  const cityClean = city.trim().toLowerCase();
+
   if (deptClean && zones && zones.length > 0) {
-    // Find matching zone for department
-    const matchedZone = zones.find(
+    const isCatchAll = (z: ShippingZone) => z.active && z.departments.length === 0 && z.cities.length === 0;
+
+    // 1. Match exact city (department + city)
+    if (cityClean) {
+      const cityZone = zones.find(
+        (z) =>
+          z.active &&
+          z.cities.some(
+            (c) =>
+              c.department.trim().toLowerCase() === deptClean &&
+              c.city.trim().toLowerCase() === cityClean,
+          ),
+      );
+      if (cityZone && method.zoneRates && method.zoneRates.length > 0) {
+        const zRate = method.zoneRates.find((zr) => zr.zoneId === cityZone.id);
+        if (zRate !== undefined && zRate.price !== undefined) {
+          return zRate.price;
+        }
+      }
+    }
+
+    // 2. Match complete department
+    const deptZone = zones.find(
       (z) =>
         z.active &&
         z.departments.some((d) => d.trim().toLowerCase() === deptClean),
     );
-
-    if (matchedZone && method.zoneRates && method.zoneRates.length > 0) {
-      const zRate = method.zoneRates.find((zr) => zr.zoneId === matchedZone.id);
+    if (deptZone && method.zoneRates && method.zoneRates.length > 0) {
+      const zRate = method.zoneRates.find((zr) => zr.zoneId === deptZone.id);
       if (zRate !== undefined && zRate.price !== undefined) {
         return zRate.price;
       }
     }
 
-    // Catch-all zone (empty departments array)
-    if (!matchedZone && method.zoneRates && method.zoneRates.length > 0) {
-      const catchAllZone = zones.find(
-        (z) => z.active && z.departments.length === 0,
-      );
-      if (catchAllZone) {
-        const zRate = method.zoneRates.find(
-          (zr) => zr.zoneId === catchAllZone.id,
-        );
-        if (zRate !== undefined && zRate.price !== undefined) {
-          return zRate.price;
-        }
+    // 3. Catch-all zone (empty departments and cities)
+    const catchAllZone = zones.find(isCatchAll);
+    if (catchAllZone && method.zoneRates && method.zoneRates.length > 0) {
+      const zRate = method.zoneRates.find((zr) => zr.zoneId === catchAllZone.id);
+      if (zRate !== undefined && zRate.price !== undefined) {
+        return zRate.price;
       }
     }
   }
@@ -156,28 +173,63 @@ const CARRIER_BADGES: Record<
 };
 
 // Relative delivery date calculator
+function getStoreNow(timezone: string): Date {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: string) =>
+    parts.find((p) => p.type === type)?.value || "";
+  return new Date(
+    `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}:${get("second")}`,
+  );
+}
+
+function parseCutoff(cutoff?: string): number | null {
+  if (!cutoff) return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(cutoff);
+  if (!m) return null;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+}
+
 function getEstimatedDeliveryInfo(
   estimatedDays: number,
   dispatchDays: string[] = ["1", "2", "3", "4", "5"],
+  dispatchCutoff?: string,
+  timezone: string = "America/Bogota",
+  isPickup = false,
 ) {
-  if (estimatedDays === 0) {
+  if (isPickup || estimatedDays === 0) {
     return {
       arrivalText: "¡Disponible HOY mismo para retiro!",
       dispatchNotice: "Retiro presencial inmediato en sede central",
     };
   }
 
-  const today = new Date();
-  let startDate = new Date(today);
+  const now = getStoreNow(timezone);
+  let startDate = new Date(now);
+  const cutoffMinutes = parseCutoff(dispatchCutoff);
 
-  // Advance to next allowed dispatch day if today isn't one
+  // Advance to next allowed dispatch day if today isn't one, or if the
+  // dispatch cutoff for today has already passed
   let daysAdvanced = 0;
   while (daysAdvanced < 7) {
     const currentDayNum = String(
       startDate.getDay() === 0 ? 7 : startDate.getDay(),
     );
     if (dispatchDays.includes(currentDayNum)) {
-      break;
+      if (cutoffMinutes === null) break;
+      const currentMinutes = startDate.getHours() * 60 + startDate.getMinutes();
+      if (currentMinutes < cutoffMinutes) break;
+      startDate.setDate(startDate.getDate() + 1);
+      daysAdvanced++;
+      continue;
     }
     startDate.setDate(startDate.getDate() + 1);
     daysAdvanced++;
@@ -198,13 +250,28 @@ function getEstimatedDeliveryInfo(
       month: "short",
     });
 
+  const cutoffText =
+    cutoffMinutes !== null
+      ? ` antes de las ${formatCutoffTime(dispatchCutoff ?? "")}`
+      : "";
+
   const dispatchNotice = isTodayDispatch
-    ? "Despacho estimado: Hoy mismo"
-    : `Despacho estimado: Próximo ${startDate.toLocaleDateString("es-CO", { weekday: "long", day: "numeric" })}`;
+    ? `Se despacha hoy${cutoffText}`
+    : `Se despacha el próximo ${startDate.toLocaleDateString("es-CO", { weekday: "long", day: "numeric" })}${cutoffText}`;
 
   const arrivalText = `Llega entre el ${formatShort(minArrival)} y el ${formatShort(maxArrival)}`;
 
   return { arrivalText, dispatchNotice };
+}
+
+function formatCutoffTime(cutoff: string): string {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(cutoff);
+  if (!m) return cutoff;
+  const hour = parseInt(m[1], 10);
+  const minute = m[2];
+  if (hour === 12) return `12:${minute} m.`;
+  if (hour > 12) return `${hour - 12}:${minute} p. m.`;
+  return `${hour}:${minute} a. m.`;
 }
 
 export const CheckoutPage: React.FC<CheckoutPageProps> = ({
@@ -367,6 +434,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   const actualShippingCost = getShippingMethodCost(
     selectedShipping,
     formData.department,
+    formData.city,
     rawSubtotal,
     shippingZones,
   );
@@ -1106,6 +1174,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   const effectivePrice = getShippingMethodCost(
                     method,
                     formData.department,
+                    formData.city,
                     rawSubtotal,
                     shippingZones,
                   );
@@ -1113,6 +1182,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   const deliveryInfo = getEstimatedDeliveryInfo(
                     method.estimatedDays,
                     method.dispatchDays,
+                    method.dispatchCutoff,
+                    siteSettings.timezone,
+                    method.carrier === "Retiro en tienda",
                   );
 
                   return (

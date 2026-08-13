@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
-import { shippingZones, shippingZoneStates, states } from '../../db/schema';
+import { shippingZones, shippingZoneStates, shippingZoneCities, states, cities } from '../../db/schema';
 import { upsertShippingZone, seedShipping } from '../../db/writers';
 import { eq } from 'drizzle-orm';
 
@@ -27,9 +27,23 @@ export const GET: APIRoute = async () => {
       depsByZone.set(m.zoneId, arr);
     }
 
+    const cityMappings = await db.select().from(shippingZoneCities);
+    const cityRows = await db.select({ id: cities.id, name: cities.name, stateId: cities.stateId }).from(cities);
+    const cityByZone = new Map<string, { department: string; city: string }[]>();
+    for (const cm of cityMappings) {
+      const cityRow = cityRows.find((c) => c.id === cm.cityId);
+      if (!cityRow) continue;
+      const deptName = stateNameById.get(cityRow.stateId);
+      if (!deptName) continue;
+      const arr = cityByZone.get(cm.zoneId) || [];
+      arr.push({ department: deptName, city: cityRow.name });
+      cityByZone.set(cm.zoneId, arr);
+    }
+
     const formatted = data.map(sz => ({
       ...sz,
-      departments: depsByZone.get(sz.id) || []
+      departments: depsByZone.get(sz.id) || [],
+      cities: cityByZone.get(sz.id) || []
     }));
 
     return new Response(JSON.stringify({ success: true, count: formatted.length, data: formatted }), {

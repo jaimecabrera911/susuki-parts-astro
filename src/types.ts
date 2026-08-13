@@ -179,11 +179,17 @@ export interface ZoneRate {
   price: number;
 }
 
+export interface ShippingZoneCity {
+  department: string;
+  city: string;
+}
+
 export interface ShippingZone {
   id: string;
   name: string;
   description?: string;
-  departments: string[];
+  departments: string[]; // Departamentos completos (cobertura total de sus ciudades)
+  cities: ShippingZoneCity[]; // Ciudades puntuales
   active: boolean;
   createdAt?: string;
 }
@@ -196,6 +202,7 @@ export interface ShippingMethod {
   price: number; // Precio base / fallback por defecto
   estimatedDays: number;
   dispatchDays: string[]; // ['1', '2', '3', '4', '5'] (1=Mon ... 7=Sun)
+  dispatchCutoff?: string; // "HH:MM" hora límite de despacho (opcional; vacío = sin corte)
   freeShippingThreshold?: number;
   active: boolean;
   zoneRates?: ZoneRate[]; // Tarifas específicas por zona
@@ -271,6 +278,7 @@ export interface SiteSettings {
   taxRate: number;
   taxActive: boolean;
   returnMaxDays: number;
+  timezone: string; // IANA, ej. 'America/Bogota' — zona horaria del store
   footerConfig?: FooterConfig;
   updatedAt?: string;
 }

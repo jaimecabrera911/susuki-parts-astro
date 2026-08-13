@@ -35,6 +35,7 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
     price: 0,
     estimatedDays: 3,
     dispatchDays: ['1', '2', '3', '4', '5'],
+    dispatchCutoff: '',
     freeShippingThreshold: '',
     active: true
   });
@@ -69,6 +70,7 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
         price: initialMethod.price || 0,
         estimatedDays: initialMethod.estimatedDays ?? 3,
         dispatchDays: initialMethod.dispatchDays || ['1', '2', '3', '4', '5'],
+        dispatchCutoff: initialMethod.dispatchCutoff || '',
         freeShippingThreshold: initialMethod.freeShippingThreshold !== undefined && initialMethod.freeShippingThreshold !== null
           ? String(initialMethod.freeShippingThreshold)
           : '',
@@ -90,6 +92,7 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
         price: 0,
         estimatedDays: 3,
         dispatchDays: ['1', '2', '3', '4', '5'],
+        dispatchCutoff: '16:00',
         freeShippingThreshold: '',
         active: true
       });
@@ -133,6 +136,7 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
       price: Number(formData.price || 0),
       estimatedDays: Number(formData.estimatedDays || 1),
       dispatchDays: formData.dispatchDays.length > 0 ? formData.dispatchDays : ['1', '2', '3', '4', '5'],
+      dispatchCutoff: formData.dispatchCutoff || undefined,
       freeShippingThreshold: formData.freeShippingThreshold.trim() !== '' ? Number(formData.freeShippingThreshold) : undefined,
       active: formData.active,
       zoneRates: formattedZoneRates
@@ -143,10 +147,10 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
 
   return (
     <div id="shipping-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
-      <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8 font-sans">
+      <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8 font-sans flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-900 text-white">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#E60012] text-white flex items-center justify-center font-black shrink-0 shadow-md shadow-red-500/20">
               <Truck className="w-5 h-5" />
@@ -169,7 +173,7 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
         </div>
 
         {/* Body Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 bg-[#f7f9fb]">
+        <form id="shipping-method-form" onSubmit={handleSubmit} className="p-6 space-y-5 bg-[#f7f9fb] flex-1 min-h-0 overflow-y-auto">
           
           {/* Nombre y Transportadora */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -267,7 +271,17 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
                       <div className="min-w-0 flex-1">
                         <span className="text-xs font-bold text-slate-900 block truncate">{zone.name}</span>
                         <span className="text-[10px] text-slate-500 block truncate">
-                          {zone.departments.length > 0 ? zone.departments.join(', ') : 'Resto del país / Cobertura general'}
+                          {zone.departments.length === 0 && zone.cities.length === 0
+                            ? 'Resto del país / Cobertura general'
+                            : [
+                                ...(zone.departments.length > 0
+                                  ? [zone.departments.join(', ')]
+                                  : []),
+                                ...(zone.cities.length > 0
+                                  ? [zone.cities.map(c => c.city).join(', ')]
+                                  : [])
+                              ].join(' · ')
+                          }
                         </span>
                       </div>
                       <div className="w-36 shrink-0 relative">
@@ -315,6 +329,22 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
             </div>
             <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed font-sans">
               El motor logístico del checkout excluirá los días sin despacho para dar la fecha exacta de llegada.
+            </p>
+          </div>
+
+          {/* Hora Límite de Despacho */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-sans">
+              Hora Límite de Despacho (Opcional)
+            </label>
+            <input
+              type="time"
+              value={formData.dispatchCutoff}
+              onChange={(e) => setFormData({ ...formData, dispatchCutoff: e.target.value })}
+              className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 font-mono font-bold focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
+            />
+            <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed font-sans">
+              Los pedidos después de esta hora (en la zona horaria de la tienda) se despachan el siguiente día hábil. Déjalo vacío si no aplica un corte.
             </p>
           </div>
 
@@ -372,26 +402,26 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
               />
             </button>
           </div>
-
-          {/* Footer Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
-            >
-              CANCELAR
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2.5 text-xs font-black text-white bg-[#E60012] hover:bg-[#b5000b] active:bg-[#900008] rounded-xl shadow-md shadow-red-500/20 transition-all flex items-center gap-1.5 cursor-pointer uppercase tracking-wider font-sans"
-            >
-              <Check className="w-4 h-4" />
-              <span>Guardar Método de Envío</span>
-            </button>
-          </div>
-
         </form>
+
+        {/* Footer Buttons */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-white shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+          >
+            CANCELAR
+          </button>
+          <button
+            type="submit"
+            form="shipping-method-form"
+            className="px-5 py-2.5 text-xs font-black text-white bg-[#E60012] hover:bg-[#b5000b] active:bg-[#900008] rounded-xl shadow-md shadow-red-500/20 transition-all flex items-center gap-1.5 cursor-pointer uppercase tracking-wider font-sans"
+          >
+            <Check className="w-4 h-4" />
+            <span>Guardar Método de Envío</span>
+          </button>
+        </div>
       </div>
     </div>
   );
