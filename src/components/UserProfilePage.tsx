@@ -159,7 +159,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   };
 
   return (
-    <div id="user-profile-page" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+    <div id="user-profile-page" className="max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-6 sm:py-10">
       {/* Header Banner */}
       <div className="relative overflow-hidden bg-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl mb-8 border border-slate-800">
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-[#E60012]/10 rounded-full blur-3xl pointer-events-none" />

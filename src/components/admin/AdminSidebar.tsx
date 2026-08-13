@@ -9,7 +9,8 @@ import {
   Truck,
   BarChart3, 
   ArrowLeft,
-  ChevronRight
+  ChevronRight,
+  X
 } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 
@@ -34,6 +35,8 @@ interface AdminSidebarProps {
   usersCount?: number;
   shippingCount?: number;
   couponsCount?: number;
+  mobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
@@ -48,7 +51,9 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   returnsCount = 0,
   usersCount = 0,
   shippingCount = 0,
-  couponsCount = 0
+  couponsCount = 0,
+  mobileOpen = false,
+  onCloseMobile
 }) => {
   const storeLogo = getStoreLogo();
   const storeName = getStoreName();
@@ -68,7 +73,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     },
     {
       id: 'categories' as AdminTab,
-      label: 'CATEGORÍAS Y SUBCAT',
+      label: 'CATEGORÍAS',
       icon: FolderTree,
     },
     {
@@ -118,84 +123,117 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     }
   ];
 
+  const handleSelectTab = (tab: AdminTab) => {
+    setActiveTab(tab);
+    if (onCloseMobile) onCloseMobile();
+  };
+
   return (
-    <aside id="admin-sidebar" className="w-64 bg-white border-r border-slate-200 text-slate-900 flex flex-col justify-between h-screen sticky top-0 z-30 select-none shadow-xs">
-      <div>
-        {/* Header Suzuki Genuine Parts Workshop Branding */}
-        <div className="p-5 border-b border-slate-200 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white overflow-hidden flex items-center justify-center shrink-0">
-              <img src={logoToShow} alt={storeName} className="w-full h-full object-cover pointer-events-none select-none" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-slate-900 text-sm tracking-tight font-display">
-                  {storeName}
-                </span>
-                <span className="text-[9px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-red-100 text-[#E60012] border border-red-200">
-                  ADMIN
-                </span>
+    <>
+      {/* Mobile Drawer Backdrop Overlay */}
+      {mobileOpen && (
+        <div
+          onClick={onCloseMobile}
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-40 lg:hidden transition-opacity"
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        id="admin-sidebar"
+        className={`w-64 bg-white border-r border-slate-200 text-slate-900 flex flex-col justify-between h-screen fixed lg:sticky top-0 z-50 lg:z-30 select-none shadow-xl lg:shadow-xs transition-transform duration-300 ease-in-out ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+      >
+        <div className="overflow-y-auto flex-1">
+          {/* Header Suzuki Genuine Parts Workshop Branding */}
+          <div className="p-5 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white overflow-hidden flex items-center justify-center shrink-0">
+                <img src={logoToShow} alt={storeName} className="w-full h-full object-cover pointer-events-none select-none" />
               </div>
-              <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
-                {storeTagline}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Navigation Menu */}
-        <div className="p-3 space-y-1">
-          <p className="px-3 pt-2 pb-1.5 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest font-mono">
-            MÓDULOS DE CONTROL
-          </p>
-
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            const href = `/admin/${item.id}`;
-            return (
-              <a
-                key={item.id}
-                href={href}
-                onClick={(e) => {
-                  if (!e.metaKey && !e.ctrlKey) {
-                    e.preventDefault();
-                    setActiveTab(item.id);
-                  }
-                }}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 group border ${
-                  isActive
-                    ? 'bg-red-50 text-[#E60012] border-red-200 shadow-xs'
-                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-transparent'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon
-                    className={`w-4 h-4 transition-colors ${
-                      isActive ? 'text-[#E60012]' : 'text-slate-400 group-hover:text-slate-700'
-                    }`}
-                  />
-                  <span className="tracking-wide font-sans">{item.label}</span>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-slate-900 text-sm tracking-tight font-display">
+                    {storeName}
+                  </span>
+                  <span className="text-[9px] uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-red-100 text-[#E60012] border border-red-200">
+                    ADMIN
+                  </span>
                 </div>
-              </a>
-            );
-          })}
-        </div>
-      </div>
+                <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
+                  {storeTagline}
+                </p>
+              </div>
+            </div>
 
-      {/* Footer Return Link */}
-      <div className="p-4 border-t border-slate-200 bg-slate-50/70">
-        <a
-          href="/"
-          className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 transition-all text-xs font-bold group border border-slate-200 shadow-xs"
-        >
-          <div className="flex items-center gap-2">
-            <ArrowLeft className="w-4 h-4 text-[#E60012] group-hover:-translate-x-0.5 transition-transform" />
-            <span>Volver a la Tienda</span>
+            {/* Mobile Close Button */}
+            {onCloseMobile && (
+              <button
+                type="button"
+                onClick={onCloseMobile}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 lg:hidden transition-colors"
+                aria-label="Cerrar menú"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
-          <ChevronRight className="w-3.5 h-3.5" />
-        </a>
-      </div>
-    </aside>
+
+          {/* Navigation Menu */}
+          <div className="p-3 space-y-1">
+            <p className="px-3 pt-2 pb-1.5 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest font-mono">
+              MÓDULOS DE CONTROL
+            </p>
+
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              const href = `/admin/${item.id}`;
+              return (
+                <a
+                  key={item.id}
+                  href={href}
+                  onClick={(e) => {
+                    if (!e.metaKey && !e.ctrlKey) {
+                      e.preventDefault();
+                      handleSelectTab(item.id);
+                    }
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 group border ${
+                    isActive
+                      ? 'bg-red-50 text-[#E60012] border-red-200 shadow-xs'
+                      : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-transparent'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon
+                      className={`w-4 h-4 transition-colors ${
+                        isActive ? 'text-[#E60012]' : 'text-slate-400 group-hover:text-slate-700'
+                      }`}
+                    />
+                    <span className="tracking-wide font-sans">{item.label}</span>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Footer Return Link */}
+        <div className="p-4 border-t border-slate-200 bg-slate-50/70">
+          <a
+            href="/"
+            className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 transition-all text-xs font-bold group border border-slate-200 shadow-xs"
+          >
+            <div className="flex items-center gap-2">
+              <ArrowLeft className="w-4 h-4 text-[#E60012] group-hover:-translate-x-0.5 transition-transform" />
+              <span>Volver a la Tienda</span>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </a>
+        </div>
+      </aside>
+    </>
   );
 };

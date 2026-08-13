@@ -36,7 +36,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
   }, [favoriteParts, searchTerm]);
 
   return (
-    <div id="favorites-page" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div id="favorites-page" className="max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8 sm:py-12">
       
       {/* Top Header */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs mb-8">

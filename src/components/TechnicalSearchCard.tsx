@@ -77,7 +77,7 @@ export const TechnicalSearchCard: React.FC<TechnicalSearchCardProps> = ({
   };
 
   return (
-    <div id="technical-search-card" className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto my-6">
+    <div id="technical-search-card" className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full my-6">
       
       {/* Left Card: Búsqueda Técnica */}
       <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-6 flex flex-col justify-between shadow-xs">

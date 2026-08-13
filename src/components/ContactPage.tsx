@@ -43,7 +43,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onGoHome }) => {
     : socialLinks?.whatsapp?.trim() || '';
 
   return (
-    <div id="contact-page" className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div id="contact-page" className="max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8 sm:py-12">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-display">

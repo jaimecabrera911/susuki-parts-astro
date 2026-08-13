@@ -691,6 +691,8 @@ export const AdminDashboard: React.FC = () => {
     );
   }
 
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   return (
     <SiteSettingsProvider>
       <div id="admin-dashboard" className="min-h-screen bg-[#f7f9fb] text-[#191c1e] flex font-sans antialiased">
@@ -706,12 +708,15 @@ export const AdminDashboard: React.FC = () => {
         ordersCount={orders.length}
         returnsCount={returnsList.length}
         usersCount={users.length}
+        mobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <AdminHeader
+          onToggleMobileMenu={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
           title={
             activeTab === "brands"
               ? "Gestión de Marcas"

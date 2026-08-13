@@ -55,7 +55,7 @@ export const CompatibilitySelector: React.FC<CompatibilitySelectorProps> = ({
   const isFormComplete = selectedModelId && selectedYear && selectedVersion;
 
   return (
-    <div id="compatibility-selector" className="bg-white rounded-2xl border border-slate-200/80 shadow-md p-6 sm:p-8 max-w-4xl mx-auto my-6">
+    <div id="compatibility-selector" className="bg-white rounded-2xl border border-slate-200/80 shadow-md p-6 sm:p-8 w-full my-6">
       
       {/* Active Garage Banner if bike is already set */}
       {activeMotorcycle ? (
@@ -111,24 +111,24 @@ export const CompatibilitySelector: React.FC<CompatibilitySelectorProps> = ({
       </div>
 
       {/* Quick Step Bar */}
-      <div className="flex items-center justify-center gap-2 mb-6">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-          <span className="w-5 h-5 rounded-full bg-[#E60012] text-white flex items-center justify-center text-[10px]">1</span>
+      <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mb-6">
+        <div className="flex items-center gap-1 text-[10px] sm:text-xs font-bold text-slate-800">
+          <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-[#E60012] text-white flex items-center justify-center text-[9px] sm:text-[10px]">1</span>
           MARCA
         </div>
-        <div className="w-8 h-0.5 bg-[#E60012]"></div>
-        <div className={`flex items-center gap-1.5 text-xs font-bold ${selectedModelId ? 'text-slate-800' : 'text-slate-600'}`}>
-          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${selectedModelId ? 'bg-[#E60012] text-white' : 'bg-slate-200 text-slate-700'}`}>2</span>
+        <div className="w-4 sm:w-8 h-0.5 bg-[#E60012]"></div>
+        <div className={`flex items-center gap-1 text-[10px] sm:text-xs font-bold ${selectedModelId ? 'text-slate-800' : 'text-slate-600'}`}>
+          <span className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] ${selectedModelId ? 'bg-[#E60012] text-white' : 'bg-slate-200 text-slate-700'}`}>2</span>
           MODELO
         </div>
-        <div className={`w-8 h-0.5 ${selectedModelId ? 'bg-[#E60012]' : 'bg-slate-200'}`}></div>
-        <div className={`flex items-center gap-1.5 text-xs font-bold ${selectedYear ? 'text-slate-800' : 'text-slate-600'}`}>
-          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${selectedYear ? 'bg-[#E60012] text-white' : 'bg-slate-200 text-slate-700'}`}>3</span>
+        <div className={`w-4 sm:w-8 h-0.5 ${selectedModelId ? 'bg-[#E60012]' : 'bg-slate-200'}`}></div>
+        <div className={`flex items-center gap-1 text-[10px] sm:text-xs font-bold ${selectedYear ? 'text-slate-800' : 'text-slate-600'}`}>
+          <span className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] ${selectedYear ? 'bg-[#E60012] text-white' : 'bg-slate-200 text-slate-700'}`}>3</span>
           AÑO
         </div>
-        <div className={`w-8 h-0.5 ${selectedYear ? 'bg-[#E60012]' : 'bg-slate-200'}`}></div>
-        <div className={`flex items-center gap-1.5 text-xs font-bold ${selectedVersion ? 'text-slate-800' : 'text-slate-600'}`}>
-          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${selectedVersion ? 'bg-[#E60012] text-white' : 'bg-slate-200 text-slate-700'}`}>4</span>
+        <div className={`w-4 sm:w-8 h-0.5 ${selectedYear ? 'bg-[#E60012]' : 'bg-slate-200'}`}></div>
+        <div className={`flex items-center gap-1 text-[10px] sm:text-xs font-bold ${selectedVersion ? 'text-slate-800' : 'text-slate-600'}`}>
+          <span className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] ${selectedVersion ? 'bg-[#E60012] text-white' : 'bg-slate-200 text-slate-700'}`}>4</span>
           VERSIÓN
         </div>
       </div>

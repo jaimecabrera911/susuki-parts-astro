@@ -8,7 +8,7 @@ interface OrdersModalProps {
 
 export const OrdersModal: React.FC<OrdersModalProps> = ({ orders }) => {
   return (
-    <div id="orders-modal" className="max-w-6xl mx-auto px-4 py-8">
+    <div id="orders-modal" className="max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-xl bg-[#E60012] text-white flex items-center justify-center font-bold shrink-0 shadow-sm">
           <Package className="w-5 h-5" aria-hidden="true" />
