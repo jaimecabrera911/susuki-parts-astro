@@ -155,7 +155,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-xl font-black text-slate-900 font-display truncate">
-                  Pedido {order.id}
+                  Pedido {order.orderNumber || order.documentNumber || order.id}
                 </h2>
                 <span className={`text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${getStatusTheme(status)}`}>
                   {status}

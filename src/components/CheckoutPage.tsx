@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { generateOrderId, generateGuaranteeCode } from "../utils/idGenerator";
 import {
   ShoppingBag,
   ShieldCheck,
@@ -440,9 +441,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
     setIsSubmitting(true);
 
-    const orderId = "SZ-ORD-" + Math.floor(100000 + Math.random() * 900000);
-    const guaranteeCode =
-      "SZ-CERT-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+    const orderId = generateOrderId();
+    const guaranteeCode = generateGuaranteeCode();
     const orderDate = new Date().toLocaleString("es-CO", {
       day: "2-digit",
       month: "short",

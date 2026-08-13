@@ -196,7 +196,9 @@ export const orders = pgTable('orders', {
   trackingNumber: text('tracking_number'),
   shippingCarrier: text('shipping_carrier'),
   trackingUrl: text('tracking_url'),
-  notes: text('notes')
+  notes: text('notes'),
+  prefix: text('prefix').notNull().default('SZ-ORD'),
+  documentNumber: text('document_number')
 }, (table) => ({
   emailIdx: index('idx_orders_email').on(table.email),
   statusIdx: index('idx_orders_status').on(table.status),
@@ -408,6 +410,8 @@ export const orderReturns = pgTable('order_returns', {
   itemDetailsJson: jsonb('item_details_json').notNull().default([]),
   itemsJson: jsonb('items_json').notNull().default([]),
   notes: text('notes'),
+  prefix: text('prefix').notNull().default('SZ-RET'),
+  documentNumber: text('document_number'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 }, (table) => ({
@@ -416,27 +420,16 @@ export const orderReturns = pgTable('order_returns', {
   statusIdx: index('idx_order_returns_status').on(table.status)
 }));
 
-// 15. Site / Store Settings Table
+// 15. Site / Store Settings Table (Extensible Grouped Key-Value Pattern)
 export const siteSettings = pgTable('site_settings', {
-  id: text('id').primaryKey().default('default'),
-  storeName: text('store_name').notNull().default(''),
-  storeLogo: text('store_logo').notNull().default(''),
-  storeTagline: text('store_tagline').notNull().default(''),
-  whatsappNumber: text('whatsapp_number').notNull().default(''),
-  contactEmail: text('contact_email').notNull().default(''),
-  storeAddress: text('store_address').notNull().default(''),
-  socialLinks: jsonb('social_links'),
-  defaultCountry: text('default_country').notNull().default(''),
-  defaultDepartment: text('default_department').notNull().default(''),
-  defaultCity: text('default_city').notNull().default(''),
-  showProductImages: boolean('show_product_images').notNull().default(true),
-  taxName: text('tax_name').notNull().default('IVA Colombia'),
-  taxRate: doublePrecision('tax_rate').notNull().default(19),
-  taxActive: boolean('tax_active').notNull().default(true),
-  returnMaxDays: integer('return_max_days').notNull().default(30),
-  footerConfig: jsonb('footer_config'),
+  id: text('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  value: jsonb('value').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
-});
+}, (table) => ({
+  nameIdx: uniqueIndex('idx_site_settings_name').on(table.name)
+}));
 
 // 16. Coupons / Discount Codes Table
 export const coupons = pgTable('coupons', {

@@ -1,6 +1,6 @@
 import type { AppDb } from './client';
 import {
-  models, modelYears,
+  brands, models, modelYears,
   parts, partOemNumbers, partCompatibilities,
   schematics, schematicHotspots, schematicApplicableModels, schematicSections,
   orderStatuses, carriers, modelCategories,
@@ -14,6 +14,7 @@ import { DEFAULT_SHIPPING_ZONES, DEFAULT_SHIPPING_METHODS, DEFAULT_COLOMBIAN_CIT
 import { STORE_DEFAULT_LOCATION, STORE_BOOTSTRAP, FOOTER_BOOTSTRAP, getBootstrapShowProductImages } from '../utils/config';
 import { hashPassword } from '../utils/password';
 import type { SiteSettings } from '../types';
+import { generateUuidV7, generateOrderId, generateReturnId, generateGuaranteeCode, generateStoreCreditCode } from '../utils/idGenerator';
 
 export function parseJson(val: any, fallback: any = []) {
   if (!val) return fallback;
@@ -62,7 +63,7 @@ export async function formatParts(db: AppDb, rows: any[]) {
 }
 
 export async function upsertModel(db: AppDb, body: any) {
-  const id = body.id || `model-${Date.now()}`;
+  const id = body.id || generateUuidV7('model');
   const data = {
     id,
     brandId: body.brandId || 'suzuki',
@@ -79,7 +80,7 @@ export async function upsertModel(db: AppDb, body: any) {
     await tx.delete(modelYears).where(eq(modelYears.modelId, id));
     for (const year of body.years || []) {
       if (typeof year === 'number') {
-        await tx.insert(modelYears).values({ id: `${id}-yr-${year}`, modelId: id, year }).onConflictDoNothing();
+        await tx.insert(modelYears).values({ id: generateUuidV7('mdy'), modelId: id, year }).onConflictDoNothing();
       }
     }
   });
@@ -88,7 +89,7 @@ export async function upsertModel(db: AppDb, body: any) {
 }
 
 export async function upsertPart(db: AppDb, body: any) {
-  const id = body.id || `part-${Date.now()}`;
+  const id = body.id || generateUuidV7('part');
   const data = {
     id,
     name: body.name,
@@ -114,7 +115,7 @@ export async function upsertPart(db: AppDb, body: any) {
       const oem = body.oemNumbers[i];
       if (oem && typeof oem === 'string') {
         await tx.insert(partOemNumbers).values({
-          id: `${id}-oem-${i}`,
+          id: generateUuidV7('oem'),
           partId: id,
           oemNumber: oem,
           isPrimary: i === 0,
@@ -144,7 +145,7 @@ export async function upsertPart(db: AppDb, body: any) {
 }
 
 export async function upsertSchematic(db: AppDb, body: any) {
-  const id = body.id || `sch-${Date.now()}`;
+  const id = body.id || generateUuidV7('sch');
   const data = {
     id,
     title: body.title,
@@ -160,7 +161,7 @@ export async function upsertSchematic(db: AppDb, body: any) {
     await tx.delete(schematicApplicableModels).where(eq(schematicApplicableModels.schematicId, id));
     for (const modelId of body.applicableModelIds || []) {
       if (modelId && typeof modelId === 'string') {
-        await tx.insert(schematicApplicableModels).values({ id: `${id}-model-${modelId}`, schematicId: id, modelId }).onConflictDoNothing();
+        await tx.insert(schematicApplicableModels).values({ id: generateUuidV7('sam'), schematicId: id, modelId }).onConflictDoNothing();
       }
     }
 
@@ -169,7 +170,7 @@ export async function upsertSchematic(db: AppDb, body: any) {
       const hs = body.hotspots[i];
       if (hs && hs.itemNumber !== undefined) {
         await tx.insert(schematicHotspots).values({
-          id: `${id}-hs-${hs.itemNumber}-${i}`,
+          id: generateUuidV7('hs'),
           schematicId: id,
           partId: hs.partId || null,
           itemNumber: Number(hs.itemNumber),
@@ -185,7 +186,11 @@ export async function upsertSchematic(db: AppDb, body: any) {
 }
 
 export async function upsertOrder(db: AppDb, body: any) {
-  const id = body.id || `SZ-ORD-${Math.floor(100000 + Math.random() * 900000)}`;
+  const isBodyIdUuid = typeof body.id === 'string' && body.id.length === 36 && body.id.includes('-') && !body.id.startsWith('SZ-ORD');
+  const id = isBodyIdUuid ? body.id : generateUuidV7();
+  const prefix = body.prefix || 'SZ-ORD';
+  const documentNumber = body.documentNumber || (isBodyIdUuid ? null : (body.id || generateOrderId()));
+
   let date = new Date();
   if (body.date) {
     const parsed = new Date(body.date);
@@ -220,13 +225,15 @@ export async function upsertOrder(db: AppDb, body: any) {
     shippingCost: Number(body.shippingCost || 0),
     shippingMethodName: body.shippingMethodName || null,
     motorcycle: body.motorcycle || null,
-    guaranteeCode: body.guaranteeCode || `SZ-GAR-${Math.floor(1000 + Math.random() * 9000)}-PENDING`,
+    guaranteeCode: body.guaranteeCode || generateGuaranteeCode(),
     paymentMethod: body.paymentMethod || 'transferencia',
     status: body.status || (await getDefaultStatusName(db)) || 'Pendiente de pago',
-    paymentReference: body.paymentReference || id,
+    paymentReference: body.paymentReference || documentNumber || id,
     trackingNumber: body.trackingNumber || null,
     shippingCarrier: body.shippingCarrier || null,
     trackingUrl: body.trackingUrl || null,
+    prefix,
+    documentNumber,
     notes: body.notes || ''
   };
 
@@ -246,8 +253,9 @@ export async function upsertOrder(db: AppDb, body: any) {
       const unitPrice = Number(part.price ?? item.unitPrice ?? 0);
       const lineTotal = Number(item.lineTotal ?? quantity * unitPrice);
 
+      const itemId = (item.id && !item.id.includes('-item-')) ? item.id : generateUuidV7('ori');
       await tx.insert(orderItems).values({
-        id: `${id}-item-${i}`,
+        id: itemId,
         orderId: id,
         partId: part.id ?? null,
         part,
@@ -263,7 +271,7 @@ export async function upsertOrder(db: AppDb, body: any) {
 }
 
 export async function upsertUser(db: AppDb, body: any) {
-  const id = body.id || `usr-${Date.now()}`;
+  const id = body.id || generateUuidV7('usr');
   let createdAt = new Date();
   if (body.createdAt) {
     const parsed = new Date(body.createdAt);
@@ -347,7 +355,7 @@ export async function upsertShippingMethod(db: AppDb, body: any) {
     for (const r of body.zoneRates || []) {
       if (r && r.zoneId) {
         await tx.insert(shippingMethodZoneRates).values({
-          id: `${id}-rate-${r.zoneId}`,
+          id: generateUuidV7('smr'),
           methodId: id,
           zoneId: r.zoneId,
           price: Number(r.price || 0)
@@ -377,7 +385,7 @@ export async function upsertShippingZone(db: AppDb, body: any) {
       const stateId = await resolveStateRef(tx as unknown as AppDb, dept);
       if (stateId) {
         await tx.insert(shippingZoneStates).values({
-          id: `${id}-st-${stateId}`,
+          id: generateUuidV7('szs'),
           zoneId: id,
           stateId
         }).onConflictDoNothing();
@@ -400,12 +408,23 @@ function slugify(value: string): string {
 
 // ============ 3NF Geography: Countries, States, Cities ============
 
+const DEPARTMENT_CODES: Record<string, string> = {
+  'Bogotá D.C.': '11', 'Amazonas': '91', 'Antioquia': '05', 'Arauca': '81', 'Atlántico': '08',
+  'Bolívar': '13', 'Boyacá': '15', 'Caldas': '17', 'Caquetá': '18', 'Casanare': '85',
+  'Cauca': '19', 'Cesar': '20', 'Chocó': '27', 'Córdoba': '23', 'Cundinamarca': '25',
+  'Guainía': '94', 'Guaviare': '95', 'Huila': '41', 'La Guajira': '44', 'Magdalena': '47',
+  'Meta': '50', 'Nariño': '52', 'Norte de Santander': '54', 'Putumayo': '86', 'Quindío': '63',
+  'Risaralda': '66', 'San Andrés y Providencia': '88', 'Santander': '68', 'Sucre': '70',
+  'Tolima': '73', 'Valle del Cauca': '76', 'Vaupés': '97', 'Vichada': '99'
+};
+
 export async function upsertCountry(db: AppDb, body: any) {
-  const id = body.id || `country-${slugify(body.name || '')}`;
+  const code = body.code || (body.name === 'Colombia' ? 'CO' : body.id || slugify(body.name || ''));
+  const id = code;
   const data = {
     id,
     name: body.name,
-    code: body.code || null,
+    code,
     active: body.active !== undefined ? Boolean(body.active) : true
   };
   await db.insert(countries).values(data).onConflictDoUpdate({ target: countries.id, set: data });
@@ -413,12 +432,13 @@ export async function upsertCountry(db: AppDb, body: any) {
 }
 
 export async function upsertState(db: AppDb, body: any) {
-  const id = body.id || `state-${slugify(body.name || '')}`;
+  const code = body.code || DEPARTMENT_CODES[body.name] || slugify(body.name || '');
+  const id = code;
   const data = {
     id,
     countryId: body.countryId,
     name: body.name,
-    code: body.code || null,
+    code,
     active: body.active !== undefined ? Boolean(body.active) : true
   };
   await db.insert(states).values(data).onConflictDoUpdate({ target: states.id, set: data });
@@ -426,12 +446,13 @@ export async function upsertState(db: AppDb, body: any) {
 }
 
 export async function upsertCity(db: AppDb, body: any) {
-  const id = body.id || `city-${Date.now()}`;
+  const code = body.code || body.id;
+  const id = code || `city-${Date.now()}`;
   const data = {
     id,
     stateId: body.stateId,
     name: body.name,
-    code: body.code || null,
+    code,
     active: body.active !== undefined ? Boolean(body.active) : true
   };
   await db.insert(cities).values(data).onConflictDoUpdate({ target: cities.id, set: data });
@@ -624,7 +645,7 @@ export async function seedGeography(db: AppDb) {
   for (const c of DEFAULT_COLOMBIAN_CITIES) {
     const stateId = await ensureState(db, colombiaId, c.department);
     await upsertCity(db, {
-      id: c.id,
+      id: c.code || c.id,
       stateId,
       name: c.city,
       code: c.code,
@@ -636,7 +657,10 @@ export async function seedGeography(db: AppDb) {
 }
 
 export async function upsertOrderReturn(db: AppDb, body: any) {
-  const id = body.id || `SZ-RET-${Math.floor(100000 + Math.random() * 900000)}`;
+  const isBodyIdUuid = typeof body.id === 'string' && body.id.length === 36 && body.id.includes('-') && !body.id.startsWith('SZ-RET');
+  const id = isBodyIdUuid ? body.id : generateUuidV7();
+  const prefix = body.prefix || 'SZ-RET';
+  const documentNumber = body.documentNumber || (isBodyIdUuid ? null : (body.id || generateReturnId()));
   const date = body.createdAt ? new Date(body.createdAt) : new Date();
 
   // Auto generate Store Credit Code if resolution is store_credit and none exists
@@ -645,7 +669,7 @@ export async function upsertOrderReturn(db: AppDb, body: any) {
   const refundAmount = Number(body.refundAmount || 0);
 
   if (body.resolutionType === 'store_credit' && !storeCreditCode && (body.status === 'Aprobada' || body.status === 'Reembolsada' || body.status === 'Pieza recibida')) {
-    storeCreditCode = `SZ-CREDIT-${Math.floor(100000 + Math.random() * 900000)}`;
+    storeCreditCode = generateStoreCreditCode();
   }
 
   const data: any = {
@@ -655,6 +679,8 @@ export async function upsertOrderReturn(db: AppDb, body: any) {
     email: body.email,
     phone: body.phone || '',
     documentId: body.documentId || '',
+    prefix,
+    documentNumber,
     reason: body.reason || 'Devolución de repuesto',
     resolutionType: body.resolutionType || 'refund',
     isPreDispatchCancel: Boolean(body.isPreDispatchCancel),
@@ -709,11 +735,70 @@ export async function upsertOrderReturn(db: AppDb, body: any) {
 
 export async function getSiteSettings(db: AppDb): Promise<SiteSettings> {
   try {
-    const rows = await db.select().from(siteSettings).where(eq(siteSettings.id, 'default')).limit(1);
-    if (rows.length > 0) return rows[0] as unknown as SiteSettings;
+    const rows = await db.select().from(siteSettings);
+    if (rows.length > 0) {
+      let merged: any = {};
+      for (const row of rows) {
+        if (row.value && typeof row.value === 'object') {
+          merged = { ...merged, ...(row.value as object) };
+        }
+      }
+      return {
+        id: rows[0].id,
+        storeName: merged.storeName || STORE_BOOTSTRAP.storeName,
+        storeLogo: merged.storeLogo || STORE_BOOTSTRAP.storeLogo,
+        storeTagline: merged.storeTagline || STORE_BOOTSTRAP.storeTagline,
+        whatsappNumber: merged.whatsappNumber || STORE_BOOTSTRAP.whatsappNumber,
+        contactEmail: merged.contactEmail || STORE_BOOTSTRAP.contactEmail,
+        storeAddress: merged.storeAddress || STORE_BOOTSTRAP.storeAddress,
+        socialLinks: merged.socialLinks || STORE_BOOTSTRAP.socialLinks,
+        defaultCountry: merged.defaultCountry || STORE_BOOTSTRAP.location.country,
+        defaultDepartment: merged.defaultDepartment || STORE_BOOTSTRAP.location.department,
+        defaultCity: merged.defaultCity || STORE_BOOTSTRAP.location.city,
+        showProductImages: merged.showProductImages !== undefined ? merged.showProductImages : getBootstrapShowProductImages(),
+        taxName: merged.taxName || 'IVA Colombia',
+        taxRate: merged.taxRate !== undefined ? merged.taxRate : 19,
+        taxActive: merged.taxActive !== undefined ? merged.taxActive : true,
+        returnMaxDays: merged.returnMaxDays !== undefined ? merged.returnMaxDays : 30,
+        footerConfig: merged.footerConfig || FOOTER_BOOTSTRAP,
+        updatedAt: new Date()
+      } as unknown as SiteSettings;
+    }
   } catch {}
-  const seed = {
-    id: 'default',
+
+  const defaultGroups = [
+    {
+      name: 'store_general',
+      value: {
+        storeName: STORE_BOOTSTRAP.storeName,
+        storeLogo: STORE_BOOTSTRAP.storeLogo,
+        storeTagline: STORE_BOOTSTRAP.storeTagline,
+        whatsappNumber: STORE_BOOTSTRAP.whatsappNumber,
+        contactEmail: STORE_BOOTSTRAP.contactEmail,
+        storeAddress: STORE_BOOTSTRAP.storeAddress,
+        defaultCountry: STORE_BOOTSTRAP.location.country,
+        defaultDepartment: STORE_BOOTSTRAP.location.department,
+        defaultCity: STORE_BOOTSTRAP.location.city
+      }
+    },
+    { name: 'tax_config', value: { taxName: 'IVA Colombia', taxRate: 19, taxActive: true } },
+    { name: 'store_policies', value: { returnMaxDays: 30, showProductImages: getBootstrapShowProductImages() } },
+    { name: 'social_links', value: STORE_BOOTSTRAP.socialLinks },
+    { name: 'footer_config', value: FOOTER_BOOTSTRAP }
+  ];
+
+  for (const group of defaultGroups) {
+    try {
+      await db.insert(siteSettings).values({
+        id: generateUuidV7('set'),
+        name: group.name,
+        value: group.value
+      }).onConflictDoNothing();
+    } catch {}
+  }
+
+  return {
+    id: generateUuidV7('set'),
     storeName: STORE_BOOTSTRAP.storeName,
     storeLogo: STORE_BOOTSTRAP.storeLogo,
     storeTagline: STORE_BOOTSTRAP.storeTagline,
@@ -731,11 +816,7 @@ export async function getSiteSettings(db: AppDb): Promise<SiteSettings> {
     returnMaxDays: 30,
     footerConfig: FOOTER_BOOTSTRAP,
     updatedAt: new Date()
-  };
-  try {
-    await db.insert(siteSettings).values(seed).onConflictDoNothing();
-  } catch {}
-  return seed as unknown as SiteSettings;
+  } as unknown as SiteSettings;
 }
 
 export async function upsertSiteSettings(db: AppDb, body: any) {
@@ -752,8 +833,8 @@ export async function upsertSiteSettings(db: AppDb, body: any) {
           : (existing.footerConfig?.legalLinks ?? [])
       }
     : (existing.footerConfig ?? null);
-  const data = {
-    id: 'default',
+
+  const updatedData = {
     storeName: typeof body.storeName === 'string' ? body.storeName.trim() : existing.storeName,
     storeLogo: typeof body.storeLogo === 'string' ? body.storeLogo.trim() : existing.storeLogo,
     storeTagline: typeof body.storeTagline === 'string' ? body.storeTagline.trim() : existing.storeTagline,
@@ -780,12 +861,83 @@ export async function upsertSiteSettings(db: AppDb, body: any) {
     footerConfig,
     updatedAt: new Date()
   };
-  await db.insert(siteSettings).values(data).onConflictDoUpdate({ target: siteSettings.id, set: data });
-  return data;
+
+  const groups = [
+    {
+      name: 'store_general',
+      value: {
+        storeName: updatedData.storeName,
+        storeLogo: updatedData.storeLogo,
+        storeTagline: updatedData.storeTagline,
+        whatsappNumber: updatedData.whatsappNumber,
+        contactEmail: updatedData.contactEmail,
+        storeAddress: updatedData.storeAddress,
+        defaultCountry: updatedData.defaultCountry,
+        defaultDepartment: updatedData.defaultDepartment,
+        defaultCity: updatedData.defaultCity
+      }
+    },
+    {
+      name: 'tax_config',
+      value: {
+        taxName: updatedData.taxName,
+        taxRate: updatedData.taxRate,
+        taxActive: updatedData.taxActive
+      }
+    },
+    {
+      name: 'store_policies',
+      value: {
+        returnMaxDays: updatedData.returnMaxDays,
+        showProductImages: updatedData.showProductImages
+      }
+    },
+    {
+      name: 'social_links',
+      value: updatedData.socialLinks
+    },
+    {
+      name: 'footer_config',
+      value: updatedData.footerConfig
+    }
+  ];
+
+  for (const g of groups) {
+    const existingRow = await db.select().from(siteSettings).where(eq(siteSettings.name, g.name)).limit(1);
+    if (existingRow.length > 0) {
+      await db.update(siteSettings)
+        .set({ value: g.value, updatedAt: new Date() })
+        .where(eq(siteSettings.name, g.name));
+    } else {
+      await db.insert(siteSettings).values({
+        id: generateUuidV7('set'),
+        name: g.name,
+        value: g.value,
+        updatedAt: new Date()
+      });
+    }
+  }
+
+  return updatedData;
 }
 
 export async function deleteOrderReturn(db: AppDb, id: string) {
   await db.delete(orderReturns).where(eq(orderReturns.id, id));
   return { id };
 }
+
+export async function upsertBrand(db: AppDb, body: any) {
+  const id = body.id || generateUuidV7('brd');
+  const data = {
+    id,
+    name: body.name,
+    logo: body.logo || null,
+    country: body.country || 'Japón',
+    active: body.active !== undefined ? Boolean(body.active) : true,
+    description: body.description || ''
+  };
+  await db.insert(brands).values(data).onConflictDoUpdate({ target: brands.id, set: data });
+  return data;
+}
+
 

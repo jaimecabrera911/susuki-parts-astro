@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
 import { categories } from '../../db/schema';
 import { eq } from 'drizzle-orm';
+import { generateUuidV7 } from '../../utils/idGenerator';
 
 const makeSlug = (name: string) => (name || '').toLowerCase().replace(/\s+/g, '-');
 
@@ -62,7 +63,7 @@ export const POST: APIRoute = async ({ request }) => {
         const sub = body.subcategories[i];
         if (!sub) continue;
         await db.insert(categories).values({
-          id: sub.id || `sub-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          id: sub.id || generateUuidV7('sub'),
           name: sub.name,
           slug: sub.slug || makeSlug(sub.name),
           iconName: null,
@@ -119,7 +120,7 @@ export const PUT: APIRoute = async ({ request }) => {
         const sub = body.subcategories[i];
         if (!sub) continue;
         await db.insert(categories).values({
-          id: sub.id || `sub-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          id: sub.id || generateUuidV7('sub'),
           name: sub.name,
           slug: sub.slug || makeSlug(sub.name),
           iconName: null,

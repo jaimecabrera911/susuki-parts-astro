@@ -190,7 +190,7 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
                   <td className="py-4 px-5">
                     <div>
                       <p className="font-extrabold text-slate-900 group-hover:text-[#E60012] transition-colors font-mono">
-                        {ord.id}
+                        {ord.orderNumber || ord.documentNumber || ord.id}
                       </p>
                       <p className="text-[11px] font-mono text-slate-400 font-bold">{ord.date}</p>
                     </div>

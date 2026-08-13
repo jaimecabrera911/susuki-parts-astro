@@ -218,8 +218,10 @@ export const ReturnsTable: React.FC<ReturnsTableProps> = ({ returnsList, orders 
               ) : (
                 paginatedReturns.map((ret) => {
                   const isUnpaid = Boolean(ret.isUnpaidCancel || ret.resolutionType === 'cancellation');
-                  const foundOrder = orders.find((o) => o.id === ret.orderId);
+                  const foundOrder = orders.find((o) => o.id === ret.orderId || o.documentNumber === ret.orderId);
                   const orderStatus = isUnpaid ? 'Cancelado' : (ret.orderStatus || foundOrder?.status || 'Pendiente de Pago');
+                  const displayRma = ret.returnNumber || ret.documentNumber || ret.id;
+                  const displayOrderId = foundOrder ? (foundOrder.orderNumber || foundOrder.documentNumber || foundOrder.id) : ret.orderId;
 
                   return (
                     <tr
@@ -230,9 +232,9 @@ export const ReturnsTable: React.FC<ReturnsTableProps> = ({ returnsList, orders 
                       {/* Column 1: RMA Code & Order ID */}
                       <td className="py-4 px-4 font-mono font-black text-slate-900 group-hover:text-[#E60012]">
                         <div>
-                          <span>{ret.id}</span>
+                          <span>{displayRma}</span>
                           <span className="text-[11px] font-mono font-normal text-slate-500 block mt-0.5">
-                            Pedido: {ret.orderId}
+                            Pedido: {displayOrderId}
                           </span>
                         </div>
                       </td>

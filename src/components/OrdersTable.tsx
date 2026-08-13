@@ -65,6 +65,8 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
     const filtered = allOrders.filter((order) => {
       const matchesSearch =
         order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (order.documentNumber && order.documentNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (order.orderNumber && order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (order.motorcycle &&
           order.motorcycle.modelName
             .toLowerCase()
@@ -208,7 +210,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                       className="hover:bg-red-50/30 transition-colors cursor-pointer group"
                     >
                       <td className="py-4 px-4 font-mono font-black text-slate-900 group-hover:text-[#E60012]">
-                        {order.id}
+                        {order.orderNumber || order.documentNumber || order.id}
                       </td>
 
                       <td className="py-4 px-4 text-slate-600 font-medium whitespace-nowrap">

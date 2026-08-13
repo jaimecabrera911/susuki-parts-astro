@@ -219,7 +219,9 @@ export interface StateRecord {
 
 export interface CityRecord {
   id: string;
+  countryId?: string;
   country: string;
+  stateId?: string;
   department: string;
   city: string;
   active: boolean;
@@ -313,6 +315,9 @@ export interface Order {
   trackingNumber?: string;
   trackingUrl?: string;
   notes?: string;
+  prefix?: string;
+  documentNumber?: string;
+  orderNumber?: string;
 }
 
 export interface OrderReturnItem {
@@ -333,6 +338,9 @@ export interface OrderReturn {
   email: string;
   phone: string;
   documentId?: string;
+  prefix?: string;
+  documentNumber?: string;
+  returnNumber?: string;
   reason: string;
   resolutionType: 'refund' | 'exchange' | 'store_credit';
   isPreDispatchCancel?: boolean;

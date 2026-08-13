@@ -18,6 +18,7 @@ export const GET: APIRoute = async ({ url }) => {
       rawData = await db.select().from(orders).where(
         or(
           like(orders.id, q),
+          like(orders.documentNumber, q),
           like(orders.customerName, q),
           like(orders.email, q),
           like(orders.documentId, q),
@@ -38,6 +39,7 @@ export const GET: APIRoute = async ({ url }) => {
 
     const formatted = rawData.map(o => ({
       ...o,
+      orderNumber: o.documentNumber || o.id,
       motorcycle: o.motorcycle ?? null,
       items: (itemsByOrder.get(o.id) || []).map(it => ({
         part: it.part,

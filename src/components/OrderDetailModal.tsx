@@ -218,7 +218,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             <div>
               <div className="flex items-center gap-3">
                 <span className="font-mono font-black text-slate-900 text-xl sm:text-2xl tracking-tight">
-                  {order.id}
+                  {order.orderNumber || order.documentNumber || order.id}
                 </span>
                 <span
                   className={`text-xs font-bold uppercase px-3 py-1 rounded-full flex items-center gap-1 ${

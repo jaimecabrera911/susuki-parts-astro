@@ -20,9 +20,9 @@ export const STORE_BOOTSTRAP = {
     whatsapp: ''
   },
   location: {
-    country: 'Colombia',
-    department: 'Bogotá D.C.',
-    city: 'Bogotá D.C.'
+    country: 'CO',
+    department: '11',
+    city: '11001'
   }
 };
 

@@ -21,6 +21,7 @@ export const GET: APIRoute = async ({ url }) => {
       data = await db.select().from(orderReturns).where(
         or(
           like(orderReturns.id, q),
+          like(orderReturns.documentNumber, q),
           like(orderReturns.orderId, q),
           like(orderReturns.customerName, q),
           like(orderReturns.email, q),
@@ -31,7 +32,12 @@ export const GET: APIRoute = async ({ url }) => {
       data = await db.select().from(orderReturns).orderBy(desc(orderReturns.createdAt));
     }
 
-    return new Response(JSON.stringify({ success: true, count: data.length, data }), {
+    const formatted = data.map(r => ({
+      ...r,
+      returnNumber: r.documentNumber || r.id
+    }));
+
+    return new Response(JSON.stringify({ success: true, count: formatted.length, data: formatted }), {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {

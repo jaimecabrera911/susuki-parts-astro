@@ -23,39 +23,66 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
   disabled = false,
   className = ''
 }) => {
-  // 1. List of Countries — derived purely from the data (no hardcoded country)
+  // Helper to match country by name or code ('CO' vs 'Colombia')
+  const matchCountry = (c: CityRecord, val: string) => {
+    if (!val) return true;
+    return c.country === val || c.countryId === val || (val === 'CO' && c.country === 'Colombia');
+  };
+
+  // Helper to match department by name or code ('11' vs 'Bogotá D.C.')
+  const matchDepartment = (c: CityRecord, val: string) => {
+    if (!val) return true;
+    return c.department === val || c.stateId === val;
+  };
+
+  // 1. List of Countries — derived from citiesList
   const countryOptions = useMemo(() => {
     const countriesFromDb = citiesList.map(c => c.country).filter(Boolean);
     return Array.from(new Set(countriesFromDb)).sort((a, b) => a.localeCompare(b));
   }, [citiesList]);
 
-  // Current selected country (fallback to the first country present in the data)
-  const defaultCountry = countryOptions[0] || '';
-  const currentCountry = country || defaultCountry;
+  // Current selected country (resolve code to name if needed)
+  const resolvedCountry = useMemo(() => {
+    if (!country) return countryOptions[0] || 'Colombia';
+    const match = citiesList.find(c => matchCountry(c, country));
+    return match ? match.country : (countryOptions[0] || country);
+  }, [citiesList, country, countryOptions]);
 
   // 2. Filter Departments for selected country
   const departmentOptions = useMemo(() => {
-    const filtered = citiesList.filter(
-      c => (c.country || '') === currentCountry
-    );
+    const filtered = citiesList.filter(c => matchCountry(c, resolvedCountry));
     const depts = Array.from(new Set(filtered.map(c => c.department))).filter(Boolean);
     return depts.sort((a, b) => a.localeCompare(b));
-  }, [citiesList, currentCountry]);
+  }, [citiesList, resolvedCountry]);
+
+  // Resolved department name (if passed a code like '11', resolve to 'Bogotá D.C.')
+  const resolvedDepartment = useMemo(() => {
+    if (!department) return '';
+    const match = citiesList.find(c => matchCountry(c, resolvedCountry) && matchDepartment(c, department));
+    return match ? match.department : department;
+  }, [citiesList, resolvedCountry, department]);
 
   // 3. Filter Cities for selected country & department
   const cityOptions = useMemo(() => {
     const filtered = citiesList.filter(
-      c =>
-        (c.country || '') === currentCountry &&
-        (c.department || '') === (department || '')
+      c => matchCountry(c, resolvedCountry) && matchDepartment(c, resolvedDepartment)
     );
     const cities = Array.from(new Set(filtered.map(c => c.city))).filter(Boolean);
     return cities.sort((a, b) => a.localeCompare(b));
-  }, [citiesList, currentCountry, department]);
+  }, [citiesList, resolvedCountry, resolvedDepartment]);
+
+  // Resolved city name (if passed a code like '11001', resolve to 'Bogotá D.C.')
+  const resolvedCity = useMemo(() => {
+    if (!city) return '';
+    const match = citiesList.find(
+      c => matchCountry(c, resolvedCountry) && matchDepartment(c, resolvedDepartment) && (c.city === city || c.id === city || c.code === city)
+    );
+    return match ? match.city : city;
+  }, [citiesList, resolvedCountry, resolvedDepartment, city]);
 
   const handleCountryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newCountry = e.target.value;
-    const firstMatch = citiesList.find(c => (c.country || '') === newCountry);
+    const firstMatch = citiesList.find(c => matchCountry(c, newCountry));
     onChange({
       country: newCountry,
       department: firstMatch?.department || '',
@@ -66,14 +93,12 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
   const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
     const newDept = e.target.value;
     const firstCityMatch = citiesList.find(
-      c =>
-        (c.country || '') === currentCountry &&
-        c.department === newDept
+      c => matchCountry(c, resolvedCountry) && matchDepartment(c, newDept)
     );
     const newCity = firstCityMatch?.city || '';
 
     onChange({
-      country: currentCountry,
+      country: resolvedCountry,
       department: newDept,
       city: newCity
     });
@@ -82,22 +107,18 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
   const handleCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newCity = e.target.value;
     const match = citiesList.find(
-      c =>
-        (c.country || '') === currentCountry &&
-        c.city === newCity
+      c => matchCountry(c, resolvedCountry) && matchDepartment(c, resolvedDepartment) && c.city === newCity
     );
     onChange({
-      country: currentCountry,
-      department: match?.department || department,
+      country: resolvedCountry,
+      department: match?.department || resolvedDepartment,
       city: newCity
     });
   };
 
   const isCountryDisabled = disabled || countryOptions.length <= 1;
-
-  // City is a reactive select gated on the selected department
-  const isCityDisabled = disabled || !department || cityOptions.length === 0;
-  const cityPlaceholder = !department
+  const isCityDisabled = disabled || !resolvedDepartment || cityOptions.length === 0;
+  const cityPlaceholder = !resolvedDepartment
     ? 'Selecciona un departamento primero'
     : cityOptions.length === 0
       ? 'No hay ciudades registradas'
@@ -108,7 +129,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
       
       {/* 1. Selección de País */}
       <div>
-        <label htmlFor="country" className="block text-xs font-bold uppercase text-slate-700 mb-1">
+        <label htmlFor="country" className="block text-xs font-bold uppercase text-slate-700 mb-1 font-mono">
           País {required && <span className="text-red-500">*</span>}
         </label>
         <div className="relative">
@@ -118,7 +139,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
             name="country"
             required={required}
             disabled={isCountryDisabled}
-            value={currentCountry}
+            value={resolvedCountry}
             onChange={handleCountryChange}
             className={`w-full pl-10 pr-8 py-2.5 rounded-xl text-sm font-semibold transition-all appearance-none ${
               isCountryDisabled
@@ -140,7 +161,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
 
       {/* 2. Selección de Departamento / Estado */}
       <div>
-        <label htmlFor="department" className="block text-xs font-bold uppercase text-slate-700 mb-1">
+        <label htmlFor="department" className="block text-xs font-bold uppercase text-slate-700 mb-1 font-mono">
           Departamento / Estado {required && <span className="text-red-500">*</span>}
         </label>
         <div className="relative">
@@ -152,7 +173,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                 name="department"
                 required={required}
                 disabled={disabled}
-                value={department}
+                value={resolvedDepartment}
                 onChange={handleDepartmentChange}
                 className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012] appearance-none cursor-pointer"
               >
@@ -172,7 +193,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
               type="text"
               required={required}
               disabled={disabled}
-              value={department}
+              value={resolvedDepartment}
               onChange={handleDepartmentChange}
               placeholder="Ej. Cundinamarca o Provincia"
               className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
@@ -181,9 +202,9 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         </div>
       </div>
 
-      {/* 3. Selección de Ciudad / Municipio (select reactivo bloqueado sin departamento) */}
+      {/* 3. Selección de Ciudad / Municipio */}
       <div>
-        <label htmlFor="city" className="block text-xs font-bold uppercase text-slate-700 mb-1">
+        <label htmlFor="city" className="block text-xs font-bold uppercase text-slate-700 mb-1 font-mono">
           Ciudad / Municipio {required && <span className="text-red-500">*</span>}
         </label>
         <div className="relative">
@@ -193,7 +214,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
             name="city"
             required={required}
             disabled={isCityDisabled}
-            value={city}
+            value={resolvedCity}
             onChange={handleCityChange}
             className={`w-full pl-10 pr-8 py-2.5 rounded-xl text-sm font-medium transition-all appearance-none ${
               isCityDisabled

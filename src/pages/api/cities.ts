@@ -15,7 +15,9 @@ export const GET: APIRoute = async () => {
     const rows = await db
       .select({
         id: cities.id,
+        countryId: countries.id,
         country: countries.name,
+        stateId: states.id,
         department: states.name,
         city: cities.name,
         active: cities.active,

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { RotateCcw, DollarSign, RefreshCw, Ticket, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { formatCurrency } from '../utils/formatCurrency';
 import { saveReturnApi } from '../services/api';
+import { generateReturnId } from '../utils/idGenerator';
 
 interface RequestReturnModalProps {
   isOpen: boolean;
@@ -109,7 +110,7 @@ export const RequestReturnModal: React.FC<RequestReturnModalProps> = ({
       : 'Bono de Tienda';
 
     const payload = {
-      id: `SZ-RET-${Math.floor(100000 + Math.random() * 900000)}`,
+      id: generateReturnId(),
       orderId: order.id,
       customerName: order.customerName,
       email: order.email,
