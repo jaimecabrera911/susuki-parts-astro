@@ -3,6 +3,7 @@ import { Search, Wrench, Sparkles, Layers, Menu, X, Package, Clock, ShieldCheck,
 import { FaCartShopping } from 'react-icons/fa6';
 import type { ActiveMotorcycle } from '../types';
 import { UserAvatar } from './UserAvatar';
+import { useSiteSettings } from './SiteSettingsProvider';
 import { getStoreLogo, getStoreName, getStoreTagline } from '../utils/config';
 import logoImg from '../assets/logo.png';
 
@@ -47,9 +48,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
-  const storeLogo = getStoreLogo();
-  const storeName = getStoreName();
-  const storeTagline = getStoreTagline();
+  const { settings } = useSiteSettings();
+
+  const storeLogo = settings.storeLogo || getStoreLogo();
+  const storeName = settings.storeName || getStoreName() || 'SUZUKI PARTS';
+  const storeTagline = settings.storeTagline || getStoreTagline();
   const logoToShow = storeLogo || logoUrl;
 
   const dropdownRef = useRef<HTMLDivElement>(null);

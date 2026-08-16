@@ -280,6 +280,10 @@ export default function App() {
     else if (tab === "contact") targetPath = "/contacto";
     else if (pathOverride) targetPath = pathOverride;
 
+    if (tab === "orders" || tab === "account") {
+      fetchOrders().then((fetched) => setOrders(fetched)).catch(() => {});
+    }
+
     if (window.location.pathname !== targetPath) {
       window.history.pushState(null, "", targetPath);
       window.dispatchEvent(new Event("popstate"));
@@ -970,7 +974,7 @@ export default function App() {
             userProfile={userProfile}
             isLoggedIn={isLoggedIn}
             onOrderComplete={(order) => {
-              setOrders((prev) => [order, ...prev]);
+              setOrders((prev) => [order, ...prev.filter((o) => o.id !== order.id)]);
             }}
             onClearCart={() => setCartItems([])}
             onNavigateToCatalog={() => navigateToTab("catalog")}

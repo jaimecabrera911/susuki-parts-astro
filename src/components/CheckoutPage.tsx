@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { OrderStatusTimeline } from "./OrderStatusTimeline";
 import {
   ShoppingBag,
   ShieldCheck,
@@ -443,14 +444,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     const orderId = "SZ-ORD-" + Math.floor(100000 + Math.random() * 900000);
     const guaranteeCode =
       "SZ-CERT-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-    const orderDate = new Date().toLocaleString("es-CO", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
+    const orderDate = new Date().toISOString();
 
     const newOrder: Order = {
       id: orderId,
@@ -482,22 +476,27 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
       paymentReference: orderId,
     };
 
+    let finalOrder = newOrder;
+
     try {
       // 1. Save to Neon DB via API
-      await saveOrderApi(newOrder);
+      const res = await saveOrderApi(newOrder);
+      if (res?.data) {
+        finalOrder = { ...newOrder, ...res.data };
+      }
 
       // 2. Save to localStorage as immediate client backup
       const stored = JSON.parse(localStorage.getItem("sz_user_orders") || "[]");
       localStorage.setItem(
         "sz_user_orders",
-        JSON.stringify([newOrder, ...stored]),
+        JSON.stringify([finalOrder, ...stored.filter((o: any) => o.id !== finalOrder.id)]),
       );
     } catch (err) {
       console.error("Error guardando pedido en BD:", err);
     }
 
-    setCompletedOrder(newOrder);
-    onOrderComplete(newOrder);
+    setCompletedOrder(finalOrder);
+    onOrderComplete(finalOrder);
     onClearCart();
     setIsSubmitting(false);
   };
@@ -537,46 +536,45 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
       <div id="checkout-page" className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
           {/* Header Status Banner */}
-          <div className="bg-slate-900 text-white p-6 sm:p-8 relative overflow-hidden">
-            <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="bg-slate-50 border-b border-slate-200 text-slate-900 p-6 sm:p-8 relative overflow-hidden">
             <div className="relative z-10 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/30">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/20">
                   <CheckCircle2 className="w-8 h-8" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="bg-amber-400/20 text-amber-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-amber-400/30 flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-amber-300" />
+                  <div className="flex items-center gap-2 justify-center sm:justify-start">
+                    <span className="bg-amber-100 text-amber-900 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-amber-300 flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-amber-700" />
                       {completedOrder.status}
                     </span>
                   </div>
-                  <h1 className="text-xl sm:text-2xl font-black tracking-tight mt-1 font-display">
+                  <h1 className="text-xl sm:text-2xl font-black tracking-tight mt-1 font-display text-slate-900">
                     ¡Pedido Registrado Exitosamente!
                   </h1>
-                  <p className="text-xs text-slate-300 font-sans">
+                  <p className="text-xs text-slate-600 font-sans">
                     Realiza la transferencia bancaria para confirmar la
                     preparación de tu despacho.
                   </p>
                 </div>
               </div>
 
-              <div className="bg-slate-800/90 backdrop-blur-xs p-3 sm:p-4 rounded-2xl border border-slate-700 text-center min-w-[160px]">
-                <span className="text-[10px] font-mono font-bold uppercase text-slate-400 block tracking-wider">
+              <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 text-center min-w-[160px] shadow-2xs">
+                <span className="text-[10px] font-mono font-bold uppercase text-slate-500 block tracking-wider">
                   Nº DE ORDEN
                 </span>
                 <div className="flex items-center justify-center gap-1.5 mt-0.5">
-                  <span className="font-mono font-black text-amber-400 text-lg">
+                  <span className="font-mono font-black text-slate-900 text-lg">
                     {completedOrder.id}
                   </span>
                   <button
                     type="button"
                     onClick={() => handleCopy(completedOrder.id, "orderId")}
-                    className="text-slate-400 hover:text-white transition-colors"
+                    className="text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
                     title="Copiar Número de Orden"
                   >
                     {copiedField === "orderId" ? (
-                      <Check className="w-4 h-4 text-emerald-400" />
+                      <Check className="w-4 h-4 text-emerald-600" />
                     ) : (
                       <Copy className="w-4 h-4" />
                     )}
@@ -588,6 +586,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
           {/* Body Content */}
           <div className="p-6 sm:p-8 space-y-6">
+            {/* Order Status Stepper Timeline */}
+            <OrderStatusTimeline order={completedOrder} />
+
             {/* Customer & Shipping Data Card */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 text-xs">
               <div>
@@ -758,61 +759,61 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               </div>
             </div>
 
-            {/* Bank Details Card */}
-            <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-md border border-slate-800">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-800 pb-4 mb-4 gap-4">
+            {/* Bank Details Card (Light Theme) */}
+            <div className="bg-slate-50 text-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-200 pb-4 mb-4 gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-900 flex items-center justify-center font-black text-sm shrink-0">
-                    <Building2 className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 text-amber-900 flex items-center justify-center font-black text-sm shrink-0">
+                    <Building2 className="w-5 h-5 text-amber-700" />
                   </div>
                   <div>
-                    <h3 className="text-base font-black font-display">
+                    <h3 className="text-base font-black font-display text-slate-900">
                       Datos Bancarios para Transferencia
                     </h3>
-                    <p className="text-xs text-slate-400 font-sans">
+                    <p className="text-xs text-slate-500 font-sans">
                       {BANK_DETAILS.instructions}
                     </p>
                   </div>
                 </div>
                 <div className="text-left sm:text-right shrink-0">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block font-mono">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold block font-mono">
                     TOTAL A TRANSFERIR
                   </span>
-                  <span className="text-xl font-mono font-black text-emerald-400">
+                  <span className="text-xl font-mono font-black text-emerald-700">
                     {formatCurrency(completedOrder.totalPrice)}
                   </span>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <div className="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/80">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block font-mono">
+                <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold block font-mono">
                     TITULAR DE LA CUENTA
                   </span>
-                  <span className="font-extrabold text-white text-xs block mt-0.5">
+                  <span className="font-extrabold text-slate-900 text-xs block mt-0.5">
                     {BANK_DETAILS.accountHolder}
                   </span>
-                  <span className="text-slate-300 block text-[11px] font-mono mt-0.5">
+                  <span className="text-slate-600 block text-[11px] font-mono mt-0.5">
                     NIT: {BANK_DETAILS.nit}
                   </span>
                 </div>
-                <div className="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/80">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block font-mono">
+                <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold block font-mono">
                     BANCO & TIPO DE CUENTA
                   </span>
-                  <span className="font-black text-white text-xs block mt-0.5">
+                  <span className="font-black text-slate-900 text-xs block mt-0.5">
                     {BANK_DETAILS.bankName}
                   </span>
-                  <span className="text-slate-300 block text-[11px] mt-0.5">
+                  <span className="text-slate-600 block text-[11px] mt-0.5">
                     {BANK_DETAILS.accountType}
                   </span>
                 </div>
-                <div className="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/80">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block font-mono">
+                <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold block font-mono">
                     NÚMERO DE CUENTA
                   </span>
                   <div className="flex items-center justify-between mt-0.5">
-                    <span className="font-mono font-black text-amber-400 text-sm sm:text-base">
+                    <span className="font-mono font-black text-amber-700 text-sm sm:text-base">
                       {BANK_DETAILS.accountNumber}
                     </span>
                     <button
@@ -820,11 +821,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       onClick={() =>
                         handleCopy(BANK_DETAILS.accountNumber, "accountNumber")
                       }
-                      className="text-slate-400 hover:text-white p-1 cursor-pointer"
+                      className="text-slate-400 hover:text-slate-800 p-1 cursor-pointer transition-colors"
                       title="Copiar Número de Cuenta"
                     >
                       {copiedField === "accountNumber" ? (
-                        <Check className="w-4 h-4 text-emerald-400" />
+                        <Check className="w-4 h-4 text-emerald-600" />
                       ) : (
                         <Copy className="w-4 h-4" />
                       )}

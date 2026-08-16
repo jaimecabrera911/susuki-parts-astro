@@ -1,6 +1,7 @@
 import React from 'react';
 import { MapPin, Mail, Phone } from 'lucide-react';
 import { FaFacebookF, FaInstagram, FaTiktok, FaYoutube, FaWhatsapp } from 'react-icons/fa';
+import { useSiteSettings } from './SiteSettingsProvider';
 import {
   getStoreName,
   getStoreTagline,
@@ -12,6 +13,9 @@ import {
   getContactEmail,
 } from '../utils/config';
 import type { SocialLinks } from '../types';
+import logoImg from '../assets/logo.png';
+
+const defaultLogoUrl = typeof logoImg === 'string' ? logoImg : (logoImg?.src || '/src/assets/logo.png');
 
 interface FooterProps {
   onOpenTutorial?: () => void;
@@ -29,14 +33,18 @@ const SOCIAL_ICONS: { key: keyof SocialLinks; Icon: React.ElementType; label: st
 const RULER_COUNT = 41;
 
 export const Footer: React.FC<FooterProps> = ({ onOpenTutorial, onOpenContact }) => {
-  const storeName = getStoreName();
-  const storeTagline = getStoreTagline();
-  const storeLogo = getStoreLogo();
-  const footerConfig = getFooterConfig();
-  const storeAddress = getStoreAddress();
-  const socialLinks = getSocialLinks();
-  const whatsappNumber = getWhatsAppNumber();
-  const contactEmail = getContactEmail();
+  const { settings } = useSiteSettings();
+
+  const storeName = settings.storeName || getStoreName() || 'Suzuki Parts Expert';
+  const storeTagline = settings.storeTagline || getStoreTagline() || 'REPUESTOS COLOMBIA';
+  const storeLogo = settings.storeLogo || getStoreLogo();
+  const logoToShow = storeLogo || defaultLogoUrl;
+
+  const footerConfig = settings.footerConfig || getFooterConfig();
+  const storeAddress = settings.storeAddress || getStoreAddress();
+  const socialLinks = settings.socialLinks || getSocialLinks();
+  const whatsappNumber = settings.whatsappNumber || getWhatsAppNumber();
+  const contactEmail = settings.contactEmail || getContactEmail();
 
   const legalLinks = (footerConfig?.legalLinks ?? []).filter(
     (link) => link && link.label?.trim() && link.href?.trim(),
@@ -49,7 +57,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenTutorial, onOpenContact })
   const hasInfo = Boolean(
     storeName ||
       storeTagline ||
-      storeLogo ||
+      logoToShow ||
       copyright ||
       description ||
       storeAddress.trim() ||
@@ -74,21 +82,13 @@ export const Footer: React.FC<FooterProps> = ({ onOpenTutorial, onOpenContact })
             {/* Brand column */}
             <div className="md:col-span-1 space-y-4">
               <div className="flex items-center gap-3">
-                {storeLogo ? (
-                  <div className="w-11 h-11 overflow-hidden flex items-center justify-center bg-white shrink-0">
-                    <img
-                      src={storeLogo}
-                      alt={storeName}
-                      className="w-full h-full object-cover pointer-events-none select-none"
-                    />
-                  </div>
-                ) : storeName ? (
-                  <div className="w-11 h-11 flex items-center justify-center bg-[#E60012] shrink-0">
-                    <span className="text-white font-display font-black text-lg leading-none">
-                      {storeName.charAt(0)}
-                    </span>
-                  </div>
-                ) : null}
+                <div className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center bg-white border border-slate-800 p-1 shrink-0">
+                  <img
+                    src={logoToShow}
+                    alt={storeName}
+                    className="w-full h-full object-contain pointer-events-none select-none"
+                  />
+                </div>
 
                 <div>
                   {storeName && (

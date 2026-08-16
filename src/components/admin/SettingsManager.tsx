@@ -72,7 +72,11 @@ const EMPTY_SETTINGS: SiteSettings = {
   footerConfig: EMPTY_FOOTER,
 };
 
-export const SettingsManager: React.FC = () => {
+interface SettingsManagerProps {
+  onShowToast?: (message: string, type?: "success" | "info" | "error") => void;
+}
+
+export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast }) => {
   const [activeSubTab, setActiveSubTab] = useState<SettingsTab>("general");
   const [settings, setSettings] = useState<SiteSettings>(EMPTY_SETTINGS);
   const [loading, setLoading] = useState(true);
@@ -123,9 +127,16 @@ export const SettingsManager: React.FC = () => {
     try {
       await POST_SETTINGS(settings);
       setSavedSuccess(true);
+      if (onShowToast) {
+        onShowToast("Configuración guardada y actualizada con éxito.", "success");
+      }
       setTimeout(() => setSavedSuccess(false), 3000);
     } catch (err: any) {
-      setErrorMsg(err?.message || "No se pudo guardar la configuración.");
+      const msg = err?.message || "No se pudo guardar la configuración.";
+      setErrorMsg(msg);
+      if (onShowToast) {
+        onShowToast(`No se pudo guardar la configuración: ${msg}`, "error");
+      }
     } finally {
       setIsSaving(false);
     }

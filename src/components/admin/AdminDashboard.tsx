@@ -137,7 +137,7 @@ export const AdminDashboard: React.FC = () => {
   // Toast notification state
   const [toast, setToast] = useState<{
     message: string;
-    type: "success" | "info";
+    type: "success" | "info" | "error";
   } | null>(null);
 
   // Modal / Drawer state
@@ -209,16 +209,23 @@ export const AdminDashboard: React.FC = () => {
 
   const handleSaveUser = async (savedUser: UserProfile) => {
     const exists = users.some((u) => u.id === savedUser.id);
-    if (exists) {
-      setUsers(users.map((u) => (u.id === savedUser.id ? savedUser : u)));
-      showToast(`Usuario "${savedUser.fullName}" actualizado.`);
-    } else {
-      setUsers([...users, savedUser]);
-      showToast(`Usuario "${savedUser.fullName}" creado con éxito.`);
+    try {
+      const res = await saveUserApi(savedUser, exists);
+      if (res && res.success !== false) {
+        if (exists) {
+          setUsers(users.map((u) => (u.id === savedUser.id ? savedUser : u)));
+          showToast(`Usuario "${savedUser.fullName}" actualizado.`);
+        } else {
+          setUsers([...users, savedUser]);
+          showToast(`Usuario "${savedUser.fullName}" creado con éxito.`);
+        }
+      } else {
+        showToast(`Error al guardar usuario: ${res?.error || "Desconocido"}`, "error");
+      }
+    } catch (e: any) {
+      console.error("API Error:", e);
+      showToast(`Error al guardar usuario: ${e?.message || e}`, "error");
     }
-    await saveUserApi(savedUser, exists).catch((e) =>
-      console.error("API Error:", e),
-    );
   };
 
   const handleDeleteUser = async (id: string) => {
@@ -231,7 +238,10 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const showToast = (message: string, type: "success" | "info" = "success") => {
+  const showToast = (
+    message: string,
+    type: "success" | "info" | "error" = "success",
+  ) => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3500);
   };
@@ -966,7 +976,7 @@ export const AdminDashboard: React.FC = () => {
 
           {activeTab === "shipping" && <ShippingManager />}
 
-          {activeTab === "settings" && <SettingsManager />}
+          {activeTab === "settings" && <SettingsManager onShowToast={showToast} />}
 
           {activeTab === "coupons" && <CouponsManager />}
 

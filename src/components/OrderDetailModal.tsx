@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { UserAvatar } from "./UserAvatar";
 import { ReturnRequestModal } from "./ReturnRequestModal";
 import { ReturnStatusTimeline } from "./ReturnStatusTimeline";
+import { OrderStatusTimeline } from "./OrderStatusTimeline";
 import {
   X,
   ShieldCheck,
@@ -254,6 +255,9 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
         {/* Scrollable Modal Content */}
         <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar">
+          {/* Order Status Stepper Timeline */}
+          <OrderStatusTimeline order={order} />
+
           {/* Customer & Shipping Data Card */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs">
             <div>
@@ -301,61 +305,61 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Bank Transfer Payment Card (Always visible if Pending or for reference) */}
-          <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-md border border-slate-800">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-800 pb-3 mb-3 gap-3">
+          {/* Bank Transfer Payment Card (Light Theme) */}
+          <div className="bg-slate-50 border border-slate-200 text-slate-900 rounded-2xl p-5 shadow-xs">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-200 pb-3 mb-3 gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-400 text-slate-900 flex items-center justify-center font-black text-sm shrink-0">
-                  <Building2 className="w-4 h-4" />
+                <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-300 text-amber-900 flex items-center justify-center font-black text-sm shrink-0">
+                  <Building2 className="w-4 h-4 text-amber-700" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black font-display">
+                  <h3 className="text-sm font-black font-display text-slate-900">
                     Datos Bancarios para Transferencia
                   </h3>
-                  <p className="text-[11px] text-slate-400 font-sans">
+                  <p className="text-[11px] text-slate-500 font-sans">
                     {BANK_DETAILS.instructions}
                   </p>
                 </div>
               </div>
               <div className="text-left sm:text-right shrink-0">
-                <span className="text-[9px] text-slate-400 uppercase font-bold block font-mono">
+                <span className="text-[9px] text-slate-500 uppercase font-bold block font-mono">
                   TOTAL A PAGAR
                 </span>
-                <span className="text-lg font-mono font-black text-emerald-400">
+                <span className="text-lg font-mono font-black text-emerald-700">
                   {formatCurrency(order.totalPrice)}
                 </span>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700/80">
-                <span className="text-[9px] text-slate-400 uppercase font-bold block font-mono">
+              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                <span className="text-[9px] text-slate-500 uppercase font-bold block font-mono">
                   TITULAR DE LA CUENTA
                 </span>
-                <span className="font-extrabold text-white text-xs block mt-0.5">
+                <span className="font-extrabold text-slate-900 text-xs block mt-0.5">
                   {BANK_DETAILS.accountHolder}
                 </span>
-                <span className="text-slate-300 block text-[10px] font-mono mt-0.5">
+                <span className="text-slate-600 block text-[10px] font-mono mt-0.5">
                   NIT: {BANK_DETAILS.nit}
                 </span>
               </div>
-              <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700/80">
-                <span className="text-[9px] text-slate-400 uppercase font-bold block font-mono">
+              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                <span className="text-[9px] text-slate-500 uppercase font-bold block font-mono">
                   BANCO & TIPO DE CUENTA
                 </span>
-                <span className="font-black text-white text-xs block mt-0.5">
+                <span className="font-black text-slate-900 text-xs block mt-0.5">
                   {BANK_DETAILS.bankName}
                 </span>
-                <span className="text-slate-300 block text-[10px] mt-0.5">
+                <span className="text-slate-600 block text-[10px] mt-0.5">
                   {BANK_DETAILS.accountType}
                 </span>
               </div>
-              <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700/80">
-                <span className="text-[9px] text-slate-400 uppercase font-bold block font-mono">
+              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                <span className="text-[9px] text-slate-500 uppercase font-bold block font-mono">
                   Nº CUENTA BANCOLOMBIA
                 </span>
                 <div className="flex items-center justify-between mt-0.5">
-                  <span className="font-mono font-black text-amber-400 text-xs sm:text-sm">
+                  <span className="font-mono font-black text-amber-700 text-xs sm:text-sm">
                     {BANK_DETAILS.accountNumber}
                   </span>
                   <button
@@ -363,11 +367,11 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     onClick={() =>
                       handleCopy(BANK_DETAILS.accountNumber, "accModal")
                     }
-                    className="text-slate-400 hover:text-white p-0.5 cursor-pointer"
+                    className="text-slate-400 hover:text-slate-800 p-0.5 cursor-pointer transition-colors"
                     title="Copiar Número de Cuenta"
                   >
                     {copiedField === "accModal" ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
                     ) : (
                       <Copy className="w-3.5 h-3.5" />
                     )}

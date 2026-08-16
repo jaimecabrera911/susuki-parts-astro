@@ -17,9 +17,10 @@ export const GET: APIRoute = async () => {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
-  } catch (err) {
+  } catch (err: any) {
+    console.error('Error en GET /api/settings:', err?.message || err);
     return new Response(
-      JSON.stringify({ success: false, error: 'Error cargando configuración de la tienda' }),
+      JSON.stringify({ success: false, error: err?.message || 'Error cargando configuración de la tienda' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -39,9 +40,10 @@ export const POST: APIRoute = async ({ request }) => {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
-  } catch (err) {
+  } catch (err: any) {
+    console.error('Error en POST /api/settings:', err?.message || err);
     return new Response(
-      JSON.stringify({ success: false, error: 'Error actualizando configuración de la tienda' }),
+      JSON.stringify({ success: false, error: err?.message || 'Error actualizando configuración de la tienda' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
