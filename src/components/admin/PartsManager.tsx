@@ -168,7 +168,9 @@ export const PartsManager: React.FC<PartsManagerProps> = ({
                           <p className="font-extrabold text-slate-900 group-hover:text-[#E60012] transition-colors font-display line-clamp-1">
                             {part.name}
                           </p>
-                          <p className="text-[11px] font-mono text-slate-400 font-bold">ID: {part.id}</p>
+                          <p className="text-[11px] font-mono text-slate-500 font-bold">
+                            SKU: <span className="text-[#0A3088]">{part.sku || `SKU-${part.id}`}</span>
+                          </p>
                         </div>
                       </div>
                     </td>

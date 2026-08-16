@@ -73,17 +73,19 @@ export const getPrimaryOem = (part: Pick<SuzukiPart, 'oemNumbers'>): string =>
   part.oemNumbers[0] ?? '';
 
 /**
- * Busca si un texto coincide con CUALQUIER referencia OEM del repuesto.
+ * Busca si un texto coincide con CUALQUIER referencia OEM o código interno SKU del repuesto.
  * Búsqueda case-insensitive, trimming de espacios.
  */
-export const matchesOem = (part: Pick<SuzukiPart, 'oemNumbers'>, query: string): boolean => {
+export const matchesOem = (part: Pick<SuzukiPart, 'oemNumbers' | 'sku'>, query: string): boolean => {
   const q = query.trim().toLowerCase();
   if (!q) return true;
+  if (part.sku && part.sku.toLowerCase().includes(q)) return true;
   return part.oemNumbers.some(oem => oem.toLowerCase().includes(q));
 };
 
 export interface SuzukiPart {
   id: string;
+  sku: string;
   /** Referencias OEM del repuesto. La primera es la referencia principal (la que usa Suzuki). */
   oemNumbers: string[];
   name: string;

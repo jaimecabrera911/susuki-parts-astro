@@ -290,16 +290,26 @@ export const AdminDashboard: React.FC = () => {
   // --- MODEL HANDLERS ---
   const handleSaveModel = async (savedModel: SuzukiModel) => {
     const exists = models.some((m) => m.id === savedModel.id);
-    if (exists) {
-      setModels(models.map((m) => (m.id === savedModel.id ? savedModel : m)));
-      showToast(`Modelo "${savedModel.name}" actualizado con éxito.`);
-    } else {
-      setModels([...models, savedModel]);
-      showToast(`Modelo "${savedModel.name}" creado con éxito.`);
+    try {
+      const res = await saveModelApi(savedModel, exists);
+      if (res && res.success !== false) {
+        if (exists) {
+          setModels(models.map((m) => (m.id === savedModel.id ? savedModel : m)));
+          showToast(`Modelo "${savedModel.name}" actualizado con éxito.`);
+        } else {
+          setModels([...models, savedModel]);
+          showToast(`Modelo "${savedModel.name}" creado con éxito.`);
+        }
+      } else {
+        showToast(
+          `No se pudo guardar el modelo: ${res?.error || "Error desconocido"}`,
+          "info",
+        );
+      }
+    } catch (e: any) {
+      console.error("API Error:", e);
+      showToast(`Error al guardar en la base de datos: ${e?.message || e}`, "info");
     }
-    await saveModelApi(savedModel, exists).catch((e) =>
-      console.error("API Error:", e),
-    );
   };
 
   const handleDuplicateModel = async (sourceModel: SuzukiModel) => {

@@ -63,6 +63,7 @@ export const modelCategories = pgTable('model_categories', {
 // 5. OEM Spare Parts Table
 export const parts = pgTable('parts', {
   id: text('id').primaryKey(),
+  sku: text('sku').notNull().default(''),
   name: text('name').notNull(),
   category: text('category').notNull(),
   price: doublePrecision('price').notNull(),
@@ -77,6 +78,7 @@ export const parts = pgTable('parts', {
   taxable: boolean('taxable').notNull().default(true),
   priceIncludesTax: boolean('price_includes_tax').notNull().default(false)
 }, (table) => ({
+  skuUniqueIdx: uniqueIndex('idx_parts_sku_unique').on(table.sku),
   categoryIdx: index('idx_parts_category').on(table.category),
   availabilityIdx: index('idx_parts_availability').on(table.availability),
   schematicIdx: index('idx_parts_schematic_id').on(table.schematicId)

@@ -402,9 +402,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           <div className="space-y-6 flex flex-col justify-between">
             <div className="space-y-4">
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#E60012] bg-red-50 px-2.5 py-1 rounded-md border border-red-100 inline-block">
-                  {part.category}
-                </span>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#E60012] bg-red-50 px-2.5 py-1 rounded-md border border-red-100 inline-block">
+                    {part.category}
+                  </span>
+                  <span className="text-xs font-mono font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">
+                    Código Interno: <strong className="text-slate-900">{part.sku || `SKU-${part.id}`}</strong>
+                  </span>
+                </div>
                 <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 leading-tight">
                   {part.name}
                 </h1>

@@ -400,12 +400,17 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           {/* Right Column: Technical Specs & Description */}
           <div className="space-y-4">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
-                {part.category}
-              </span>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
+                  {part.category}
+                </span>
+                <span className="text-xs font-mono font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                  Código Interno: <strong className="text-slate-900">{part.sku || `SKU-${part.id}`}</strong>
+                </span>
+              </div>
               <h2
                 id="product-detail-modal-title"
-                className="text-xl font-black text-slate-900 mt-0.5"
+                className="text-xl font-black text-slate-900 mt-1"
               >
                 {part.name}
               </h2>

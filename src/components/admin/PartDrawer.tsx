@@ -52,9 +52,11 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
   partToEdit,
   models,
 }) => {
+  const [sku, setSku] = useState("");
   const [name, setName] = useState("");
   const [primaryOem, setPrimaryOem] = useState("");
-  const [secondaryOems, setSecondaryOems] = useState<string>("");
+  const [secondaryOems, setSecondaryOems] = useState<string[]>([]);
+  const [secondaryOemInput, setSecondaryOemInput] = useState("");
   const [category, setCategory] = useState<SuzukiPart["category"]>("filtros");
   const [price, setPrice] = useState<number>(50000);
   const [taxable, setTaxable] = useState<boolean>(true);
@@ -115,9 +117,11 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
 
   useEffect(() => {
     if (partToEdit) {
+      setSku(partToEdit.sku || `SKU-${partToEdit.id}`);
       setName(partToEdit.name);
       setPrimaryOem(partToEdit.oemNumbers[0] || "");
-      setSecondaryOems(partToEdit.oemNumbers.slice(1).join(", "));
+      setSecondaryOems(partToEdit.oemNumbers.slice(1));
+      setSecondaryOemInput("");
       setCategory(partToEdit.category);
       setPrice(partToEdit.price);
       setTaxable(partToEdit.taxable !== false);
@@ -132,9 +136,11 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       setSpecs(partToEdit.specs || []);
       setCompatibility(partToEdit.compatibility || []);
     } else {
+      setSku("");
       setName("");
       setPrimaryOem("");
-      setSecondaryOems("");
+      setSecondaryOems([]);
+      setSecondaryOemInput("");
       setCategory("filtros");
       setPrice(0);
       setTaxable(true);
@@ -154,8 +160,20 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
 
   if (!isOpen) return null;
 
+  const handleAddSecondaryOem = () => {
+    const trimmed = secondaryOemInput.trim().toUpperCase();
+    if (trimmed && !secondaryOems.includes(trimmed)) {
+      setSecondaryOems([...secondaryOems, trimmed]);
+      setSecondaryOemInput("");
+    }
+  };
+
+  const handleRemoveSecondaryOem = (oemToRemove: string) => {
+    setSecondaryOems(secondaryOems.filter((o) => o !== oemToRemove));
+  };
+
   const handleAddSpec = () => {
-    if (specLabel.trim() && specValue.trim()) {
+    if (specLabel.trim() || specValue.trim()) {
       setSpecs([
         ...specs,
         { label: specLabel.trim(), value: specValue.trim() },
@@ -163,6 +181,16 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       setSpecLabel("");
       setSpecValue("");
     }
+  };
+
+  const handleUpdateSpec = (
+    index: number,
+    field: "label" | "value",
+    val: string,
+  ) => {
+    const updated = [...specs];
+    updated[index] = { ...updated[index], [field]: val };
+    setSpecs(updated);
   };
 
   const handleRemoveSpec = (index: number) => {
@@ -192,16 +220,20 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       return;
     }
 
+    if (!sku.trim()) {
+      setError("El Código Interno / SKU es obligatorio.");
+      return;
+    }
+
     if (!primaryOem.trim()) {
       setError("La referencia OEM principal es obligatoria.");
       return;
     }
 
     const oemNumbers = [
-      primaryOem.trim(),
+      primaryOem.trim().toUpperCase(),
       ...secondaryOems
-        .split(",")
-        .map((s) => s.trim())
+        .map((s) => s.trim().toUpperCase())
         .filter(Boolean),
     ];
 
@@ -209,8 +241,14 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       ? partToEdit.id
       : `part-${Date.now().toString().slice(-6)}`;
 
+    // Clean up specs with empty label or value
+    const cleanedSpecs = specs
+      .map((s) => ({ label: s.label.trim(), value: s.value.trim() }))
+      .filter((s) => s.label || s.value);
+
     const newPart: SuzukiPart = {
       id: partId,
+      sku: sku.trim().toUpperCase(),
       oemNumbers,
       name: name.trim(),
       category,
@@ -223,7 +261,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
         image.trim() ||
         "https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/parts/default.jpg",
       description: description.trim(),
-      specs,
+      specs: cleanedSpecs,
       compatibility,
     };
 
@@ -305,13 +343,26 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
             </div>
           </div>
 
-          {/* OEM References (Geist Mono) */}
+          {/* OEM References & SKU (Geist Mono) */}
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-900 font-mono">
               <Wrench className="w-4 h-4 text-[#E60012]" />
-              <span>REFERENCIAS OEM SUZUKI</span>
+              <span>CÓDIGO INTERNO Y REFERENCIAS OEM</span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-[11px] text-slate-500 mb-1 font-mono">
+                  Código Interno / SKU *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={sku}
+                  onChange={(e) => setSku(e.target.value)}
+                  placeholder="Ej. SKU-GN125-01"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 font-mono font-bold uppercase placeholder-slate-400"
+                />
+              </div>
               <div>
                 <label className="block text-[11px] text-slate-500 mb-1 font-mono">
                   OEM Principal *
@@ -325,17 +376,57 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                   className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 font-mono font-bold uppercase placeholder-slate-400"
                 />
               </div>
-              <div>
+              <div className="md:col-span-3">
                 <label className="block text-[11px] text-slate-500 mb-1 font-mono">
-                  OEMs Secundarias (separadas por coma)
+                  OEMs Secundarias / Alternativas (Cross-Reference)
                 </label>
-                <input
-                  type="text"
-                  value={secondaryOems}
-                  onChange={(e) => setSecondaryOems(e.target.value)}
-                  placeholder="16510-05240, 16510-06B00"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 font-mono font-medium placeholder-slate-400"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={secondaryOemInput}
+                    onChange={(e) => setSecondaryOemInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddSecondaryOem();
+                      }
+                    }}
+                    placeholder="Ej. 16510-05240, 16510-06B00"
+                    className="flex-1 bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 font-mono font-bold uppercase placeholder-slate-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddSecondaryOem}
+                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Agregar Tag</span>
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-2 pt-2.5">
+                  {secondaryOems.map((oem) => (
+                    <span
+                      key={oem}
+                      className="inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-xl bg-white border border-slate-200 text-slate-900 font-mono font-bold shadow-2xs"
+                    >
+                      <span>{oem}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSecondaryOem(oem)}
+                        className="text-slate-400 hover:text-red-600 font-bold ml-1"
+                        title="Eliminar OEM secundaria"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                  {secondaryOems.length === 0 && (
+                    <span className="text-[11px] text-slate-400 font-mono italic">
+                      No hay referencias secundarias agregadas.
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -627,24 +718,35 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
               </button>
             </div>
 
-            <div className="space-y-1.5 pt-1">
+            <div className="space-y-2 pt-1">
               {specs.map((sp, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200 text-xs"
+                  className="flex items-center gap-2 p-2 rounded-xl bg-white border border-slate-200 text-xs shadow-2xs"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-700 font-mono uppercase text-[10px]">
-                      {sp.label}:
-                    </span>
-                    <span className="text-slate-900 font-medium">
-                      {sp.value}
-                    </span>
-                  </div>
+                  <input
+                    type="text"
+                    value={sp.label}
+                    onChange={(e) =>
+                      handleUpdateSpec(idx, "label", e.target.value)
+                    }
+                    placeholder="Propiedad (ej. Origen)"
+                    className="w-1/3 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-900 font-mono font-bold"
+                  />
+                  <input
+                    type="text"
+                    value={sp.value}
+                    onChange={(e) =>
+                      handleUpdateSpec(idx, "value", e.target.value)
+                    }
+                    placeholder="Valor (ej. Genuine Suzuki Parts - Japan)"
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-900 font-medium"
+                  />
                   <button
                     type="button"
                     onClick={() => handleRemoveSpec(idx)}
-                    className="text-slate-400 hover:text-red-600 p-1"
+                    className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors shrink-0"
+                    title="Eliminar especificación"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

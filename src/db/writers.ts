@@ -1,6 +1,6 @@
 import type { AppDb } from './client';
 import {
-  models, modelYears,
+  brands, models, modelYears,
   parts, partOemNumbers, partCompatibilities,
   schematics, schematicHotspots, schematicApplicableModels, schematicSections,
   orderStatuses, carriers, modelCategories,
@@ -45,6 +45,7 @@ export async function formatParts(db: AppDb, rows: any[]) {
 
   return rows.map(p => ({
     ...p,
+    sku: p.sku || `SKU-${p.id}`,
     oemNumbers: (oemByPart.get(p.id) || []).sort((a, b) => a.position - b.position).map(r => r.oemNumber),
     images: p.images || [],
     specs: p.specs || [],
@@ -63,9 +64,25 @@ export async function formatParts(db: AppDb, rows: any[]) {
 
 export async function upsertModel(db: AppDb, body: any) {
   const id = body.id || `model-${Date.now()}`;
+
+  let targetBrandId = body.brandId;
+  const allBrands = await db.select().from(brands);
+
+  if (allBrands.length > 0) {
+    const matchedBrand = allBrands.find(
+      b => b.id === targetBrandId || b.name.toLowerCase() === (targetBrandId || '').toLowerCase()
+    );
+    if (matchedBrand) {
+      targetBrandId = matchedBrand.id;
+    } else {
+      const suzukiBrand = allBrands.find(b => b.name.toLowerCase().includes('suzuki'));
+      targetBrandId = suzukiBrand ? suzukiBrand.id : allBrands[0].id;
+    }
+  }
+
   const data = {
     id,
-    brandId: body.brandId || 'suzuki',
+    brandId: targetBrandId,
     name: body.name,
     category: body.category,
     image: body.image,
@@ -89,8 +106,10 @@ export async function upsertModel(db: AppDb, body: any) {
 
 export async function upsertPart(db: AppDb, body: any) {
   const id = body.id || `part-${Date.now()}`;
+  const sku = body.sku ? String(body.sku).trim() : `SKU-${id.toUpperCase()}`;
   const data = {
     id,
+    sku,
     name: body.name,
     category: body.category,
     price: Number(body.price),
