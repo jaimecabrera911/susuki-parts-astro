@@ -173,12 +173,18 @@ export const SchematicViewModal: React.FC<SchematicViewModalProps> = ({
                         }}
                         className={`absolute z-10 w-6 h-6 rounded-full text-white font-mono font-black text-[11px] border-2 shadow-md flex items-center justify-center transition-all ${
                           isSelected
-                            ? 'bg-[#059669] border-yellow-300 ring-4 ring-emerald-400/60 scale-125 z-30'
+                            ? 'bg-[#059669] border-yellow-300 ring-4 ring-emerald-400/60 scale-125 z-30 animate-pulse'
                             : 'bg-[#E60012] border-white hover:scale-125'
                         }`}
                         title={`Punto #${hs.itemNumber}: ${hs.label}`}
                       >
-                        {hs.itemNumber}
+                        {isSelected && (
+                          <span
+                            className="absolute -inset-1 rounded-full bg-emerald-400/50 animate-pulse pointer-events-none"
+                            aria-hidden="true"
+                          />
+                        )}
+                        <span className="relative z-10">{hs.itemNumber}</span>
                       </button>
                     );
                   })}

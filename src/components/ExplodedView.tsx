@@ -565,20 +565,10 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                         }}
                         className={`absolute rounded-full flex items-center justify-center transition-all cursor-pointer focus-visible:outline-none ${pinClasses} ${
                           isSelected
-                            ? 'bg-[#E60012] text-white ring-4 ring-red-400/50 z-20 scale-110 shadow-xl'
+                            ? 'bg-[#E60012] text-white ring-2 ring-white ring-offset-2 ring-offset-red-500/50 z-20 scale-105 shadow-md animate-pulse'
                             : 'bg-white text-slate-900 ring-2 ring-slate-900 hover:bg-[#E60012] hover:text-white z-10'
                         }`}
                       >
-                        {/* Radar pulse effect */}
-                        <span
-                          className={`absolute inset-0 rounded-full pointer-events-none ${
-                            isSelected
-                              ? '-m-2.5 bg-[#E60012]/40 animate-ping'
-                              : '-m-1 bg-red-500/25 animate-pulse'
-                          }`}
-                          aria-hidden="true"
-                        />
-
                         <span className="relative z-10">{pinSize !== 'micro' && spot.itemNumber}</span>
                       </button>
                     );

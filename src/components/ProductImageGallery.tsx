@@ -288,10 +288,10 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
                   className="block pointer-events-none select-none"
                 />
 
-                {/* Hotspot pin — locked to exact image rendered bounds and kept small */}
+                {/* Hotspot pin — perfectly proportionate, concentric and centered */}
                 {diagramInfo.hotspot && (
                   <div
-                    className="absolute z-10 pointer-events-none"
+                    className="absolute z-10 pointer-events-none flex items-center justify-center"
                     style={{
                       left: `${diagramInfo.hotspot.x}%`,
                       top: `${diagramInfo.hotspot.y}%`,
@@ -299,11 +299,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
                     }}
                     aria-label={`Pieza #${diagramInfo.hotspot.itemNumber}`}
                   >
-                    <span
-                      className="absolute inset-0 -m-0.5 rounded-full bg-[#E60012]/40 animate-ping"
-                      aria-hidden="true"
-                    />
-                    <span className="relative inline-flex items-center justify-center w-5 h-5 rounded-full font-mono font-black text-[10px] bg-[#E60012] text-white ring-2 ring-white shadow-md">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full font-mono font-black text-[10px] bg-[#E60012] text-white ring-2 ring-white ring-offset-1 ring-offset-red-500/30 shadow-xs animate-pulse">
                       {diagramInfo.hotspot.itemNumber}
                     </span>
                   </div>
