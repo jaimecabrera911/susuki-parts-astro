@@ -88,6 +88,7 @@ export const PUT: APIRoute = async ({ request }) => {
       paymentReference: body.paymentReference,
       trackingNumber: body.trackingNumber,
       shippingCarrier: body.shippingCarrier,
+      trackingUrl: body.trackingUrl,
       notes: body.notes
     };
 

@@ -9,12 +9,14 @@ import {
   Filter,
   CheckCircle2,
   Clock,
+  ExternalLink,
 } from "lucide-react";
 import { OrderDetailModal } from "./OrderDetailModal";
 import { getPrimaryOem } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatOrderDate } from "../utils/formatDate";
 import { fetchOrderStatuses } from "../services/api";
+import { getCarrierTrackingUrl } from "../utils/tracking";
 
 interface OrdersTableProps {
   orders: any[];
@@ -282,17 +284,32 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                       </td>
 
                       <td className="py-4 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedOrder(order);
-                          }}
-                          className="px-3 py-1.5 bg-slate-100 hover:bg-[#E60012] hover:text-white text-slate-800 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 ml-auto"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>Ver Detalle</span>
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {getCarrierTrackingUrl(order) && (
+                            <a
+                              href={getCarrierTrackingUrl(order)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="px-2.5 py-1.5 bg-red-50 hover:bg-[#E60012] text-[#E60012] hover:text-white border border-red-200 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                              title="Rastrear Envío de la Transportadora"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">Rastrear ↗</span>
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedOrder(order);
+                            }}
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-800 hover:text-white text-slate-800 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Ver Detalle</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

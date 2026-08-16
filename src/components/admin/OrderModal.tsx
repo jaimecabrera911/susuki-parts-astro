@@ -5,6 +5,7 @@ import { formatCurrency } from '../../utils/formatCurrency';
 import { fetchDefaultCarrierName, sendOrderMessageApi } from '../../services/api';
 import { parseOrderNotes, formatOrderMessageTime } from '../../utils/orderNotes';
 import { getStoredUser } from '../../utils/auth';
+import { getCarrierTrackingUrl } from '../../utils/tracking';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -44,6 +45,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [status, setStatus] = useState<OrderStatus>(order.status);
   const [shippingCarrier, setShippingCarrier] = useState<string>(order.shippingCarrier || '');
   const [trackingNumber, setTrackingNumber] = useState<string>(order.trackingNumber || '');
+  const [trackingUrl, setTrackingUrl] = useState<string>(order.trackingUrl || '');
   const [notes, setNotes] = useState<string>(order.notes || '');
 
   // Admin Order Chat & Private Notes State
@@ -108,6 +110,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       setStatus(order.status);
       setShippingCarrier(order.shippingCarrier || '');
       setTrackingNumber(order.trackingNumber || '');
+      setTrackingUrl(order.trackingUrl || '');
       setNotes(order.notes || '');
       // Initialize chat messages from order notes on every order change
       setOrderMessages(parseOrderNotes(order.notes, order.customerName));
@@ -128,6 +131,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       status,
       shippingCarrier: shippingCarrier.trim(),
       trackingNumber: trackingNumber.trim(),
+      trackingUrl: trackingUrl.trim(),
       notes: notes.trim()
     };
     onSaveOrder(updated);
@@ -341,6 +345,35 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   placeholder="Ej. SE789456123CO"
                   className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
                 />
+              </div>
+
+              <div className="sm:col-span-3">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase">
+                    Enlace de Seguimiento de la Transportadora (Opcional)
+                  </label>
+                  {getCarrierTrackingUrl({ shippingCarrier, trackingNumber, trackingUrl }) && (
+                    <a
+                      href={getCarrierTrackingUrl({ shippingCarrier, trackingNumber, trackingUrl })}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-mono font-bold text-[#E60012] hover:underline flex items-center gap-1"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Probar Enlace de Rastreo</span>
+                    </a>
+                  )}
+                </div>
+                <input
+                  type="url"
+                  value={trackingUrl}
+                  onChange={(e) => setTrackingUrl(e.target.value)}
+                  placeholder="https://www.servientrega.com/wps/portal/rastreo-de-envios?guia=..."
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#E60012]"
+                />
+                <p className="text-[10px] text-slate-500 mt-1 font-sans">
+                  Si se deja en blanco, el sistema generará automáticamente la URL oficial de rastreo según la transportadora seleccionada.
+                </p>
               </div>
 
               <div className="sm:col-span-3">

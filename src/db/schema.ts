@@ -1,10 +1,11 @@
-import { pgTable, text, integer, doublePrecision, boolean, timestamp, jsonb, index, uniqueIndex, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, doublePrecision, boolean, timestamp, jsonb, index, uniqueIndex, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { STORE_DEFAULT_LOCATION } from '../utils/config';
 
 // 1. Brands Table
 export const brands = pgTable('brands', {
-  id: text('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
+  slug: text('slug'),
   logo: text('logo'),
   country: text('country'),
   active: boolean('active').notNull().default(true),
@@ -13,9 +14,10 @@ export const brands = pgTable('brands', {
 
 // 2. Models Table
 export const models = pgTable('models', {
-  id: text('id').primaryKey(),
-  brandId: text('brand_id').references(() => brands.id, { onDelete: 'cascade' }),
+  id: uuid('id').defaultRandom().primaryKey(),
+  brandId: uuid('brand_id').references(() => brands.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
+  slug: text('slug'),
   category: text('category').notNull(),
   image: text('image').notNull(),
   versions: text('versions').array().notNull(),
@@ -26,10 +28,10 @@ export const models = pgTable('models', {
   activeIdx: index('idx_models_active').on(table.active)
 }));
 
-// 2b. Model Years Table (3NF Normalized)
+// 2b. Model Years Table (3NF Normalized: UUID primary key)
 export const modelYears = pgTable('model_years', {
-  id: text('id').primaryKey(),
-  modelId: text('model_id').notNull().references(() => models.id, { onDelete: 'cascade' }),
+  id: uuid('id').defaultRandom().primaryKey(),
+  modelId: uuid('model_id').notNull().references(() => models.id, { onDelete: 'cascade' }),
   year: integer('year').notNull()
 }, (table) => ({
   modelYearIdx: index('idx_model_years_lookup').on(table.modelId, table.year),
@@ -38,22 +40,23 @@ export const modelYears = pgTable('model_years', {
 
 // 3. Categories Table (self-referential for subcategories)
 export const categories = pgTable('categories', {
-  id: text('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   slug: text('slug').notNull(),
   iconName: text('icon_name'),
   description: text('description'),
   active: boolean('active').notNull().default(true),
   order: integer('order').notNull().default(0),
-  parentId: text('parent_id').references((): AnyPgColumn => categories.id, { onDelete: 'cascade' })
+  parentId: uuid('parent_id').references((): AnyPgColumn => categories.id, { onDelete: 'cascade' })
 }, (table) => ({
   parentIdx: index('idx_categories_parent_id').on(table.parentId)
 }));
 
 // 3b. Model Categories Table (motorcycle category catalog for models)
 export const modelCategories = pgTable('model_categories', {
-  id: text('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
+  slug: text('slug'),
   order: integer('order').notNull().default(0),
   active: boolean('active').notNull().default(true)
 }, (table) => ({
@@ -62,7 +65,7 @@ export const modelCategories = pgTable('model_categories', {
 
 // 5. OEM Spare Parts Table
 export const parts = pgTable('parts', {
-  id: text('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   sku: text('sku').notNull().default(''),
   name: text('name').notNull(),
   category: text('category').notNull(),
@@ -72,7 +75,7 @@ export const parts = pgTable('parts', {
   images: jsonb('images'),
   description: text('description').notNull(),
   specs: jsonb('specs').notNull(),
-  schematicId: text('schematic_id'),
+  schematicId: uuid('schematic_id').references(() => schematics.id, { onDelete: 'set null' }),
   diagramHotspot: jsonb('diagram_hotspot'),
   availability: text('availability').notNull().default('in_stock'),
   taxable: boolean('taxable').notNull().default(true),
@@ -86,8 +89,8 @@ export const parts = pgTable('parts', {
 
 // 5b. OEM Part Numbers Table (3NF Normalized)
 export const partOemNumbers = pgTable('part_oem_numbers', {
-  id: text('id').primaryKey(),
-  partId: text('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
+  id: uuid('id').defaultRandom().primaryKey(),
+  partId: uuid('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
   oemNumber: text('oem_number').notNull(),
   isPrimary: boolean('is_primary').notNull().default(false),
   position: integer('position').notNull().default(0)
@@ -99,8 +102,9 @@ export const partOemNumbers = pgTable('part_oem_numbers', {
 
 // 6. Exploded Diagrams / Schematics Table
 export const schematics = pgTable('schematics', {
-  id: text('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   title: text('title').notNull(),
+  slug: text('slug'),
   category: text('category').notNull(),
   section: text('section').notNull(),
   diagramImage: text('diagram_image').notNull(),
@@ -111,9 +115,9 @@ export const schematics = pgTable('schematics', {
 
 // 6b. Schematic Hotspots Table (3NF Normalized)
 export const schematicHotspots = pgTable('schematic_hotspots', {
-  id: text('id').primaryKey(),
-  schematicId: text('schematic_id').notNull().references(() => schematics.id, { onDelete: 'cascade' }),
-  partId: text('part_id').references(() => parts.id, { onDelete: 'cascade' }),
+  id: uuid('id').defaultRandom().primaryKey(),
+  schematicId: uuid('schematic_id').notNull().references(() => schematics.id, { onDelete: 'cascade' }),
+  partId: uuid('part_id').references(() => parts.id, { onDelete: 'cascade' }),
   itemNumber: integer('item_number').notNull(),
   x: doublePrecision('x').notNull(),
   y: doublePrecision('y').notNull(),
@@ -125,28 +129,28 @@ export const schematicHotspots = pgTable('schematic_hotspots', {
 
 // 6c. Schematic Applicable Models Table (3NF Normalized)
 export const schematicApplicableModels = pgTable('schematic_applicable_models', {
-  id: text('id').primaryKey(),
-  schematicId: text('schematic_id').notNull().references(() => schematics.id, { onDelete: 'cascade' }),
-  modelId: text('model_id').notNull().references(() => models.id, { onDelete: 'cascade' })
+  id: uuid('id').defaultRandom().primaryKey(),
+  schematicId: uuid('schematic_id').notNull().references(() => schematics.id, { onDelete: 'cascade' }),
+  modelId: uuid('model_id').notNull().references(() => models.id, { onDelete: 'cascade' })
 }, (table) => ({
   schematicModelIdx: index('idx_schematic_models_lookup').on(table.schematicId, table.modelId),
   uniqueSchematicModel: uniqueIndex('idx_schematic_models_unique').on(table.schematicId, table.modelId)
 }));
 
-// 6d. Schematic Sections Table (technical section options, DB-driven)
+// 6d. Schematic Sections Table
 export const schematicSections = pgTable('schematic_sections', {
-  id: text('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
+  slug: text('slug'),
   order: integer('order').notNull().default(0),
   active: boolean('active').notNull().default(true)
 }, (table) => ({
   activeIdx: index('idx_schematic_sections_active').on(table.active)
 }));
 
-// 6e. Order Statuses Table (DB-driven catalog; color = theme key for the status badge,
-// short = concise badge label, group = aggregation bucket for counters, is_default = new-order default)
+// 6e. Order Statuses Table (DB-driven catalog)
 export const orderStatuses = pgTable('order_statuses', {
-  id: text('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   color: text('color').notNull().default('slate'),
   short: text('short'),
@@ -158,9 +162,9 @@ export const orderStatuses = pgTable('order_statuses', {
   activeIdx: index('idx_order_statuses_active').on(table.active)
 }));
 
-// 6f. Shipping Carriers Table (DB-driven catalog of courier companies; is_default = fallback carrier)
+// 6f. Shipping Carriers Table (DB-driven catalog)
 export const carriers = pgTable('carriers', {
-  id: text('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   is_default: boolean('is_default').notNull().default(false),
   order: integer('order').notNull().default(0),
@@ -171,7 +175,7 @@ export const carriers = pgTable('carriers', {
 
 // 7. Customer Orders Table
 export const orders = pgTable('orders', {
-  id: text('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   date: timestamp('date').defaultNow().notNull(),
   customerName: text('customer_name').notNull(),
   email: text('email').notNull(),
@@ -197,6 +201,7 @@ export const orders = pgTable('orders', {
   paymentReference: text('payment_reference'),
   trackingNumber: text('tracking_number'),
   shippingCarrier: text('shipping_carrier'),
+  trackingUrl: text('tracking_url'),
   notes: text('notes')
 }, (table) => ({
   emailIdx: index('idx_orders_email').on(table.email),
@@ -206,7 +211,7 @@ export const orders = pgTable('orders', {
 
 // 7b. Shipping Methods Table
 export const shippingMethods = pgTable('shipping_methods', {
-  id: text('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   carrier: text('carrier').notNull().default('Servientrega'),
   description: text('description'),
@@ -222,7 +227,7 @@ export const shippingMethods = pgTable('shipping_methods', {
 
 // 7b1. Shipping Zones Table
 export const shippingZones = pgTable('shipping_zones', {
-  id: text('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   description: text('description'),
   active: boolean('active').notNull().default(true),
@@ -233,9 +238,9 @@ export const shippingZones = pgTable('shipping_zones', {
 
 // 7b2. Shipping Zone ↔ States Mapping Table (3NF Normalized)
 export const shippingZoneStates = pgTable('shipping_zone_states', {
-  id: text('id').primaryKey(),
-  zoneId: text('zone_id').notNull().references(() => shippingZones.id, { onDelete: 'cascade' }),
-  stateId: text('state_id').notNull().references(() => states.id, { onDelete: 'cascade' })
+  id: uuid('id').defaultRandom().primaryKey(),
+  zoneId: uuid('zone_id').notNull().references(() => shippingZones.id, { onDelete: 'cascade' }),
+  stateId: uuid('state_id').notNull().references(() => states.id, { onDelete: 'cascade' })
 }, (table) => ({
   zoneIdx: index('idx_zone_states_zone_id').on(table.zoneId),
   stateIdx: index('idx_zone_states_state_id').on(table.stateId),
@@ -244,9 +249,9 @@ export const shippingZoneStates = pgTable('shipping_zone_states', {
 
 // 7b3. Shipping Method ↔ Zone Rates Table (3NF Normalized)
 export const shippingMethodZoneRates = pgTable('shipping_method_zone_rates', {
-  id: text('id').primaryKey(),
-  methodId: text('method_id').notNull().references(() => shippingMethods.id, { onDelete: 'cascade' }),
-  zoneId: text('zone_id').notNull().references(() => shippingZones.id, { onDelete: 'cascade' }),
+  id: uuid('id').defaultRandom().primaryKey(),
+  methodId: uuid('method_id').notNull().references(() => shippingMethods.id, { onDelete: 'cascade' }),
+  zoneId: uuid('zone_id').notNull().references(() => shippingZones.id, { onDelete: 'cascade' }),
   price: doublePrecision('price').notNull().default(0)
 }, (table) => ({
   methodIdx: index('idx_method_zone_rates_method_id').on(table.methodId),
@@ -256,7 +261,7 @@ export const shippingMethodZoneRates = pgTable('shipping_method_zone_rates', {
 
 // 7c. Countries Table (3NF Normalized)
 export const countries = pgTable('countries', {
-  id: text('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   code: text('code'),
   active: boolean('active').notNull().default(true)
@@ -266,8 +271,8 @@ export const countries = pgTable('countries', {
 
 // 7c2. States / Departments Table (3NF Normalized)
 export const states = pgTable('states', {
-  id: text('id').primaryKey(),
-  countryId: text('country_id').notNull().references(() => countries.id, { onDelete: 'cascade' }),
+  id: uuid('id').defaultRandom().primaryKey(),
+  countryId: uuid('country_id').notNull().references(() => countries.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   code: text('code'),
   active: boolean('active').notNull().default(true)
@@ -278,8 +283,8 @@ export const states = pgTable('states', {
 
 // 7c3. Cities Table (3NF Normalized)
 export const cities = pgTable('cities', {
-  id: text('id').primaryKey(),
-  stateId: text('state_id').notNull().references(() => states.id, { onDelete: 'cascade' }),
+  id: uuid('id').defaultRandom().primaryKey(),
+  stateId: uuid('state_id').notNull().references(() => states.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   code: text('code'),
   active: boolean('active').notNull().default(true)
@@ -290,7 +295,7 @@ export const cities = pgTable('cities', {
 
 // 8. Users / Customers Table
 export const users = pgTable('users', {
-  id: text('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   fullName: text('full_name').notNull(),
   email: text('email').notNull(),
   phone: text('phone').notNull(),
@@ -311,8 +316,8 @@ export const users = pgTable('users', {
 
 // 9. Customer Garages Table
 export const userGarages = pgTable('user_garages', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   brandId: text('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
   modelId: text('model_id').notNull().references(() => models.id, { onDelete: 'cascade' }),
   modelName: text('model_name').notNull(),
@@ -328,8 +333,8 @@ export const userGarages = pgTable('user_garages', {
 
 // 10. Customer Favorites Table
 export const userFavorites = pgTable('user_favorites', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   partId: text('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').defaultNow().notNull()
 }, (table) => ({
@@ -339,9 +344,9 @@ export const userFavorites = pgTable('user_favorites', {
 
 // 11. Product Reviews Table
 export const reviews = pgTable('reviews', {
-  id: text('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   partId: text('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   userName: text('user_name').notNull(),
   rating: integer('rating').notNull(),
   title: text('title').notNull(),
@@ -355,7 +360,7 @@ export const reviews = pgTable('reviews', {
 
 // 12. Direct Part Compatibility Table (3NF Normalized)
 export const partCompatibilities = pgTable('part_compatibilities', {
-  id: text('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   partId: text('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
   modelId: text('model_id').notNull().references(() => models.id, { onDelete: 'cascade' }),
   yearStart: integer('year_start'),
@@ -368,8 +373,8 @@ export const partCompatibilities = pgTable('part_compatibilities', {
 
 // 13. Order Line Items Table (3NF Normalized)
 export const orderItems = pgTable('order_items', {
-  id: text('id').primaryKey(),
-  orderId: text('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  id: uuid('id').defaultRandom().primaryKey(),
+  orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
   partId: text('part_id'),
   part: jsonb('part').notNull(), // snapshot of the part at purchase time
   quantity: integer('quantity').notNull(),
@@ -383,8 +388,8 @@ export const orderItems = pgTable('order_items', {
 
 // 14. Order Returns & Guarantees Table (RMA)
 export const orderReturns = pgTable('order_returns', {
-  id: text('id').primaryKey(),
-  orderId: text('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  id: uuid('id').defaultRandom().primaryKey(),
+  orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
   customerName: text('customer_name').notNull(),
   email: text('email').notNull(),
   phone: text('phone').notNull(),
@@ -441,7 +446,7 @@ export const siteSettings = pgTable('site_settings', {
 
 // 16. Coupons / Discount Codes Table
 export const coupons = pgTable('coupons', {
-  id: text('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   code: text('code').notNull().unique(),
   type: text('type').notNull().default('percentage'), // 'percentage' | 'fixed'
   value: doublePrecision('value').notNull().default(0),

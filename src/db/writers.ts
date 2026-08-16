@@ -15,6 +15,15 @@ import { STORE_DEFAULT_LOCATION, STORE_BOOTSTRAP, FOOTER_BOOTSTRAP, getBootstrap
 import { hashPassword } from '../utils/password';
 import type { SiteSettings } from '../types';
 
+export function isValidUuid(val: any): boolean {
+  return typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+}
+
+export function ensureUuid(val?: any): string {
+  if (isValidUuid(val)) return val;
+  return crypto.randomUUID();
+}
+
 export function parseJson(val: any, fallback: any = []) {
   if (!val) return fallback;
   if (typeof val !== 'string') return val;
@@ -63,7 +72,7 @@ export async function formatParts(db: AppDb, rows: any[]) {
 }
 
 export async function upsertModel(db: AppDb, body: any) {
-  const id = body.id || `model-${Date.now()}`;
+  const id = ensureUuid(body.id);
 
   let targetBrandId = body.brandId;
   const allBrands = await db.select().from(brands);
@@ -84,6 +93,7 @@ export async function upsertModel(db: AppDb, body: any) {
     id,
     brandId: targetBrandId,
     name: body.name,
+    slug: body.slug || body.name?.toLowerCase().replace(/\s+/g, '-'),
     category: body.category,
     image: body.image,
     versions: body.versions || [],
@@ -96,7 +106,7 @@ export async function upsertModel(db: AppDb, body: any) {
     await tx.delete(modelYears).where(eq(modelYears.modelId, id));
     for (const year of body.years || []) {
       if (typeof year === 'number') {
-        await tx.insert(modelYears).values({ id: `${id}-yr-${year}`, modelId: id, year }).onConflictDoNothing();
+        await tx.insert(modelYears).values({ id: crypto.randomUUID(), modelId: id, year }).onConflictDoNothing();
       }
     }
   });
@@ -105,8 +115,8 @@ export async function upsertModel(db: AppDb, body: any) {
 }
 
 export async function upsertPart(db: AppDb, body: any) {
-  const id = body.id || `part-${Date.now()}`;
-  const sku = body.sku ? String(body.sku).trim() : `SKU-${id.toUpperCase()}`;
+  const id = ensureUuid(body.id);
+  const sku = body.sku ? String(body.sku).trim() : `SKU-${id.substring(0, 8).toUpperCase()}`;
   const data = {
     id,
     sku,
@@ -118,7 +128,7 @@ export async function upsertPart(db: AppDb, body: any) {
     images: body.images || [],
     description: body.description || '',
     specs: body.specs || [],
-    schematicId: body.schematicId || null,
+    schematicId: body.schematicId ? ensureUuid(body.schematicId) : null,
     diagramHotspot: body.diagramHotspot || null,
     availability: body.availability || 'in_stock',
     taxable: body.taxable !== false,
@@ -133,7 +143,7 @@ export async function upsertPart(db: AppDb, body: any) {
       const oem = body.oemNumbers[i];
       if (oem && typeof oem === 'string') {
         await tx.insert(partOemNumbers).values({
-          id: `${id}-oem-${i}`,
+          id: crypto.randomUUID(),
           partId: id,
           oemNumber: oem,
           isPrimary: i === 0,
@@ -147,7 +157,7 @@ export async function upsertPart(db: AppDb, body: any) {
       const c = body.compatibility[i];
       if (c && c.modelId) {
         await tx.insert(partCompatibilities).values({
-          id: `${id}-compat-${c.modelId}-${i}`,
+          id: crypto.randomUUID(),
           partId: id,
           modelId: c.modelId,
           yearStart: c.yearStart ? Number(c.yearStart) : null,
@@ -163,10 +173,11 @@ export async function upsertPart(db: AppDb, body: any) {
 }
 
 export async function upsertSchematic(db: AppDb, body: any) {
-  const id = body.id || `sch-${Date.now()}`;
+  const id = ensureUuid(body.id);
   const data = {
     id,
     title: body.title,
+    slug: body.slug || body.title?.toLowerCase().replace(/\s+/g, '-'),
     category: body.category,
     section: body.section,
     diagramImage: body.diagramImage,
@@ -179,7 +190,7 @@ export async function upsertSchematic(db: AppDb, body: any) {
     await tx.delete(schematicApplicableModels).where(eq(schematicApplicableModels.schematicId, id));
     for (const modelId of body.applicableModelIds || []) {
       if (modelId && typeof modelId === 'string') {
-        await tx.insert(schematicApplicableModels).values({ id: `${id}-model-${modelId}`, schematicId: id, modelId }).onConflictDoNothing();
+        await tx.insert(schematicApplicableModels).values({ id: crypto.randomUUID(), schematicId: id, modelId }).onConflictDoNothing();
       }
     }
 
@@ -188,7 +199,7 @@ export async function upsertSchematic(db: AppDb, body: any) {
       const hs = body.hotspots[i];
       if (hs && hs.itemNumber !== undefined) {
         await tx.insert(schematicHotspots).values({
-          id: `${id}-hs-${hs.itemNumber}-${i}`,
+          id: crypto.randomUUID(),
           schematicId: id,
           partId: hs.partId || null,
           itemNumber: Number(hs.itemNumber),
@@ -204,7 +215,7 @@ export async function upsertSchematic(db: AppDb, body: any) {
 }
 
 export async function upsertOrder(db: AppDb, body: any) {
-  const id = body.id || `SZ-ORD-${Math.floor(100000 + Math.random() * 900000)}`;
+  const id = ensureUuid(body.id);
   let date = new Date();
   if (body.date) {
     const parsed = new Date(body.date);
@@ -245,6 +256,7 @@ export async function upsertOrder(db: AppDb, body: any) {
     paymentReference: body.paymentReference || id,
     trackingNumber: body.trackingNumber || null,
     shippingCarrier: body.shippingCarrier || null,
+    trackingUrl: body.trackingUrl || null,
     notes: body.notes || ''
   };
 
@@ -265,7 +277,7 @@ export async function upsertOrder(db: AppDb, body: any) {
       const lineTotal = Number(item.lineTotal ?? quantity * unitPrice);
 
       await tx.insert(orderItems).values({
-        id: `${id}-item-${i}`,
+        id: crypto.randomUUID(),
         orderId: id,
         partId: part.id ?? null,
         part,
@@ -281,7 +293,7 @@ export async function upsertOrder(db: AppDb, body: any) {
 }
 
 export async function upsertUser(db: AppDb, body: any) {
-  const id = body.id || `usr-${Date.now()}`;
+  const id = ensureUuid(body.id);
   let createdAt = new Date();
   if (body.createdAt) {
     const parsed = new Date(body.createdAt);
@@ -335,7 +347,7 @@ export async function upsertUser(db: AppDb, body: any) {
     await tx.delete(userFavorites).where(eq(userFavorites.userId, id));
     for (const partId of body.favoritePartIds || []) {
       if (partId && typeof partId === 'string') {
-        await tx.insert(userFavorites).values({ id: `${id}-fav-${partId}`, userId: id, partId, createdAt: new Date() }).onConflictDoNothing();
+        await tx.insert(userFavorites).values({ id: crypto.randomUUID(), userId: id, partId, createdAt: new Date() }).onConflictDoNothing();
       }
     }
   });
@@ -344,7 +356,7 @@ export async function upsertUser(db: AppDb, body: any) {
 }
 
 export async function upsertShippingMethod(db: AppDb, body: any) {
-  const id = body.id || `sm-${Date.now()}`;
+  const id = ensureUuid(body.id);
   const data = {
     id,
     name: body.name,
@@ -365,7 +377,7 @@ export async function upsertShippingMethod(db: AppDb, body: any) {
     for (const r of body.zoneRates || []) {
       if (r && r.zoneId) {
         await tx.insert(shippingMethodZoneRates).values({
-          id: `${id}-rate-${r.zoneId}`,
+          id: crypto.randomUUID(),
           methodId: id,
           zoneId: r.zoneId,
           price: Number(r.price || 0)
@@ -378,7 +390,7 @@ export async function upsertShippingMethod(db: AppDb, body: any) {
 }
 
 export async function upsertShippingZone(db: AppDb, body: any) {
-  const id = body.id || `zone-${Date.now()}`;
+  const id = ensureUuid(body.id);
   const data = {
     id,
     name: body.name,
@@ -395,7 +407,7 @@ export async function upsertShippingZone(db: AppDb, body: any) {
       const stateId = await resolveStateRef(tx as unknown as AppDb, dept);
       if (stateId) {
         await tx.insert(shippingZoneStates).values({
-          id: `${id}-st-${stateId}`,
+          id: crypto.randomUUID(),
           zoneId: id,
           stateId
         }).onConflictDoNothing();
@@ -560,7 +572,7 @@ export async function getDefaultCarrierName(db: AppDb) {
 }
 
 export async function upsertOrderStatus(db: AppDb, body: any) {
-  const id = body.id || `status-${body.name.toLowerCase().replace(/\s+/g, '-')}`;
+  const id = ensureUuid(body.id);
   const data = {
     id,
     name: body.name,
@@ -576,7 +588,7 @@ export async function upsertOrderStatus(db: AppDb, body: any) {
 }
 
 export async function upsertCarrier(db: AppDb, body: any) {
-  const id = body.id || `carrier-${body.name.toLowerCase().replace(/\s+/g, '-')}`;
+  const id = ensureUuid(body.id);
   const data = {
     id,
     name: body.name,
@@ -654,7 +666,7 @@ export async function seedGeography(db: AppDb) {
 }
 
 export async function upsertOrderReturn(db: AppDb, body: any) {
-  const id = body.id || `SZ-RET-${Math.floor(100000 + Math.random() * 900000)}`;
+  const id = ensureUuid(body.id);
   const date = body.createdAt ? new Date(body.createdAt) : new Date();
 
   // Auto generate Store Credit Code if resolution is store_credit and none exists

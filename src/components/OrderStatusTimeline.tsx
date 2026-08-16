@@ -8,9 +8,11 @@ import {
   CreditCard,
   AlertCircle,
   MapPin,
+  ExternalLink,
 } from "lucide-react";
 import type { Order } from "../types";
 import { formatOrderDate } from "../utils/formatDate";
+import { getCarrierTrackingUrl } from "../utils/tracking";
 
 interface OrderStatusTimelineProps {
   order: Order;
@@ -131,6 +133,8 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
     );
   }
 
+  const trackingLink = getCarrierTrackingUrl(order);
+
   return (
     <div
       id="order-status-timeline"
@@ -155,6 +159,17 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {trackingLink && (
+            <a
+              href={trackingLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] font-mono text-white bg-[#E60012] hover:bg-red-700 px-3 py-1 rounded-lg border border-red-300 font-bold flex items-center gap-1.5 transition-all shadow-xs"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Rastrear Envío ↗</span>
+            </a>
+          )}
           {guaranteeCode && (
             <span className="text-[10px] font-mono font-extrabold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
@@ -280,10 +295,22 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
             </div>
           </div>
 
-          {trackingNumber && (
-            <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200 font-bold flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-emerald-600" /> En tránsito nacional
-            </span>
+          {trackingLink ? (
+            <a
+              href={trackingLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] font-mono text-white bg-[#E60012] hover:bg-red-700 px-3 py-1.5 rounded-lg border border-red-300 font-extrabold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Rastrear Envío en Vivo ↗</span>
+            </a>
+          ) : (
+            trackingNumber && (
+              <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200 font-bold flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5 text-emerald-600" /> En tránsito nacional
+              </span>
+            )
           )}
         </div>
       )}
