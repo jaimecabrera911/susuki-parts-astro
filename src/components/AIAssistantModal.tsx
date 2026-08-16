@@ -5,7 +5,7 @@ import type { ActiveMotorcycle, SuzukiPart } from '../types';
 import { getPrimaryOem } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
 import { shouldShowProductImages } from '../utils/config';
-import { ProductImageFallback } from './ProductImageFallback';
+import { ProductImageEmptyState } from './ProductImageEmptyState';
 
 interface AIAssistantModalProps {
   isOpen: boolean;
@@ -224,7 +224,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
                                     className="w-12 h-12 rounded-lg object-cover bg-white border border-slate-200 shrink-0" 
                                   />
                                 ) : (
-                                  <ProductImageFallback part={part} size="sm" className="w-12 h-12 shrink-0" />
+                                  <ProductImageEmptyState className="w-12 h-12 shrink-0" />
                                 )}
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center justify-between gap-1">

@@ -73,10 +73,13 @@ export const emptySiteSettings = (): SiteSettings => ({
   defaultDepartment: '',
   defaultCity: '',
   showProductImages: false,
+  detailPrimary: 'despiece',
   taxName: '',
   taxRate: 0,
   taxActive: false,
   returnMaxDays: 0,
+  orderPrefix: '',
+  returnPrefix: '',
   footerConfig: undefined,
   updatedAt: ''
 });
@@ -108,6 +111,13 @@ export function getSiteSettingsSnapshot(): SiteSettings {
 
 export const shouldShowProductImages = (): boolean =>
   getSiteSettingsSnapshot().showProductImages === true;
+
+/**
+ * Elemento mostrado como principal en el detalle de producto
+ * ('despiece' | 'images'). Si el setting no está definido, cae a 'despiece'.
+ */
+export const getDetailPrimary = (): 'despiece' | 'images' =>
+  getSiteSettingsSnapshot().detailPrimary === 'images' ? 'images' : 'despiece';
 
 export const getWhatsAppNumber = (): string =>
   getSiteSettingsSnapshot().whatsappNumber;

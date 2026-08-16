@@ -20,25 +20,45 @@ export const POST: APIRoute = async ({ request }) => {
     const formData = await request.formData();
     const file = formData.get('file');
     const folder = (formData.get('folder') as string) || 'store';
-    if (!file || typeof file === 'string' || !file.type.startsWith('image/')) {
+    
+    if (!file || typeof file === 'string') {
       return new Response(
         JSON.stringify({ success: false, error: 'Se requiere un archivo de imagen válido (PNG, JPG, WEBP, SVG).' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
-    const safeName = file.name.replace(/[^a-z0-9.\-]+/gi, '-').toLowerCase() || `imagen-${Date.now()}.${ext}`;
-    const key = `${folder}/logo-${Date.now()}-${safeName}`;
-    const body = Buffer.from(await file.arrayBuffer());
+    const fileName = (file as any).name || `imagen-${Date.now()}.png`;
+    const ext = fileName.split('.').pop()?.toLowerCase() || 'png';
+    const mimeTypes: Record<string, string> = {
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      webp: 'image/webp',
+      svg: 'image/svg+xml',
+      gif: 'image/gif'
+    };
+    const contentType = (file as any).type || mimeTypes[ext] || 'image/png';
 
-    const url = await uploadImage({ body, key, contentType: file.type });
+    if (!contentType.startsWith('image/')) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'El archivo debe ser una imagen válida (PNG, JPG, WEBP, SVG, GIF).' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const safeName = fileName.replace(/[^a-z0-9.\-]+/gi, '-').toLowerCase() || `imagen-${Date.now()}.${ext}`;
+    const key = `${folder}/img-${Date.now()}-${safeName}`;
+    const arrayBuf = await (file as Blob).arrayBuffer();
+    const body = Buffer.from(arrayBuf);
+
+    const url = await uploadImage({ body, key, contentType });
     return new Response(
       JSON.stringify({ success: true, data: { url, key } }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
-    console.error('Error en POST /api/upload:', error?.message);
+    console.error('Error en POST /api/upload:', error?.message || error);
     return new Response(
       JSON.stringify({ success: false, error: 'Error subiendo la imagen al almacenamiento de la tienda' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }

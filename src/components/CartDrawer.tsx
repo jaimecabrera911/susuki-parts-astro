@@ -15,7 +15,7 @@ import { getPrimaryOem } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { getCartWhatsAppUrl } from "../utils/whatsapp";
 import { shouldShowProductImages } from "../utils/config";
-import { ProductImageFallback } from "./ProductImageFallback";
+import { ProductImageEmptyState } from "./ProductImageEmptyState";
 import { IoChatbubbleEllipses } from "react-icons/io5";
 
 interface CartDrawerProps {
@@ -139,11 +139,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                           onViewPartDetail && onViewPartDetail(item.part)
                         }
                       >
-                        <ProductImageFallback
-                          part={item.part}
-                          size="sm"
-                          className="w-16 h-16 cursor-pointer"
-                        />
+                        <ProductImageEmptyState className="w-16 h-16 cursor-pointer" />
                       </div>
                     )}
 

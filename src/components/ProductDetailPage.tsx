@@ -28,7 +28,7 @@ import { getPrimaryOem } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { getProductWhatsAppUrl } from "../utils/whatsapp";
 import { shouldShowProductImages } from "../utils/config";
-import { ProductImageFallback } from "./ProductImageFallback";
+import { ProductImageEmptyState } from "./ProductImageEmptyState";
 
 import { ProductImageGallery } from "./ProductImageGallery";
 import { TbAlertHexagonFilled } from "react-icons/tb";
@@ -650,11 +650,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                           className="w-14 h-14 object-cover rounded-xl bg-slate-200 shrink-0 border border-slate-200"
                         />
                       ) : (
-                        <ProductImageFallback
-                          part={relPart}
-                          size="sm"
-                          className="w-14 h-14 shrink-0"
-                        />
+                        <ProductImageEmptyState className="w-14 h-14 shrink-0" />
                       )}
 
                       <h4 className="text-xs font-bold text-slate-900 line-clamp-2 leading-snug">

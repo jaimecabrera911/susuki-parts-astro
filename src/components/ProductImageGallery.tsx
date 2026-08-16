@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Layers, ArrowUpRight, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { Layers, ZoomIn, ZoomOut, RotateCcw, Package } from "lucide-react";
 import { BiLinkExternal } from "react-icons/bi";
 import type { SuzukiPart, ExplodedDiagram } from "../types";
-import { shouldShowProductImages } from "../utils/config";
-import { ProductImageFallback } from "./ProductImageFallback";
-import { DIAGRAM_SVGS } from "../data/svgAssets";
+import { shouldShowProductImages, getDetailPrimary } from "../utils/config";
 
 interface ProductImageGalleryProps {
   part: SuzukiPart;
   schematics?: ExplodedDiagram[];
   onViewSchematics?: (schematicId: string, partId: string) => void;
 }
+
+type GalleryTab = "despiece" | "images";
 
 export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
   part,
@@ -21,6 +21,17 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
     schematics || [],
   );
   const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [activeIndex, setActiveIndex] = useState<number>(0);
+
+  const galleryImages = useMemo(
+    () =>
+      part.images && part.images.length > 0
+        ? part.images
+        : part.image
+          ? [part.image]
+          : [],
+    [part.images, part.image],
+  );
 
   // Drag to pan state for zoom
   const containerRef = useRef<HTMLDivElement>(null);
@@ -78,7 +89,8 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
 
   const allDiagrams = liveSchematics;
 
-  // Find schematic info by explicit hotspot match, schematicId or category fallback
+  // Find schematic info by explicit hotspot match or schematicId.
+  // Sin fallback por categoría: el despiece solo se muestra con vínculo real.
   const diagramInfo = useMemo(() => {
     // 1. Direct Hotspot Match: Find schematic where this part is pinned in hotspots
     const hotspotMatch = allDiagrams.find(
@@ -97,10 +109,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
         hotspot: spot
           ? { itemNumber: spot.itemNumber, x: spot.x, y: spot.y }
           : null,
-        image:
-          hotspotMatch.diagramImage ||
-          (DIAGRAM_SVGS as Record<string, string>)[hotspotMatch.id] ||
-          "",
+        image: hotspotMatch.diagramImage || "",
       };
     }
 
@@ -113,36 +122,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
           title: diagram.title,
           section: diagram.section,
           hotspot: part.diagramHotspot ?? null,
-          image:
-            diagram.diagramImage ||
-            (DIAGRAM_SVGS as Record<string, string>)[diagram.id] ||
-            "",
-        };
-      }
-    }
-
-    // 3. Category Fallback
-    let categorySchematicId = "";
-    if (part.category === "filtros") categorySchematicId = "diag-vstrom-intake";
-    else if (part.category === "motor")
-      categorySchematicId = "diag-gixxer-engine";
-    else if (part.category === "transmision")
-      categorySchematicId = "diag-transmission";
-    else if (part.category === "frenos")
-      categorySchematicId = "diag-gsxr-brake";
-
-    if (categorySchematicId) {
-      const diagram = allDiagrams.find((d) => d.id === categorySchematicId);
-      if (diagram) {
-        return {
-          id: diagram.id,
-          title: diagram.title,
-          section: diagram.section,
-          hotspot: part.diagramHotspot ?? null,
-          image:
-            diagram.diagramImage ||
-            (DIAGRAM_SVGS as Record<string, string>)[diagram.id] ||
-            "",
+          image: diagram.diagramImage || "",
         };
       }
     }
@@ -150,24 +130,85 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
     return null;
   }, [part, allDiagrams]);
 
-  // ---------- CASE 1: Schematic Diagram Available — ALWAYS show the exploded view diagram image ----------
-  if (diagramInfo) {
-    const handleClick = () => {
-      if (onViewSchematics && diagramInfo.id) {
-        onViewSchematics(diagramInfo.id, part.id);
-      }
-    };
+  const showImages = shouldShowProductImages();
+  const hasDespiece = !!diagramInfo;
+  const hasVisibleImages = showImages && galleryImages.length > 0;
+  const detailPrimary = getDetailPrimary();
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        handleClick();
-      }
-    };
+  // Tab default comes from the global setting (preference, never a blocker).
+  const [activeTab, setActiveTab] = useState<GalleryTab>(
+    detailPrimary === "despiece" ? "despiece" : "images",
+  );
 
+  useEffect(() => {
+    setActiveIndex(0);
+    setZoomLevel(1);
+    setActiveTab(detailPrimary === "despiece" ? "despiece" : "images");
+  }, [part.id, detailPrimary]);
+
+  const openSchematics = () => {
+    if (onViewSchematics && diagramInfo) {
+      onViewSchematics(diagramInfo.id, part.id);
+    }
+  };
+
+  const handleClick = () => {
+    if (zoomLevel <= 1) openSchematics();
+  };
+
+  const renderZoomToolbar = () => (
+    <div className="flex items-center gap-1 bg-slate-100 border border-slate-200 p-0.5 rounded-lg shadow-2xs">
+      <button
+        type="button"
+        onClick={() =>
+          setZoomLevel((prev) =>
+            Math.max(1, Number((prev - 0.25).toFixed(2))),
+          )
+        }
+        disabled={zoomLevel <= 1}
+        className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
+        title="Alejar zoom (-)"
+      >
+        <ZoomOut className="w-3.5 h-3.5" />
+      </button>
+
+      <span className="px-1 font-mono text-[10px] font-bold text-slate-800 min-w-[36px] text-center select-none">
+        {Math.round(zoomLevel * 100)}%
+      </span>
+
+      <button
+        type="button"
+        onClick={() =>
+          setZoomLevel((prev) =>
+            Math.min(2.5, Number((prev + 0.25).toFixed(2))),
+          )
+        }
+        disabled={zoomLevel >= 2.5}
+        className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
+        title="Acercar zoom (+)"
+      >
+        <ZoomIn className="w-3.5 h-3.5" />
+      </button>
+
+      {zoomLevel > 1 && (
+        <button
+          type="button"
+          onClick={() => setZoomLevel(1)}
+          className="p-1 rounded text-[#E60012] hover:bg-red-50 transition-all cursor-pointer"
+          title="Restablecer zoom (100%)"
+        >
+          <RotateCcw className="w-3 h-3" />
+        </button>
+      )}
+    </div>
+  );
+
+  // ---------- DESPIECE TAB (exactly as the previous commit's Case 1) ----------
+  const renderDespieceTab = () => {
+    if (!diagramInfo) return null;
     return (
-      <div id="product-image-gallery" className="w-full space-y-2.5">
-        {/* Header — diagram title + section + zoom controls */}
+      <div className="w-full space-y-2.5">
+        {/* Header — diagram title + hotspot badge + zoom controls */}
         <div className="flex items-center justify-between gap-2 px-1">
           <div className="flex items-center gap-1.5 min-w-0">
             <Layers
@@ -185,57 +226,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {/* Zoom Toolbar */}
-            <div className="flex items-center gap-1 bg-slate-100 border border-slate-200 p-0.5 rounded-lg shadow-2xs">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setZoomLevel((prev) =>
-                    Math.max(1, Number((prev - 0.25).toFixed(2))),
-                  );
-                }}
-                disabled={zoomLevel <= 1}
-                className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
-                title="Alejar zoom (-)"
-              >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-
-              <span className="px-1 font-mono text-[10px] font-bold text-slate-800 min-w-[36px] text-center select-none">
-                {Math.round(zoomLevel * 100)}%
-              </span>
-
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setZoomLevel((prev) =>
-                    Math.min(2.5, Number((prev + 0.25).toFixed(2))),
-                  );
-                }}
-                disabled={zoomLevel >= 2.5}
-                className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
-                title="Acercar zoom (+)"
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-              </button>
-
-              {zoomLevel > 1 && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setZoomLevel(1);
-                  }}
-                  className="p-1 rounded text-[#E60012] hover:bg-red-50 transition-all cursor-pointer"
-                  title="Restablecer zoom (100%)"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-
+            {renderZoomToolbar()}
             {diagramInfo.hotspot && (
               <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-red-50 border border-red-200 shrink-0">
                 <span className="text-[9px] font-mono font-extrabold uppercase tracking-wider text-[#E60012]">
@@ -249,7 +240,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
           </div>
         </div>
 
-        {/* Clickable diagram image (ALWAYS SHOWN) */}
+        {/* Clickable diagram image with fixed area */}
         <div className="relative bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden min-h-[260px] sm:min-h-[320px] max-h-[360px] group shadow-xs transition-all hover:border-[#E60012] hover:shadow-md flex items-center justify-center p-3 bg-white">
           <div
             ref={containerRef}
@@ -264,15 +255,13 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
                   : "overflow-auto cursor-grab"
                 : "overflow-hidden cursor-pointer"
             }`}
-            onClick={() => {
-              if (zoomLevel <= 1) handleClick();
-            }}
+            onClick={handleClick}
           >
             <div
               className="relative max-w-full max-h-full flex items-center justify-center transition-transform duration-200"
               style={{
                 transform: `scale(${zoomLevel})`,
-                transformOrigin: zoomLevel > 1 ? "top left" : "center center",
+                transformOrigin: "center center",
               }}
             >
               <div className="relative inline-flex items-center justify-center max-w-full max-h-full">
@@ -310,7 +299,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
 
           {/* Hover CTA overlay */}
           <div
-            onClick={handleClick}
+            onClick={openSchematics}
             className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 bg-[#E60012] text-white text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-1.5 rounded-lg shadow-md opacity-90 group-hover:opacity-100 transition-opacity cursor-pointer z-20"
           >
             <BiLinkExternal className="w-3.5 h-3.5" aria-hidden="true" />
@@ -319,61 +308,26 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
         </div>
       </div>
     );
-  }
+  };
 
-  // ---------- CASE 2: Static product photo / fallback ----------
-  return (
-    <div id="product-image-gallery" className="w-full space-y-2">
-      <div className="flex items-center justify-end px-1">
-        {/* Zoom Toolbar for Static Photo */}
-        <div className="flex items-center gap-1 bg-slate-100 border border-slate-200 p-0.5 rounded-lg shadow-2xs">
-          <button
-            type="button"
-            onClick={() =>
-              setZoomLevel((prev) =>
-                Math.max(1, Number((prev - 0.25).toFixed(2))),
-              )
-            }
-            disabled={zoomLevel <= 1}
-            className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
-            title="Alejar zoom (-)"
-          >
-            <ZoomOut className="w-3.5 h-3.5" />
-          </button>
+  // ---------- IMAGES TAB (carousel with thumbnails) ----------
+  const safeIndex =
+    galleryImages.length === 0 ? 0 : Math.min(activeIndex, galleryImages.length - 1);
 
-          <span className="px-1 font-mono text-[10px] font-bold text-slate-800 min-w-[36px] text-center select-none">
-            {Math.round(zoomLevel * 100)}%
-          </span>
-
-          <button
-            type="button"
-            onClick={() =>
-              setZoomLevel((prev) =>
-                Math.min(2.5, Number((prev + 0.25).toFixed(2))),
-              )
-            }
-            disabled={zoomLevel >= 2.5}
-            className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
-            title="Acercar zoom (+)"
-          >
-            <ZoomIn className="w-3.5 h-3.5" />
-          </button>
-
-          {zoomLevel > 1 && (
-            <button
-              type="button"
-              onClick={() => setZoomLevel(1)}
-              className="p-1 rounded text-[#E60012] hover:bg-red-50 transition-all cursor-pointer"
-              title="Restablecer zoom (100%)"
-            >
-              <RotateCcw className="w-3 h-3" />
-            </button>
-          )}
+  const renderImagesTab = () => {
+    if (galleryImages.length === 0) return null;
+    return (
+      <div className="w-full space-y-2">
+        {/* Header — zoom controls */}
+        <div className="flex items-center justify-between gap-2 px-1 min-h-[28px]">
+          <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+            Imagen {safeIndex + 1} de {galleryImages.length}
+          </div>
+          {renderZoomToolbar()}
         </div>
-      </div>
 
-      {shouldShowProductImages() ? (
-        <div className="relative bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden aspect-4/3 sm:aspect-16/10 shadow-xs">
+        {/* Main area — stable aspect */}
+        <div className="relative bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden aspect-4/3 sm:aspect-16/10 shadow-xs group">
           <div
             ref={containerRef}
             onMouseDown={handleMouseDown}
@@ -389,24 +343,113 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
             }`}
           >
             <img
-              src={part.image}
+              key={galleryImages[safeIndex]}
+              src={galleryImages[safeIndex]}
               alt={part.name}
               referrerPolicy="no-referrer"
               className="max-w-full max-h-full object-contain transition-transform duration-200 origin-center select-none pointer-events-none"
               style={{
                 transform: `scale(${zoomLevel})`,
-                transformOrigin: zoomLevel > 1 ? "top left" : "center center",
+                transformOrigin: "center center",
               }}
             />
           </div>
         </div>
-      ) : (
-        <ProductImageFallback
-          part={part}
-          size="lg"
-          className="w-full aspect-4/3 sm:aspect-16/10"
-        />
-      )}
+
+        {/* Thumbnails strip */}
+        {galleryImages.length > 1 && (
+          <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar px-0.5 pb-0.5">
+            {galleryImages.map((src, idx) => (
+              <button
+                key={src}
+                type="button"
+                onClick={() => {
+                  setActiveIndex(idx);
+                  setZoomLevel(1);
+                }}
+                className={`relative w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-xl border-2 overflow-hidden bg-white transition-all cursor-pointer ${
+                  idx === safeIndex
+                    ? "border-[#E60012] ring-2 ring-[#E60012]/15"
+                    : "border-slate-200 hover:border-slate-300"
+                }`}
+                aria-label={`Ver imagen ${idx + 1}`}
+              >
+                <img
+                  src={src}
+                  alt={`${part.name} ${idx + 1}`}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover"
+                />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ---------- RENDER ----------
+
+  const tabsRow = hasDespiece && hasVisibleImages ? (
+    <div className="flex items-center gap-1 bg-slate-100 border border-slate-200 p-0.5 rounded-xl w-fit">
+      <button
+        type="button"
+        onClick={() => {
+          setActiveTab("despiece");
+          setZoomLevel(1);
+        }}
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+          activeTab === "despiece"
+            ? "bg-[#E60012] text-white shadow-xs"
+            : "text-slate-600 hover:text-slate-900 hover:bg-white"
+        }`}
+        aria-pressed={activeTab === "despiece"}
+      >
+        <Layers className="w-3.5 h-3.5" aria-hidden="true" />
+        Despiece
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setActiveTab("images");
+          setZoomLevel(1);
+        }}
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+          activeTab === "images"
+            ? "bg-[#E60012] text-white shadow-xs"
+            : "text-slate-600 hover:text-slate-900 hover:bg-white"
+        }`}
+        aria-pressed={activeTab === "images"}
+      >
+        <Package className="w-3.5 h-3.5" aria-hidden="true" />
+        Imágenes
+      </button>
+    </div>
+  ) : null;
+
+  // Empty state: only when there is neither despiece nor visible images.
+  if (!hasDespiece && !hasVisibleImages) {
+    return (
+      <div
+        id="product-image-gallery"
+        className="w-full aspect-4/3 sm:aspect-16/10 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col items-center justify-center gap-2.5 text-slate-300"
+      >
+        <Package className="w-10 h-10" />
+        <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400">
+          {showImages ? "Sin imagen disponible" : "Imágenes no disponibles"}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div id="product-image-gallery" className="w-full space-y-2">
+      {tabsRow}
+
+      {/* Despiece: shown alone when there is no carousel need, or as its own tab */}
+      {hasDespiece && (activeTab === "despiece" || !hasVisibleImages)
+        ? renderDespieceTab()
+        : renderImagesTab()}
     </div>
   );
 };

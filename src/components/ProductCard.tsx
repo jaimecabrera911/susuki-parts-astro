@@ -27,7 +27,7 @@ import {
 import { formatCurrency } from "../utils/formatCurrency";
 import { getProductWhatsAppUrl } from "../utils/whatsapp";
 import { shouldShowProductImages } from "../utils/config";
-import { ProductImageFallback } from "./ProductImageFallback";
+import { ProductImageEmptyState } from "./ProductImageEmptyState";
 import { IoChatbubbleEllipses } from "react-icons/io5";
 
 interface ProductCardProps {
@@ -167,11 +167,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
               />
             ) : (
-              <ProductImageFallback
-                part={part}
-                size="lg"
-                className="w-full h-full rounded-none"
-              />
+              <ProductImageEmptyState className="w-full h-full rounded-none" />
             )}
 
             <div className="absolute top-2.5 left-2.5 z-10">

@@ -6,12 +6,12 @@ import {
   Trash2,
   Layers,
   AlertCircle,
-  Image as ImageIcon,
   Wrench,
-  CheckCircle2,
   UploadCloud,
-  Check,
   Percent,
+  ArrowUp,
+  ArrowDown,
+  Star,
 } from "lucide-react";
 import type {
   SuzukiPart,
@@ -21,6 +21,7 @@ import type {
   CompatibilityRule,
 } from "../../types";
 import { SearchableModelSelect } from "../SearchableModelSelect";
+import { UPLOAD_IMAGE } from "../../services/api";
 
 interface PartDrawerProps {
   isOpen: boolean;
@@ -64,8 +65,10 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
   const [stock, setStock] = useState<number>(10);
   const [availability, setAvailability] =
     useState<AvailabilityStatus>("in_stock");
-  const [image, setImage] = useState("");
+  const [gallery, setGallery] = useState<string[]>([]);
   const [description, setDescription] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const MAX_IMAGES = 8;
 
   // Technical Specs List
   const [specs, setSpecs] = useState<TechnicalSpec[]>([]);
@@ -91,22 +94,66 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       );
       return;
     }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Cada imagen no puede superar 5 MB.");
+      return;
+    }
     setError("");
     const reader = new FileReader();
     reader.onload = (e) => {
       if (e.target?.result) {
-        setImage(e.target.result as string);
+        setGallery((prev) => {
+          if (prev.length >= MAX_IMAGES) {
+            setError(`Máximo ${MAX_IMAGES} imágenes por repuesto.`);
+            return prev;
+          }
+          return [...prev, e.target!.result as string];
+        });
       }
     };
     reader.readAsDataURL(file);
   };
 
+  const handleFilesSelect = (files: FileList | File[]) => {
+    const arr = Array.from(files);
+    if (arr.length === 0) return;
+    if (gallery.length + arr.length > MAX_IMAGES) {
+      setError(`Máximo ${MAX_IMAGES} imágenes por repuesto.`);
+      return;
+    }
+    arr.forEach(handleFileSelect);
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileSelect(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFilesSelect(e.dataTransfer.files);
     }
+  };
+
+  const handleReorder = (index: number, dir: -1 | 1) => {
+    setGallery((prev) => {
+      const next = [...prev];
+      const target = index + dir;
+      if (target < 0 || target >= next.length) return prev;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setGallery((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSetPrimary = (index: number) => {
+    setGallery((prev) => {
+      if (index === 0) return prev;
+      const next = [...prev];
+      const [img] = next.splice(index, 1);
+      next.unshift(img);
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -131,7 +178,13 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
         partToEdit.availability ||
           (partToEdit.stock > 0 ? "in_stock" : "on_order"),
       );
-      setImage(partToEdit.image || "");
+      setGallery(
+        partToEdit.images && partToEdit.images.length > 0
+          ? partToEdit.images
+          : partToEdit.image
+            ? [partToEdit.image]
+            : [],
+      );
       setDescription(partToEdit.description || "");
       setSpecs(partToEdit.specs || []);
       setCompatibility(partToEdit.compatibility || []);
@@ -147,7 +200,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       setPriceIncludesTax(false);
       setStock(0);
       setAvailability("in_stock");
-      setImage("");
+      setGallery([]);
       setDescription("");
       setSpecs([
         { label: "Origen", value: "" },
@@ -213,7 +266,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
     setCompatibility(compatibility.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       setError("El nombre del repuesto es obligatorio.");
@@ -246,27 +299,58 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       .map((s) => ({ label: s.label.trim(), value: s.value.trim() }))
       .filter((s) => s.label || s.value);
 
-    const newPart: SuzukiPart = {
-      id: partId,
-      sku: sku.trim().toUpperCase(),
-      oemNumbers,
-      name: name.trim(),
-      category,
-      price,
-      taxable,
-      priceIncludesTax,
-      stock,
-      availability,
-      image:
-        image.trim() ||
-        "https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/parts/default.jpg",
-      description: description.trim(),
-      specs: cleanedSpecs,
-      compatibility,
-    };
+    let finalImages = [...gallery];
+    if (finalImages.length > MAX_IMAGES) {
+      setError(`Máximo ${MAX_IMAGES} imágenes por repuesto.`);
+      return;
+    }
 
-    onSave(newPart);
-    onClose();
+    setUploading(true);
+    setError("");
+    try {
+      const uploaded = await Promise.all(
+        finalImages.map(async (img) => {
+          if (img.startsWith("data:")) {
+            const dataUrl = img;
+            const file = await (async () => {
+              const res = await fetch(dataUrl);
+              const blob = await res.blob();
+              const extMatch = dataUrl.match(/^data:image\/(\w+);/);
+              const ext = extMatch ? extMatch[1].replace("jpeg", "jpg") : "png";
+              return new File([blob], `part-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`, { type: blob.type });
+            })();
+            const result = await UPLOAD_IMAGE(file, "parts");
+            return result.url;
+          }
+          return img;
+        }),
+      );
+
+      const newPart: SuzukiPart = {
+        id: partId,
+        sku: sku.trim().toUpperCase(),
+        oemNumbers,
+        name: name.trim(),
+        category,
+        price,
+        taxable,
+        priceIncludesTax,
+        stock,
+        availability,
+        image: uploaded[0] || "",
+        images: uploaded,
+        description: description.trim(),
+        specs: cleanedSpecs,
+        compatibility,
+      };
+
+      onSave(newPart);
+      onClose();
+    } catch (err: any) {
+      setError(err?.message || "No se pudieron subir las imágenes.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -582,62 +666,100 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
             </div>
           </div>
 
-          {/* Image File Attachment Dropzone */}
+          {/* Image Gallery Dropzone */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-mono">
-              Fotografía / Ilustración del Repuesto
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider font-mono">
+                Galería de Imágenes del Repuesto
+              </label>
+              <span className="text-[11px] font-mono text-slate-500 font-bold">
+                {gallery.length}/{MAX_IMAGES}
+              </span>
+            </div>
             <input
               type="file"
               ref={fileInputRef}
               accept="image/*"
+              multiple
               onChange={(e) => {
-                if (e.target.files && e.target.files[0]) {
-                  handleFileSelect(e.target.files[0]);
+                if (e.target.files && e.target.files.length > 0) {
+                  handleFilesSelect(e.target.files);
+                  e.target.value = "";
                 }
               }}
               className="hidden"
             />
 
-            {image ? (
-              <div className="relative p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center gap-4">
-                <div className="w-32 h-24 rounded-xl bg-white border border-slate-200 p-2 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
-                  <img
-                    src={image}
-                    alt="Vista previa del repuesto"
-                    className="max-w-full max-h-full object-contain"
-                  />
-                </div>
-                <div className="flex-1 min-w-0 text-center sm:text-left">
-                  <p className="text-xs font-black text-slate-900 flex items-center gap-1.5 justify-center sm:justify-start">
-                    <Check className="w-4 h-4 text-emerald-600" />
-                    Imagen Adjuntada Correctamente
-                  </p>
-                  <p className="text-[11px] text-slate-500 font-mono mt-0.5 truncate">
-                    {image.startsWith("data:")
-                      ? "Archivo local adjuntado (Data URL)"
-                      : image}
-                  </p>
-                  <div className="mt-2.5 flex items-center gap-2 justify-center sm:justify-start">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors"
-                    >
-                      Cambiar Imagen
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setImage("")}
-                      className="px-3 py-1.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      Quitar
-                    </button>
+            {gallery.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4">
+                {gallery.map((img, idx) => (
+                  <div
+                    key={idx}
+                    className={`relative rounded-2xl border-2 overflow-hidden bg-slate-50 group ${
+                      idx === 0
+                        ? "border-[#E60012] ring-2 ring-[#E60012]/15"
+                        : "border-slate-200"
+                    }`}
+                  >
+                    <div className="aspect-square w-full overflow-hidden">
+                      <img
+                        src={img}
+                        alt={`Imagen ${idx + 1} del repuesto`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+
+                    {idx === 0 && (
+                      <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-lg bg-[#E60012] text-white text-[9px] font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
+                        <Star className="w-2.5 h-2.5 fill-current" />
+                        Principal
+                      </span>
+                    )}
+
+                    <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={() => handleReorder(idx, -1)}
+                        disabled={idx === 0}
+                        className="w-6 h-6 rounded-lg bg-white/95 border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center shadow-xs disabled:opacity-40"
+                        title="Mover a la izquierda"
+                      >
+                        <ArrowUp className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleReorder(idx, 1)}
+                        disabled={idx === gallery.length - 1}
+                        className="w-6 h-6 rounded-lg bg-white/95 border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center shadow-xs disabled:opacity-40"
+                        title="Mover a la derecha"
+                      >
+                        <ArrowDown className="w-3 h-3" />
+                      </button>
+                      {idx !== 0 && (
+                        <button
+                          type="button"
+                          onClick={() => handleSetPrimary(idx)}
+                          className="w-6 h-6 rounded-lg bg-white/95 border border-slate-200 text-amber-600 hover:bg-amber-50 flex items-center justify-center shadow-xs"
+                          title="Marcar como principal"
+                        >
+                          <Star className="w-3 h-3" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(idx)}
+                        className="w-6 h-6 rounded-lg bg-white/95 border border-red-200 text-red-600 hover:bg-red-50 flex items-center justify-center shadow-xs"
+                        title="Eliminar imagen"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ) : (
+            )}
+
+            {gallery.length < MAX_IMAGES && (
               <div
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -652,19 +774,22 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                     : "border-slate-300 hover:border-[#E60012] hover:bg-slate-50/80 bg-slate-50/50"
                 }`}
               >
-                <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-xs text-slate-500 group-hover:text-[#E60012]">
+                <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-xs text-slate-500">
                   <UploadCloud className="w-6 h-6 text-[#E60012]" />
                 </div>
                 <div>
                   <p className="text-xs font-extrabold text-slate-900">
-                    Haz clic o arrastra la foto del repuesto aquí
+                    {gallery.length === 0
+                      ? "Haz clic o arrastra las fotos del repuesto aquí"
+                      : "Agregar más imágenes"}
                   </p>
                   <p className="text-[11px] text-slate-500 font-mono mt-0.5">
-                    Formatos soportados: PNG, JPG, WEBP, SVG
+                    PNG, JPG, WEBP, SVG · Máx {MAX_IMAGES} imágenes · La primera
+                    es la principal
                   </p>
                 </div>
                 <span className="px-3 py-1.5 rounded-xl bg-[#E60012] text-white text-[11px] font-bold uppercase tracking-wider shadow-xs hover:bg-[#b5000b] transition-colors">
-                  Adjuntar Imagen
+                  {gallery.length === 0 ? "Adjuntar Imágenes" : "Agregar Imágenes"}
                 </span>
               </div>
             )}
@@ -869,9 +994,14 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
           <button
             type="button"
             onClick={handleSubmit}
-            className="px-6 py-2.5 rounded-xl bg-[#E60012] hover:bg-[#b5000b] text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-all"
+            disabled={uploading}
+            className="px-6 py-2.5 rounded-xl bg-[#E60012] hover:bg-[#b5000b] text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {partToEdit ? "Guardar Cambios" : "Crear Repuesto"}
+            {uploading
+              ? "Subiendo imágenes..."
+              : partToEdit
+                ? "Guardar Cambios"
+                : "Crear Repuesto"}
           </button>
         </div>
       </div>

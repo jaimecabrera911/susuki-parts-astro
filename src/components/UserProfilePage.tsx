@@ -43,7 +43,7 @@ import {
   shouldShowProductImages,
   getDefaultLocation,
 } from "../utils/config";
-import { ProductImageFallback } from "./ProductImageFallback";
+import { ProductImageEmptyState } from "./ProductImageEmptyState";
 import { LocationSelector } from "./LocationSelector";
 import type { CityRecord } from "../types";
 import { fetchCities, fetchReturns } from "../services/api";
@@ -795,11 +795,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                                 className="w-16 h-16 rounded-xl object-cover border border-slate-100 bg-slate-50 shrink-0"
                               />
                             ) : (
-                              <ProductImageFallback
-                                part={part}
-                                size="sm"
-                                className="w-16 h-16 shrink-0"
-                              />
+                              <ProductImageEmptyState className="w-16 h-16 shrink-0" />
                             )}
                             <div>
                               <h4 className="text-xs font-bold text-slate-900 line-clamp-2">

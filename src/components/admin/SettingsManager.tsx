@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Percent,
   Store,
+  Layers,
   AlertTriangle,
   UploadCloud,
   Link2,
@@ -65,10 +66,13 @@ const EMPTY_SETTINGS: SiteSettings = {
   defaultDepartment: "",
   defaultCity: "",
   showProductImages: false,
+  detailPrimary: 'despiece',
   taxName: "",
   taxRate: 0,
   taxActive: false,
   returnMaxDays: 0,
+  orderPrefix: "",
+  returnPrefix: "",
   footerConfig: EMPTY_FOOTER,
 };
 
@@ -119,13 +123,30 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
     };
   }, []);
 
+  const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     setSavedSuccess(false);
     setErrorMsg("");
     try {
-      await POST_SETTINGS(settings);
+      let currentLogo = settings.storeLogo;
+      if (pendingLogoFile) {
+        setUploadingLogo(true);
+        try {
+          const result = await UPLOAD_IMAGE(pendingLogoFile, "store");
+          currentLogo = result.url;
+          set("storeLogo", result.url);
+          setPendingLogoFile(null);
+          setLogoPreviewUrl(null);
+        } catch (uploadErr: any) {
+          console.warn("No se pudo subir la imagen a S3, usando fallback:", uploadErr?.message);
+        }
+      }
+      const finalSettings = { ...settings, storeLogo: currentLogo };
+      await POST_SETTINGS(finalSettings);
+      setLogoPreviewUrl(null);
       setSavedSuccess(true);
       if (onShowToast) {
         onShowToast("Configuración guardada y actualizada con éxito.", "success");
@@ -138,6 +159,7 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
         onShowToast(`No se pudo guardar la configuración: ${msg}`, "error");
       }
     } finally {
+      setUploadingLogo(false);
       setIsSaving(false);
     }
   };
@@ -185,7 +207,9 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
       (settings.footerConfig?.legalLinks || []).filter((_, i) => i !== index),
     );
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
+
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -194,17 +218,16 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
       );
       return;
     }
-    setUploadingLogo(true);
+    setPendingLogoFile(file);
     setErrorMsg("");
-    try {
-      const result = await UPLOAD_IMAGE(file, "store");
-      set("storeLogo", result.url);
-    } catch (err: any) {
-      setErrorMsg(err?.message || "No se pudo subir el logo a Neon.");
-    } finally {
-      setUploadingLogo(false);
-      if (logoFileInputRef.current) logoFileInputRef.current.value = "";
-    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        setLogoPreviewUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+    if (logoFileInputRef.current) logoFileInputRef.current.value = "";
   };
 
   if (loading) {
@@ -347,6 +370,67 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
               </div>
             </div>
 
+            <div className="sm:col-span-2 p-5 bg-white border border-slate-200 rounded-2xl space-y-4">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                <Image className="w-4 h-4 text-[#E60012]" />
+                Logo de la Tienda
+              </label>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 shrink-0 rounded-xl border border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center">
+                  {(logoPreviewUrl || settings.storeLogo.trim()) ? (
+                    <img
+                      src={logoPreviewUrl || settings.storeLogo}
+                      alt="Logo de la tienda"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Store className="w-7 h-7 text-slate-300" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      ref={logoFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoSelect}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => logoFileInputRef.current?.click()}
+                      disabled={uploadingLogo}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold uppercase tracking-wider transition-all shadow-xs cursor-pointer disabled:opacity-60"
+                    >
+                      <UploadCloud className="w-3.5 h-3.5" />
+                      <span>Seleccionar Logo</span>
+                    </button>
+                    {pendingLogoFile && (
+                      <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">
+                        Pendiente por guardar
+                      </span>
+                    )}
+                    {(logoPreviewUrl || settings.storeLogo.trim()) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPendingLogoFile(null);
+                          setLogoPreviewUrl(null);
+                          set("storeLogo", "");
+                        }}
+                        className="px-3 py-2 rounded-xl bg-red-50 text-red-600 border border-red-200 text-xs font-bold hover:bg-red-100 transition-colors cursor-pointer"
+                      >
+                        Quitar
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1 font-sans">
+                    Selecciona una imagen desde tu equipo para ver la vista previa. La imagen se subirá al almacenamiento únicamente cuando hagas clic en &quot;Guardar Configuración&quot;. Si no hay logo se usa el logo por defecto.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="sm:col-span-2">
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 font-mono flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-slate-400" />
@@ -442,73 +526,6 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
               </div>
             </div>
 
-            <div className="sm:col-span-2 p-5 bg-white border border-slate-200 rounded-2xl space-y-4">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                <Image className="w-4 h-4 text-[#E60012]" />
-                Logo de la Tienda
-              </label>
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 shrink-0 rounded-xl border border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center">
-                  {settings.storeLogo.trim() ? (
-                    <img
-                      src={settings.storeLogo}
-                      alt="Logo de la tienda"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Store className="w-7 h-7 text-slate-300" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={settings.storeLogo}
-                    onChange={(e) => set("storeLogo", e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#E60012] focus:border-[#E60012] text-sm font-sans text-slate-900"
-                    placeholder="https://.../logo.png"
-                  />
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <input
-                      ref={logoFileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoUpload}
-                      className="hidden"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => logoFileInputRef.current?.click()}
-                      disabled={uploadingLogo}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#E60012] hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider transition-all shadow-xs cursor-pointer disabled:opacity-60"
-                    >
-                      {uploadingLogo ? (
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <UploadCloud className="w-3.5 h-3.5" />
-                      )}
-                      <span>
-                        {uploadingLogo ? "Subiendo a Neon..." : "Subir Logo"}
-                      </span>
-                    </button>
-                    {settings.storeLogo.trim() && (
-                      <button
-                        type="button"
-                        onClick={() => set("storeLogo", "")}
-                        className="px-3 py-2 rounded-xl bg-red-50 text-red-600 border border-red-200 text-xs font-bold hover:bg-red-100 transition-colors cursor-pointer"
-                      >
-                        Quitar
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-1 font-sans">
-                    Sube la imagen del logo desde tu equipo para guardarla en el
-                    almacenamiento de Neon, o pega manualmente una URL. Si se
-                    deja vacío se usa el logo por defecto.
-                  </p>
-                </div>
-              </div>
-            </div>
-
             <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
               <span className="block text-xs font-extrabold text-slate-900 uppercase tracking-wider font-mono flex items-center gap-1.5">
                 <MapPin className="w-4 h-4 text-[#E60012]" />
@@ -552,6 +569,35 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
                 />
                 <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#E60012]"></div>
               </label>
+            </div>
+
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+              <label
+                htmlFor="detail-primary"
+                className="text-xs font-extrabold text-slate-900 block font-display flex items-center gap-1.5 mb-1"
+              >
+                <Layers className="w-4 h-4 text-[#E60012]" />
+                Elemento Principal en el Detalle de Producto
+              </label>
+              <p className="text-xs text-slate-500 font-sans mt-0.5 mb-3">
+                Controla qué se muestra como principal en el detalle de
+                producto: el despiece técnico o las imágenes del repuesto. El
+                otro elemento aparece debajo en versión compacta.
+              </p>
+              <select
+                id="detail-primary"
+                value={settings.detailPrimary || "despiece"}
+                onChange={(e) =>
+                  set(
+                    "detailPrimary",
+                    e.target.value === "images" ? "images" : "despiece",
+                  )
+                }
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#E60012] focus:border-[#E60012] text-sm font-sans text-slate-900 bg-white"
+              >
+                <option value="despiece">Despiece técnico</option>
+                <option value="images">Imágenes del producto</option>
+              </select>
             </div>
           </div>
         )}

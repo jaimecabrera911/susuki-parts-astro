@@ -25,7 +25,7 @@ import type {
 import { formatCurrency } from "../utils/formatCurrency";
 import { getProductWhatsAppUrl } from "../utils/whatsapp";
 import { shouldShowProductImages } from "../utils/config";
-import { ProductImageFallback } from "./ProductImageFallback";
+import { ProductImageEmptyState } from "./ProductImageEmptyState";
 import { IoChatbubbleEllipses } from "react-icons/io5";
 
 import { ProductImageGallery } from "./ProductImageGallery";
@@ -580,11 +580,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                           className="w-10 h-10 object-cover rounded-lg bg-slate-200 shrink-0"
                         />
                       ) : (
-                        <ProductImageFallback
-                          part={relPart}
-                          size="sm"
-                          className="w-10 h-10 shrink-0"
-                        />
+                        <ProductImageEmptyState className="w-10 h-10 shrink-0" />
                       )}
 
                       <h4 className="text-xs font-bold text-slate-900 line-clamp-2 leading-tight">

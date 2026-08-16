@@ -1,7 +1,7 @@
 import type { AppDb } from './client';
 import {
   brands, models, modelYears,
-  parts, partOemNumbers, partCompatibilities,
+  parts, partOemNumbers, partImages, partCompatibilities,
   schematics, schematicHotspots, schematicApplicableModels, schematicSections,
   orderStatuses, carriers, modelCategories,
   orders, orderItems, orderReturns, siteSettings,
@@ -39,6 +39,7 @@ export async function formatParts(db: AppDb, rows: any[]) {
 
   const oemAll = await db.select().from(partOemNumbers);
   const compatAll = await db.select().from(partCompatibilities);
+  const imgAll = await db.select().from(partImages);
   const oemByPart = new Map<string, typeof oemAll>();
   for (const r of oemAll) {
     const arr = oemByPart.get(r.partId) || [];
@@ -51,12 +52,18 @@ export async function formatParts(db: AppDb, rows: any[]) {
     arr.push(r);
     compatByPart.set(r.partId, arr);
   }
+  const imgByPart = new Map<string, typeof imgAll>();
+  for (const r of imgAll) {
+    const arr = imgByPart.get(r.partId) || [];
+    arr.push(r);
+    imgByPart.set(r.partId, arr);
+  }
 
   return rows.map(p => ({
     ...p,
     sku: p.sku || `SKU-${p.id}`,
     oemNumbers: (oemByPart.get(p.id) || []).sort((a, b) => a.position - b.position).map(r => r.oemNumber),
-    images: p.images || [],
+    images: (imgByPart.get(p.id) || []).sort((a, b) => a.position - b.position).map(r => r.url),
     specs: p.specs || [],
     compatibility: (compatByPart.get(p.id) || []).map(r => ({
       modelId: r.modelId,
@@ -117,6 +124,13 @@ export async function upsertModel(db: AppDb, body: any) {
 export async function upsertPart(db: AppDb, body: any) {
   const id = ensureUuid(body.id);
   const sku = body.sku ? String(body.sku).trim() : `SKU-${id.substring(0, 8).toUpperCase()}`;
+
+  const rawImages = Array.isArray(body.images) ? body.images.filter((u: any) => u && typeof u === 'string' && u.trim()) : [];
+  const images = rawImages.map((u: any) => String(u).trim());
+  const primaryImage = body.image && typeof body.image === 'string' && body.image.trim()
+    ? String(body.image).trim()
+    : images[0] || '';
+
   const data = {
     id,
     sku,
@@ -124,8 +138,7 @@ export async function upsertPart(db: AppDb, body: any) {
     category: body.category,
     price: Number(body.price),
     stock: Number(body.stock || 0),
-    image: body.image,
-    images: body.images || [],
+    image: primaryImage,
     description: body.description || '',
     specs: body.specs || [],
     schematicId: body.schematicId ? ensureUuid(body.schematicId) : null,
@@ -137,6 +150,17 @@ export async function upsertPart(db: AppDb, body: any) {
 
   await db.transaction(async (tx) => {
     await tx.insert(parts).values(data).onConflictDoUpdate({ target: parts.id, set: data });
+
+    await tx.delete(partImages).where(eq(partImages.partId, id));
+    for (let i = 0; i < images.length; i++) {
+      await tx.insert(partImages).values({
+        id: crypto.randomUUID(),
+        partId: id,
+        url: images[i],
+        position: i,
+        isPrimary: i === 0
+      }).onConflictDoNothing();
+    }
 
     await tx.delete(partOemNumbers).where(eq(partOemNumbers.partId, id));
     for (let i = 0; i < (body.oemNumbers || []).length; i++) {
@@ -257,7 +281,9 @@ export async function upsertOrder(db: AppDb, body: any) {
     trackingNumber: body.trackingNumber || null,
     shippingCarrier: body.shippingCarrier || null,
     trackingUrl: body.trackingUrl || null,
-    notes: body.notes || ''
+    notes: body.notes || '',
+    prefix: settings.orderPrefix,
+    documentNumber: body.documentNumber || null
   };
 
   await db.transaction(async (tx) => {
@@ -366,6 +392,7 @@ export async function upsertShippingMethod(db: AppDb, body: any) {
     estimatedDays: Number(body.estimatedDays || 3),
     dispatchDays: Array.isArray(body.dispatchDays) ? body.dispatchDays : ['1', '2', '3', '4', '5'],
     freeShippingThreshold: body.freeShippingThreshold !== undefined && body.freeShippingThreshold !== null ? Number(body.freeShippingThreshold) : null,
+    dispatchCutoff: body.dispatchCutoff || null,
     active: body.active !== undefined ? Boolean(body.active) : true,
     createdAt: body.createdAt ? new Date(body.createdAt) : new Date()
   };
@@ -705,6 +732,8 @@ export async function upsertOrderReturn(db: AppDb, body: any) {
     itemDetailsJson: Array.isArray(body.itemDetailsJson) ? body.itemDetailsJson : (typeof body.itemDetailsJson === 'string' ? parseJson(body.itemDetailsJson, []) : []),
     itemsJson: Array.isArray(body.itemsJson) ? body.itemsJson : (typeof body.itemsJson === 'string' ? parseJson(body.itemsJson, []) : []),
     notes: body.notes || '',
+    prefix: (await getSiteSettings(db)).returnPrefix,
+    documentNumber: body.documentNumber || null,
     createdAt: date,
     updatedAt: new Date()
   };
@@ -738,80 +767,131 @@ export async function upsertOrderReturn(db: AppDb, body: any) {
 }
 
 export async function getSiteSettings(db: AppDb): Promise<SiteSettings> {
+  let rows: any[] = [];
   try {
-    const rows = await db.select().from(siteSettings).where(eq(siteSettings.id, 'default')).limit(1);
-    if (rows.length > 0) return rows[0] as unknown as SiteSettings;
+    rows = await db.select().from(siteSettings);
   } catch {}
-  const seed = {
+
+  const settingsMap = new Map<string, any>();
+  for (const r of rows) {
+    settingsMap.set(r.key, r.value);
+  }
+
+  const info = settingsMap.get('store.info') || {};
+  const location = settingsMap.get('store.location') || {};
+  const tax = settingsMap.get('store.tax') || {};
+  const returns = settingsMap.get('store.returns') || {};
+  const documents = settingsMap.get('store.documents') || {};
+  const social = settingsMap.get('store.social') || {};
+  const footer = settingsMap.get('store.footer') || {};
+  const product = settingsMap.get('store.product') || {};
+
+  return {
     id: 'default',
-    storeName: STORE_BOOTSTRAP.storeName,
-    storeLogo: STORE_BOOTSTRAP.storeLogo,
-    storeTagline: STORE_BOOTSTRAP.storeTagline,
-    whatsappNumber: STORE_BOOTSTRAP.whatsappNumber,
-    contactEmail: STORE_BOOTSTRAP.contactEmail,
-    storeAddress: STORE_BOOTSTRAP.storeAddress,
-    socialLinks: STORE_BOOTSTRAP.socialLinks,
-    defaultCountry: STORE_BOOTSTRAP.location.country,
-    defaultDepartment: STORE_BOOTSTRAP.location.department,
-    defaultCity: STORE_BOOTSTRAP.location.city,
-    showProductImages: getBootstrapShowProductImages(),
-    taxName: 'IVA Colombia',
-    taxRate: 19,
-    taxActive: true,
-    returnMaxDays: 30,
-    footerConfig: FOOTER_BOOTSTRAP,
-    updatedAt: new Date()
-  };
-  try {
-    await db.insert(siteSettings).values(seed).onConflictDoNothing();
-  } catch {}
-  return seed as unknown as SiteSettings;
+    storeName: info.storeName || STORE_BOOTSTRAP.storeName,
+    storeLogo: info.storeLogo || STORE_BOOTSTRAP.storeLogo,
+    storeTagline: info.storeTagline || STORE_BOOTSTRAP.storeTagline,
+    whatsappNumber: info.whatsappNumber || STORE_BOOTSTRAP.whatsappNumber,
+    contactEmail: info.contactEmail || STORE_BOOTSTRAP.contactEmail,
+    storeAddress: info.storeAddress || STORE_BOOTSTRAP.storeAddress,
+    showProductImages: typeof info.showProductImages === 'boolean' ? info.showProductImages : getBootstrapShowProductImages(),
+    detailPrimary: product.detailPrimary === 'images' ? 'images' : 'despiece',
+    defaultCountry: location.defaultCountry || STORE_BOOTSTRAP.location.country,
+    defaultDepartment: location.defaultDepartment || STORE_BOOTSTRAP.location.department,
+    defaultCity: location.defaultCity || STORE_BOOTSTRAP.location.city,
+    taxName: tax.taxName || 'IVA Colombia',
+    taxRate: typeof tax.taxRate === 'number' ? tax.taxRate : 19,
+    taxActive: typeof tax.taxActive === 'boolean' ? tax.taxActive : true,
+    returnMaxDays: typeof returns.returnMaxDays === 'number' ? returns.returnMaxDays : 30,
+    orderPrefix: typeof documents.orderPrefix === 'string' && documents.orderPrefix.trim() ? documents.orderPrefix.trim() : 'SZ-ORD',
+    returnPrefix: typeof documents.returnPrefix === 'string' && documents.returnPrefix.trim() ? documents.returnPrefix.trim() : 'SZ-RET',
+    socialLinks: { ...STORE_BOOTSTRAP.socialLinks, ...social },
+    footerConfig: { ...FOOTER_BOOTSTRAP, ...footer },
+    updatedAt: new Date().toISOString()
+  } as unknown as SiteSettings;
 }
 
 export async function upsertSiteSettings(db: AppDb, body: any) {
   const existing = await getSiteSettings(db);
-  const taxActive = typeof body.taxActive === 'boolean' ? body.taxActive
-    : (typeof body.active === 'boolean' ? body.active : existing.taxActive);
-  const footerConfig = body.footerConfig && typeof body.footerConfig === 'object'
-    ? {
-        tagline: typeof body.footerConfig.tagline === 'string' ? body.footerConfig.tagline : (existing.footerConfig?.tagline ?? ''),
-        description: typeof body.footerConfig.description === 'string' ? body.footerConfig.description : (existing.footerConfig?.description ?? ''),
-        copyright: typeof body.footerConfig.copyright === 'string' ? body.footerConfig.copyright : (existing.footerConfig?.copyright ?? ''),
-        legalLinks: Array.isArray(body.footerConfig.legalLinks)
-          ? body.footerConfig.legalLinks.filter((l: any) => l && typeof l.label === 'string' && typeof l.href === 'string')
-          : (existing.footerConfig?.legalLinks ?? [])
-      }
-    : (existing.footerConfig ?? null);
-  const data = {
-    id: 'default',
+
+  const info = {
     storeName: typeof body.storeName === 'string' ? body.storeName.trim() : existing.storeName,
     storeLogo: typeof body.storeLogo === 'string' ? body.storeLogo.trim() : existing.storeLogo,
     storeTagline: typeof body.storeTagline === 'string' ? body.storeTagline.trim() : existing.storeTagline,
     whatsappNumber: typeof body.whatsappNumber === 'string' ? body.whatsappNumber.trim() : existing.whatsappNumber,
     contactEmail: typeof body.contactEmail === 'string' ? body.contactEmail.trim() : existing.contactEmail,
     storeAddress: typeof body.storeAddress === 'string' ? body.storeAddress.trim() : existing.storeAddress,
-    socialLinks: body.socialLinks && typeof body.socialLinks === 'object'
-      ? {
-          facebook: typeof body.socialLinks.facebook === 'string' ? body.socialLinks.facebook.trim() : existing.socialLinks?.facebook ?? '',
-          instagram: typeof body.socialLinks.instagram === 'string' ? body.socialLinks.instagram.trim() : existing.socialLinks?.instagram ?? '',
-          tiktok: typeof body.socialLinks.tiktok === 'string' ? body.socialLinks.tiktok.trim() : existing.socialLinks?.tiktok ?? '',
-          youtube: typeof body.socialLinks.youtube === 'string' ? body.socialLinks.youtube.trim() : existing.socialLinks?.youtube ?? '',
-          whatsapp: typeof body.socialLinks.whatsapp === 'string' ? body.socialLinks.whatsapp.trim() : existing.socialLinks?.whatsapp ?? ''
-        }
-      : (existing.socialLinks ?? null),
+    showProductImages: typeof body.showProductImages === 'boolean' ? body.showProductImages : existing.showProductImages,
+  };
+
+  const location = {
     defaultCountry: typeof body.defaultCountry === 'string' ? body.defaultCountry : existing.defaultCountry,
     defaultDepartment: typeof body.defaultDepartment === 'string' ? body.defaultDepartment : existing.defaultDepartment,
     defaultCity: typeof body.defaultCity === 'string' ? body.defaultCity : existing.defaultCity,
-    showProductImages: typeof body.showProductImages === 'boolean' ? body.showProductImages : existing.showProductImages,
+  };
+
+  const taxActive = typeof body.taxActive === 'boolean' ? body.taxActive
+    : (typeof body.active === 'boolean' ? body.active : existing.taxActive);
+  const tax = {
     taxName: typeof body.taxName === 'string' ? body.taxName : existing.taxName,
     taxRate: typeof body.taxRate === 'number' ? body.taxRate : existing.taxRate,
     taxActive,
-    returnMaxDays: typeof body.returnMaxDays === 'number' ? body.returnMaxDays : existing.returnMaxDays,
-    footerConfig,
-    updatedAt: new Date()
   };
-  await db.insert(siteSettings).values(data).onConflictDoUpdate({ target: siteSettings.id, set: data });
-  return data;
+
+  const returns = {
+    returnMaxDays: typeof body.returnMaxDays === 'number' ? body.returnMaxDays : existing.returnMaxDays,
+  };
+
+  const documents = {
+    orderPrefix: typeof body.orderPrefix === 'string' && body.orderPrefix.trim() ? body.orderPrefix.trim() : existing.orderPrefix,
+    returnPrefix: typeof body.returnPrefix === 'string' && body.returnPrefix.trim() ? body.returnPrefix.trim() : existing.returnPrefix,
+  };
+
+  const social = body.socialLinks && typeof body.socialLinks === 'object'
+    ? body.socialLinks
+    : (existing.socialLinks ?? {});
+
+  const footer = body.footerConfig && typeof body.footerConfig === 'object'
+    ? body.footerConfig
+    : (existing.footerConfig ?? {});
+
+  const product = {
+    detailPrimary: body.detailPrimary === 'images' ? 'images' : 'despiece',
+  };
+
+  const modules = [
+    { key: 'store.info', value: info, category: 'general', description: 'Información general de la tienda' },
+    { key: 'store.location', value: location, category: 'logistics', description: 'Ubicación y cobertura por defecto' },
+    { key: 'store.tax', value: tax, category: 'billing', description: 'Configuración de impuestos y tasas' },
+    { key: 'store.returns', value: returns, category: 'logistics', description: 'Políticas de garantía y devoluciones' },
+    { key: 'store.documents', value: documents, category: 'general', description: 'Prefijos de numeración de pedidos y devoluciones' },
+    { key: 'store.social', value: social, category: 'social', description: 'Enlaces a redes sociales y canales de atención' },
+    { key: 'store.footer', value: footer, category: 'general', description: 'Pie de página y avisos legales' },
+    { key: 'store.product', value: product, category: 'general', description: 'Elemento principal mostrado en el detalle de producto' },
+  ];
+
+  await db.transaction(async (tx) => {
+    for (const mod of modules) {
+      await tx.insert(siteSettings).values({
+        id: crypto.randomUUID(),
+        key: mod.key,
+        value: mod.value,
+        category: mod.category,
+        description: mod.description,
+        updatedAt: new Date()
+      }).onConflictDoUpdate({
+        target: siteSettings.key,
+        set: {
+          value: mod.value,
+          category: mod.category,
+          description: mod.description,
+          updatedAt: new Date()
+        }
+      });
+    }
+  });
+
+  return getSiteSettings(db);
 }
 
 export async function deleteOrderReturn(db: AppDb, id: string) {

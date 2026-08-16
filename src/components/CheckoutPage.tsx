@@ -45,7 +45,7 @@ import {
   getDefaultLocation,
 } from "../utils/config";
 import { useSiteSettings } from "./SiteSettingsProvider";
-import { ProductImageFallback } from "./ProductImageFallback";
+import { ProductImageEmptyState } from "./ProductImageEmptyState";
 import { LocationSelector } from "./LocationSelector";
 import {
   saveOrderApi,
@@ -653,11 +653,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                           className="w-14 h-14 rounded-xl object-cover bg-slate-50 border border-slate-200 shrink-0 shadow-xs"
                         />
                       ) : (
-                        <ProductImageFallback
-                          part={item.part}
-                          size="sm"
-                          className="w-14 h-14 shrink-0 rounded-xl"
-                        />
+                        <ProductImageEmptyState className="w-14 h-14 shrink-0 rounded-xl" />
                       )}
 
                       <div className="flex-1 min-w-0">
@@ -1298,11 +1294,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       className="w-12 h-12 rounded-xl object-cover bg-white border border-slate-200 shrink-0 shadow-2xs"
                     />
                   ) : (
-                    <ProductImageFallback
-                      part={item.part}
-                      size="sm"
-                      className="w-12 h-12 shrink-0 rounded-xl"
-                    />
+                    <ProductImageEmptyState className="w-12 h-12 shrink-0 rounded-xl" />
                   )}
 
                   {/* Info & Meta */}

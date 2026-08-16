@@ -81,6 +81,13 @@ CREATE TABLE "part_oem_numbers" (
 	"is_primary" boolean DEFAULT false NOT NULL,
 	"position" integer DEFAULT 0 NOT NULL
 );
+CREATE TABLE "part_images" (
+	"id" text PRIMARY KEY NOT NULL,
+	"part_id" text NOT NULL,
+	"url" text NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL,
+	"is_primary" boolean DEFAULT false NOT NULL
+);
 CREATE TABLE "parts" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
@@ -88,7 +95,6 @@ CREATE TABLE "parts" (
 	"price" double precision NOT NULL,
 	"stock" integer DEFAULT 0 NOT NULL,
 	"image" text NOT NULL,
-	"images" jsonb,
 	"description" text NOT NULL,
 	"specs" jsonb NOT NULL,
 	"schematic_id" text,

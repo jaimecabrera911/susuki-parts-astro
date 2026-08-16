@@ -28,7 +28,7 @@ import { getPrimaryOem } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatOrderDate } from "../utils/formatDate";
 import { shouldShowProductImages } from "../utils/config";
-import { ProductImageFallback } from "./ProductImageFallback";
+import { ProductImageEmptyState } from "./ProductImageEmptyState";
 import { BANK_DETAILS } from "../data/bankDetails";
 import {
   fetchDefaultCarrierName,
@@ -414,11 +414,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                           className="w-14 h-14 rounded-xl object-cover bg-slate-50 border border-slate-200 shrink-0 shadow-xs"
                         />
                       ) : (
-                        <ProductImageFallback
-                          part={it.part}
-                          size="sm"
-                          className="w-14 h-14 shrink-0 rounded-xl"
-                        />
+                        <ProductImageEmptyState className="w-14 h-14 shrink-0 rounded-xl" />
                       )}
 
                       <div className="flex-1 min-w-0">

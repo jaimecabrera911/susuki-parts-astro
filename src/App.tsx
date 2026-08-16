@@ -82,36 +82,59 @@ export default function App() {
   const [minPriceFilter, setMinPriceFilter] = useState(0);
   const [sortBy, setSortBy] = useState("relevance");
 
-  useEffect(() => {
-    async function loadStorefrontData() {
-      setIsLoadingData(true);
-      try {
-        const [liveModels, liveParts, liveSchematics] = await Promise.all([
-          fetchModels().catch(() => []),
-          fetchParts().catch(() => []),
-          fetchSchematics().catch(() => []),
-        ]);
-        if (liveModels && liveModels.length > 0) setModels(liveModels);
-        if (liveParts && liveParts.length > 0) {
-          setParts(
-            liveParts.map((p: any) => ({
-              ...p,
-              taxable: p.taxable !== false,
-              priceIncludesTax: p.priceIncludesTax === true,
-            })),
-          );
+  const loadStorefrontData = async (isInitial = false) => {
+    try {
+      const [liveModels, liveParts, liveSchematics] = await Promise.all([
+        fetchModels().catch(() => []),
+        fetchParts().catch(() => []),
+        fetchSchematics().catch(() => []),
+      ]);
+      if (liveModels && liveModels.length > 0) setModels(liveModels);
+      if (liveParts && liveParts.length > 0) {
+        setParts(
+          liveParts.map((p: any) => ({
+            ...p,
+            taxable: p.taxable !== false,
+            priceIncludesTax: p.priceIncludesTax === true,
+          })),
+        );
+        if (isInitial) {
           const maxP = Math.max(...liveParts.map((p: any) => p.price), 5000000);
           setMaxPriceFilter(maxP);
         }
-        if (liveSchematics && liveSchematics.length > 0)
-          setSchematics(liveSchematics);
-      } catch (err) {
-        console.error("Error loading live storefront data:", err);
-      } finally {
-        setIsLoadingData(false);
       }
+      if (liveSchematics && liveSchematics.length > 0)
+        setSchematics(liveSchematics);
+    } catch (err) {
+      console.error("Error loading live storefront data:", err);
     }
-    loadStorefrontData();
+  };
+
+  useEffect(() => {
+    setIsLoadingData(true);
+    loadStorefrontData(true).finally(() => setIsLoadingData(false));
+  }, []);
+
+  // Re-fetch catalog data when the tab becomes visible again (e.g. returning
+  // from the admin panel in another tab or via browser back), so edits made in
+  // the admin are reflected without a manual refresh.
+  useEffect(() => {
+    const refreshOnVisible = () => {
+      if (document.visibilityState === "visible") {
+        loadStorefrontData(false);
+      }
+    };
+    const refreshOnPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) loadStorefrontData(false);
+    };
+    document.addEventListener("visibilitychange", refreshOnVisible);
+    window.addEventListener("pageshow", refreshOnPageShow);
+    window.addEventListener("focus", refreshOnVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshOnVisible);
+      window.removeEventListener("pageshow", refreshOnPageShow);
+      window.removeEventListener("focus", refreshOnVisible);
+    };
   }, []);
 
   // State for active motorcycle in garage

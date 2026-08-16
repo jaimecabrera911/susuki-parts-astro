@@ -198,6 +198,7 @@ export interface ShippingMethod {
   price: number; // Precio base / fallback por defecto
   estimatedDays: number;
   dispatchDays: string[]; // ['1', '2', '3', '4', '5'] (1=Mon ... 7=Sun)
+  dispatchCutoff?: string; // Hora límite de despacho (HH:mm)
   freeShippingThreshold?: number;
   active: boolean;
   zoneRates?: ZoneRate[]; // Tarifas específicas por zona
@@ -267,10 +268,14 @@ export interface SiteSettings {
   defaultDepartment: string;
   defaultCity: string;
   showProductImages: boolean;
+  /** Elemento mostrado como principal en el detalle de producto. Default: 'despiece'. */
+  detailPrimary: 'despiece' | 'images';
   taxName: string;
   taxRate: number;
   taxActive: boolean;
   returnMaxDays: number;
+  orderPrefix: string;
+  returnPrefix: string;
   footerConfig?: FooterConfig;
   updatedAt?: string;
 }

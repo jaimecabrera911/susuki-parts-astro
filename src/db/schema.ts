@@ -1,4 +1,5 @@
 import { pgTable, text, integer, doublePrecision, boolean, timestamp, jsonb, index, uniqueIndex, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { STORE_DEFAULT_LOCATION } from '../utils/config';
 
 // 1. Brands Table
@@ -72,7 +73,6 @@ export const parts = pgTable('parts', {
   price: doublePrecision('price').notNull(),
   stock: integer('stock').notNull().default(0),
   image: text('image').notNull(),
-  images: jsonb('images'),
   description: text('description').notNull(),
   specs: jsonb('specs').notNull(),
   schematicId: uuid('schematic_id').references(() => schematics.id, { onDelete: 'set null' }),
@@ -98,6 +98,19 @@ export const partOemNumbers = pgTable('part_oem_numbers', {
   oemLookupIdx: index('idx_part_oem_lookup').on(table.oemNumber),
   partIdx: index('idx_part_oem_part_id').on(table.partId),
   uniquePartOem: uniqueIndex('idx_part_oem_unique').on(table.partId, table.oemNumber)
+}));
+
+// 5c. Part Images Table (3NF Normalized gallery)
+export const partImages = pgTable('part_images', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  partId: uuid('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
+  url: text('url').notNull(),
+  position: integer('position').notNull().default(0),
+  isPrimary: boolean('is_primary').notNull().default(false)
+}, (table) => ({
+  partIdx: index('idx_part_images_part_id').on(table.partId),
+  uniquePartPosition: uniqueIndex('idx_part_images_part_position').on(table.partId, table.position),
+  uniquePartPrimary: uniqueIndex('idx_part_images_part_primary').on(table.partId).where(sql`${table.isPrimary} = true`)
 }));
 
 // 6. Exploded Diagrams / Schematics Table
@@ -202,7 +215,9 @@ export const orders = pgTable('orders', {
   trackingNumber: text('tracking_number'),
   shippingCarrier: text('shipping_carrier'),
   trackingUrl: text('tracking_url'),
-  notes: text('notes')
+  notes: text('notes'),
+  prefix: text('prefix').notNull().default('SZ-ORD'),
+  documentNumber: text('document_number')
 }, (table) => ({
   emailIdx: index('idx_orders_email').on(table.email),
   statusIdx: index('idx_orders_status').on(table.status),
@@ -219,6 +234,7 @@ export const shippingMethods = pgTable('shipping_methods', {
   estimatedDays: integer('estimated_days').notNull().default(3),
   dispatchDays: jsonb('dispatch_days').notNull().default(['1', '2', '3', '4', '5']), // 1=Mon, ..., 7=Sun
   freeShippingThreshold: doublePrecision('free_shipping_threshold'),
+  dispatchCutoff: text('dispatch_cutoff'),
   active: boolean('active').notNull().default(true),
   createdAt: timestamp('created_at').defaultNow().notNull()
 }, (table) => ({
@@ -415,34 +431,27 @@ export const orderReturns = pgTable('order_returns', {
   itemsJson: jsonb('items_json').notNull().default([]),
   notes: text('notes'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull()
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  prefix: text('prefix').notNull().default('SZ-RET'),
+  documentNumber: text('document_number')
 }, (table) => ({
   orderIdx: index('idx_order_returns_order_id').on(table.orderId),
   emailIdx: index('idx_order_returns_email').on(table.email),
   statusIdx: index('idx_order_returns_status').on(table.status)
 }));
 
-// 15. Site / Store Settings Table
+// 15. Site / Store Settings Table (Modular Key-Value Architecture)
 export const siteSettings = pgTable('site_settings', {
-  id: text('id').primaryKey().default('default'),
-  storeName: text('store_name').notNull().default(''),
-  storeLogo: text('store_logo').notNull().default(''),
-  storeTagline: text('store_tagline').notNull().default(''),
-  whatsappNumber: text('whatsapp_number').notNull().default(''),
-  contactEmail: text('contact_email').notNull().default(''),
-  storeAddress: text('store_address').notNull().default(''),
-  socialLinks: jsonb('social_links'),
-  defaultCountry: text('default_country').notNull().default(''),
-  defaultDepartment: text('default_department').notNull().default(''),
-  defaultCity: text('default_city').notNull().default(''),
-  showProductImages: boolean('show_product_images').notNull().default(true),
-  taxName: text('tax_name').notNull().default('IVA Colombia'),
-  taxRate: doublePrecision('tax_rate').notNull().default(19),
-  taxActive: boolean('tax_active').notNull().default(true),
-  returnMaxDays: integer('return_max_days').notNull().default(30),
-  footerConfig: jsonb('footer_config'),
+  id: uuid('id').defaultRandom().primaryKey(),
+  key: text('key').notNull().unique(),
+  value: jsonb('value').notNull(),
+  category: text('category').notNull().default('general'),
+  description: text('description'),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
-});
+}, (table) => ({
+  categoryIdx: index('idx_site_settings_category').on(table.category),
+  keyUniqueIdx: uniqueIndex('idx_site_settings_key_unique').on(table.key)
+}));
 
 // 16. Coupons / Discount Codes Table
 export const coupons = pgTable('coupons', {

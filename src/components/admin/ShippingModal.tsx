@@ -35,6 +35,7 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
     price: 0,
     estimatedDays: 3,
     dispatchDays: ['1', '2', '3', '4', '5'],
+    dispatchCutoff: '',
     freeShippingThreshold: '',
     active: true
   });
@@ -69,6 +70,7 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
         price: initialMethod.price || 0,
         estimatedDays: initialMethod.estimatedDays ?? 3,
         dispatchDays: initialMethod.dispatchDays || ['1', '2', '3', '4', '5'],
+        dispatchCutoff: initialMethod.dispatchCutoff || '',
         freeShippingThreshold: initialMethod.freeShippingThreshold !== undefined && initialMethod.freeShippingThreshold !== null
           ? String(initialMethod.freeShippingThreshold)
           : '',
@@ -90,6 +92,7 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
         price: 0,
         estimatedDays: 3,
         dispatchDays: ['1', '2', '3', '4', '5'],
+        dispatchCutoff: '',
         freeShippingThreshold: '',
         active: true
       });
@@ -133,6 +136,7 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
       price: Number(formData.price || 0),
       estimatedDays: Number(formData.estimatedDays || 1),
       dispatchDays: formData.dispatchDays.length > 0 ? formData.dispatchDays : ['1', '2', '3', '4', '5'],
+      dispatchCutoff: formData.dispatchCutoff.trim() !== '' ? formData.dispatchCutoff : undefined,
       freeShippingThreshold: formData.freeShippingThreshold.trim() !== '' ? Number(formData.freeShippingThreshold) : undefined,
       active: formData.active,
       zoneRates: formattedZoneRates
@@ -315,6 +319,23 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
             </div>
             <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed font-sans">
               El motor logístico del checkout excluirá los días sin despacho para dar la fecha exacta de llegada.
+            </p>
+          </div>
+
+          {/* Hora límite de despacho */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-sans">
+              Hora Límite de Despacho (HH:mm)
+            </label>
+            <input
+              type="time"
+              placeholder="Ej. 14:00"
+              value={formData.dispatchCutoff}
+              onChange={(e) => setFormData({ ...formData, dispatchCutoff: e.target.value })}
+              className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 font-mono font-bold focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
+            />
+            <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed font-sans">
+              Pedidos hechos después de esta hora se despachan el siguiente día hábil. Opcional.
             </p>
           </div>
 
