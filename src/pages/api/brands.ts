@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
 import { brands } from '../../db/schema';
 import { eq } from 'drizzle-orm';
+import { ensureUuid } from '../../db/writers';
 
 export const GET: APIRoute = async () => {
   try {
@@ -24,7 +25,7 @@ export const POST: APIRoute = async ({ request }) => {
     const db = getDb();
     const body = await request.json();
     const newBrand = {
-      id: body.id || `brand-${Date.now()}`,
+      id: ensureUuid(body.id),
       name: body.name,
       logo: body.logo || null,
       country: body.country || 'Japón',

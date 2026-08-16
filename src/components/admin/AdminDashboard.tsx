@@ -323,7 +323,7 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const handleDuplicateModel = async (sourceModel: SuzukiModel) => {
-    const newId = `${sourceModel.id}-copy-${Date.now().toString().slice(-4)}`;
+    const newId = crypto.randomUUID();
     const duplicated: SuzukiModel = {
       ...sourceModel,
       id: newId,
@@ -490,7 +490,7 @@ export const AdminDashboard: React.FC = () => {
     };
 
     const presetSchematic: ExplodedDiagram = {
-      id: `diag-${Date.now().toString().slice(-6)}`,
+      id: crypto.randomUUID(),
       title: `Despiece ${catName} - ${model.name}`,
       category: catName,
       section: sectionMap[catName] || "",
@@ -523,7 +523,7 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const handleDuplicatePart = async (sourcePart: SuzukiPart) => {
-    const newId = `part-${Date.now().toString().slice(-6)}`;
+    const newId = crypto.randomUUID();
     const duplicated: SuzukiPart = {
       ...sourcePart,
       id: newId,
@@ -598,7 +598,7 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const handleDuplicateSchematic = async (sourceSchematic: ExplodedDiagram) => {
-    const newId = `diag-${Date.now().toString().slice(-6)}`;
+    const newId = crypto.randomUUID();
     const duplicated: ExplodedDiagram = {
       ...sourceSchematic,
       id: newId,

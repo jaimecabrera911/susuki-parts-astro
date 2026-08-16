@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
 import { reviews } from '../../db/schema';
 import { eq } from 'drizzle-orm';
+import { ensureUuid } from '../../db/writers';
 
 export const GET: APIRoute = async ({ url }) => {
   try {
@@ -30,9 +31,9 @@ export const POST: APIRoute = async ({ request }) => {
     const body = await request.json();
 
     const newReview = {
-      id: body.id || `rev-${Date.now()}`,
+      id: ensureUuid(body.id),
       partId: body.partId,
-      userId: body.userId || 'usr-default',
+      userId: ensureUuid(body.userId),
       userName: body.userName || 'Cliente Suzuki',
       rating: Number(body.rating || 5),
       title: body.title || 'Reseña de producto',

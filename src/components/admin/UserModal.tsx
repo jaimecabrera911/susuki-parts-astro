@@ -96,7 +96,7 @@ export const UserModal: React.FC<UserModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const id = userToEdit?.id || `usr-${Date.now().toString().slice(-6)}`;
+    const id = userToEdit?.id || crypto.randomUUID();
     const saved: UserProfile = {
       id,
       fullName: fullName.trim(),

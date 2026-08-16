@@ -276,7 +276,7 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
 
     const schematicId = schematicToEdit
       ? schematicToEdit.id
-      : `diag-${Date.now().toString().slice(-6)}`;
+      : crypto.randomUUID();
 
     const newSchematic: ExplodedDiagram = {
       id: schematicId,

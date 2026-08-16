@@ -83,7 +83,7 @@ export const CouponsManager: React.FC = () => {
     const coupon: Coupon = editingCoupon
       ? { ...editingCoupon, ...formData, code: cleanCode }
       : {
-          id: `coup-${Date.now()}`,
+          id: crypto.randomUUID(),
           code: cleanCode,
           type: formData.type,
           value: formData.value,

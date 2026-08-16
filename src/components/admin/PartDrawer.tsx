@@ -292,7 +292,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
 
     const partId = partToEdit
       ? partToEdit.id
-      : `part-${Date.now().toString().slice(-6)}`;
+      : crypto.randomUUID();
 
     // Clean up specs with empty label or value
     const cleanedSpecs = specs

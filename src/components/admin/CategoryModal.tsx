@@ -76,7 +76,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
     const trimmed = newSubName.trim();
     if (!trimmed) return;
 
-    const subId = `sub-${Date.now().toString().slice(-6)}`;
+    const subId = crypto.randomUUID();
     const subSlug = trimmed.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
     const newSub: Subcategory = {
@@ -109,7 +109,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
     const catId = categoryToEdit
       ? categoryToEdit.id
-      : `cat-${Date.now().toString().slice(-6)}`;
+      : crypto.randomUUID();
 
     const newCategory: Category = {
       id: catId,

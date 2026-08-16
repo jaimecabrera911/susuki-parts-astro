@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
 import { userGarages } from '../../db/schema';
 import { eq } from 'drizzle-orm';
+import { ensureUuid } from '../../db/writers';
 
 export const GET: APIRoute = async ({ url }) => {
   try {
@@ -30,8 +31,8 @@ export const POST: APIRoute = async ({ request }) => {
     const body = await request.json();
 
     const newVehicle = {
-      id: body.id || `gar-${Date.now()}`,
-      userId: body.userId || 'usr-default',
+      id: ensureUuid(body.id),
+      userId: ensureUuid(body.userId),
       brandId: body.brandId || 'suzuki',
       modelId: body.modelId,
       modelName: body.modelName,

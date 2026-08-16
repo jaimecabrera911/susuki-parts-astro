@@ -3,6 +3,7 @@ import { getDb } from '../../db/client';
 import { coupons } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import { INITIAL_COUPONS } from '../../data/taxCouponsData';
+import { ensureUuid } from '../../db/writers';
 
 /** Seed initial coupons if table is empty */
 async function seedIfEmpty(db: ReturnType<typeof getDb>) {
@@ -11,7 +12,7 @@ async function seedIfEmpty(db: ReturnType<typeof getDb>) {
     const now = new Date().toISOString();
     await db.insert(coupons).values(
       INITIAL_COUPONS.map(c => ({
-        id: c.id,
+        id: ensureUuid(c.id),
         code: c.code,
         type: c.type,
         value: c.value,
@@ -53,8 +54,9 @@ export const POST: APIRoute = async ({ request }) => {
     if (Array.isArray(body)) {
       for (const c of body) {
         if (!c.id || !c.code) continue;
+        const couponId = ensureUuid(c.id);
         await db.insert(coupons).values({
-          id: c.id,
+          id: couponId,
           code: String(c.code).toUpperCase().trim(),
           type: c.type || 'percentage',
           value: Number(c.value) || 0,
@@ -89,8 +91,9 @@ export const POST: APIRoute = async ({ request }) => {
 
     // Single upsert
     if (body.id && body.code) {
+      const couponId = ensureUuid(body.id);
       await db.insert(coupons).values({
-        id: body.id,
+        id: couponId,
         code: String(body.code).toUpperCase().trim(),
         type: body.type || 'percentage',
         value: Number(body.value) || 0,

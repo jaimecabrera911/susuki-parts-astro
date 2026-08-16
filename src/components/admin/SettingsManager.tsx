@@ -20,6 +20,7 @@ import {
   Music2,
   MessageCircle,
   Share2,
+  FileText,
 } from "lucide-react";
 import { FaFacebookF, FaInstagram, FaYoutube } from "react-icons/fa";
 import type {
@@ -37,12 +38,13 @@ import {
 } from "../../services/api";
 import { LocationSelector } from "../LocationSelector";
 
-type SettingsTab = "general" | "taxes" | "returns" | "footer";
+type SettingsTab = "general" | "taxes" | "returns" | "documents" | "footer";
 
 const SUBTABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "General", icon: Settings },
   { id: "taxes", label: "Impuestos (IVA)", icon: Percent },
   { id: "returns", label: "Devoluciones", icon: RotateCcw },
+  { id: "documents", label: "Documentos", icon: FileText },
   { id: "footer", label: "Footer", icon: Link2 },
 ];
 
@@ -691,6 +693,56 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
                 Los clientes verán la opción de solicitar devolución/garantía en
                 sus pedidos durante este período máximo.
               </p>
+            </div>
+          </div>
+        )}
+
+        {activeSubTab === "documents" && (
+          <div className="space-y-5">
+            <p className="text-xs text-slate-600 font-sans">
+              Prefijos usados en la numeración de los documentos de pedidos y
+              devoluciones (RMA). Cada nuevo documento se genera con el prefijo
+              correspondiente seguido del número consecutivo.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 font-mono flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#E60012]" />
+                  Prefijo de Pedidos
+                </label>
+                <input
+                  type="text"
+                  value={settings.orderPrefix}
+                  onChange={(e) => set("orderPrefix", e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#E60012] focus:border-[#E60012] text-sm font-mono font-bold text-slate-900 uppercase"
+                  placeholder="SZ-ORD"
+                />
+                <p className="text-[11px] text-slate-500 mt-1 font-sans">
+                  Ejemplo de resultado:{" "}
+                  <span className="font-mono font-bold text-slate-700">
+                    {settings.orderPrefix || "SZ-ORD"}-000123
+                  </span>
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 font-mono flex items-center gap-2">
+                  <RotateCcw className="w-4 h-4 text-amber-600" />
+                  Prefijo de Devoluciones (RMA)
+                </label>
+                <input
+                  type="text"
+                  value={settings.returnPrefix}
+                  onChange={(e) => set("returnPrefix", e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#E60012] focus:border-[#E60012] text-sm font-mono font-bold text-slate-900 uppercase"
+                  placeholder="SZ-RET"
+                />
+                <p className="text-[11px] text-slate-500 mt-1 font-sans">
+                  Ejemplo de resultado:{" "}
+                  <span className="font-mono font-bold text-slate-700">
+                    {settings.returnPrefix || "SZ-RET"}-000123
+                  </span>
+                </p>
+              </div>
             </div>
           </div>
         )}

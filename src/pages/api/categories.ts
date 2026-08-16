@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
 import { categories } from '../../db/schema';
 import { eq } from 'drizzle-orm';
+import { ensureUuid } from '../../db/writers';
 
 const makeSlug = (name: string) => (name || '').toLowerCase().replace(/\s+/g, '-');
 
@@ -42,14 +43,14 @@ export const POST: APIRoute = async ({ request }) => {
     const body = await request.json();
 
     const newCategory = {
-      id: body.id || `cat-${Date.now()}`,
+      id: ensureUuid(body.id),
       name: body.name,
       slug: body.slug || makeSlug(body.name),
       iconName: body.iconName || (body.parentId ? null : 'Wrench'),
       description: body.description || '',
       active: body.active !== undefined ? body.active : true,
       order: body.order ?? 99,
-      parentId: body.parentId || null
+      parentId: body.parentId ? ensureUuid(body.parentId) : null
     };
 
     await db.insert(categories).values(newCategory).onConflictDoUpdate({
@@ -61,8 +62,9 @@ export const POST: APIRoute = async ({ request }) => {
       for (let i = 0; i < body.subcategories.length; i++) {
         const sub = body.subcategories[i];
         if (!sub) continue;
+        const subId = ensureUuid(sub.id);
         await db.insert(categories).values({
-          id: sub.id || `sub-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          id: subId,
           name: sub.name,
           slug: sub.slug || makeSlug(sub.name),
           iconName: null,
@@ -109,7 +111,7 @@ export const PUT: APIRoute = async ({ request }) => {
       description: body.description ?? '',
       active: body.active !== undefined ? body.active : true,
       order: body.order ?? 99,
-      parentId: body.parentId ?? null
+      parentId: body.parentId ? ensureUuid(body.parentId) : null
     }).where(eq(categories.id, body.id));
 
     // Replace children (subcategories) so removals / toggles persist
@@ -118,8 +120,9 @@ export const PUT: APIRoute = async ({ request }) => {
       for (let i = 0; i < body.subcategories.length; i++) {
         const sub = body.subcategories[i];
         if (!sub) continue;
+        const subId = ensureUuid(sub.id);
         await db.insert(categories).values({
-          id: sub.id || `sub-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          id: subId,
           name: sub.name,
           slug: sub.slug || makeSlug(sub.name),
           iconName: null,

@@ -403,10 +403,12 @@ export async function upsertShippingMethod(db: AppDb, body: any) {
     await tx.delete(shippingMethodZoneRates).where(eq(shippingMethodZoneRates.methodId, id));
     for (const r of body.zoneRates || []) {
       if (r && r.zoneId) {
+        const zoneId = await resolveZoneRef(tx as unknown as AppDb, r.zoneId);
+        if (!zoneId) continue;
         await tx.insert(shippingMethodZoneRates).values({
           id: crypto.randomUUID(),
           methodId: id,
-          zoneId: r.zoneId,
+          zoneId,
           price: Number(r.price || 0)
         }).onConflictDoNothing();
       }
@@ -458,7 +460,7 @@ function slugify(value: string): string {
 // ============ 3NF Geography: Countries, States, Cities ============
 
 export async function upsertCountry(db: AppDb, body: any) {
-  const id = body.id || `country-${slugify(body.name || '')}`;
+  const id = ensureUuid(body.id);
   const data = {
     id,
     name: body.name,
@@ -470,7 +472,7 @@ export async function upsertCountry(db: AppDb, body: any) {
 }
 
 export async function upsertState(db: AppDb, body: any) {
-  const id = body.id || `state-${slugify(body.name || '')}`;
+  const id = ensureUuid(body.id);
   const data = {
     id,
     countryId: body.countryId,
@@ -483,7 +485,7 @@ export async function upsertState(db: AppDb, body: any) {
 }
 
 export async function upsertCity(db: AppDb, body: any) {
-  const id = body.id || `city-${Date.now()}`;
+  const id = ensureUuid(body.id);
   const data = {
     id,
     stateId: body.stateId,
@@ -514,7 +516,9 @@ export async function resolveStateRef(db: AppDb, ref: any): Promise<string | nul
   const value = typeof ref === 'object' && ref !== null ? ref.id || ref.stateId : ref;
   if (!value) return null;
 
-  const byId = await db.select().from(states).where(eq(states.id, value)).limit(1);
+  const byId = isValidUuid(value)
+    ? await db.select().from(states).where(eq(states.id, value)).limit(1)
+    : [];
   if (byId.length > 0) return byId[0].id;
 
   const byName = await db.select().from(states).where(eq(states.name, value)).limit(1);
@@ -524,12 +528,42 @@ export async function resolveStateRef(db: AppDb, ref: any): Promise<string | nul
   return ensureState(db, countryId, value);
 }
 
+export async function resolveZoneRef(db: AppDb, ref: any): Promise<string | null> {
+  if (!ref) return null;
+  const value = typeof ref === 'object' && ref !== null ? ref.id || ref.zoneId : ref;
+  if (!value) return null;
+
+  const byId = isValidUuid(value)
+    ? await db.select().from(shippingZones).where(eq(shippingZones.id, value)).limit(1)
+    : [];
+  if (byId.length > 0) return byId[0].id;
+
+  const byName = await db.select().from(shippingZones).where(eq(shippingZones.name, value)).limit(1);
+  if (byName.length > 0) return byName[0].id;
+
+  // Legacy slug fallback (e.g. "zone-local"): match by the slug of the name
+  const all = await db.select({ id: shippingZones.id, name: shippingZones.name }).from(shippingZones);
+  const match = all.find((z) => slugify(z.name) === value);
+  if (match) return match.id;
+
+  return null;
+}
+
 export async function seedShipping(db: AppDb) {
+  const zoneIdBySlug = new Map<string, string>();
   for (const zone of DEFAULT_SHIPPING_ZONES) {
-    await upsertShippingZone(db, zone);
+    const existing = await db.select().from(shippingZones).where(eq(shippingZones.name, zone.name)).limit(1);
+    const saved = await upsertShippingZone(db, { ...zone, id: existing.length > 0 ? existing[0].id : zone.id });
+    zoneIdBySlug.set(zone.id, saved.id);
   }
+
   for (const sm of DEFAULT_SHIPPING_METHODS) {
-    await upsertShippingMethod(db, sm);
+    const existing = await db.select().from(shippingMethods).where(eq(shippingMethods.name, sm.name)).limit(1);
+    const zoneRates = (sm.zoneRates || []).map((r) => ({
+      ...r,
+      zoneId: zoneIdBySlug.get(r.zoneId) || r.zoneId
+    }));
+    await upsertShippingMethod(db, { ...sm, id: existing.length > 0 ? existing[0].id : sm.id, zoneRates });
   }
   return { zones: DEFAULT_SHIPPING_ZONES.length, methods: DEFAULT_SHIPPING_METHODS.length };
 }
@@ -547,7 +581,7 @@ export const DEFAULT_SCHEMATIC_SECTIONS = [
 ];
 
 export async function upsertSchematicSection(db: AppDb, body: any) {
-  const id = body.id || `sec-${body.name.toLowerCase().replace(/\s+/g, '-')}`;
+  const id = ensureUuid(body.id);
   const data = {
     id,
     name: body.name,
@@ -560,7 +594,8 @@ export async function upsertSchematicSection(db: AppDb, body: any) {
 
 export async function seedSchematicSections(db: AppDb) {
   for (const s of DEFAULT_SCHEMATIC_SECTIONS) {
-    await upsertSchematicSection(db, s);
+    const existing = await db.select().from(schematicSections).where(eq(schematicSections.name, s.name)).limit(1);
+    await upsertSchematicSection(db, existing.length > 0 ? { ...s, id: existing[0].id } : s);
   }
   return { sections: DEFAULT_SCHEMATIC_SECTIONS.length };
 }
@@ -629,14 +664,16 @@ export async function upsertCarrier(db: AppDb, body: any) {
 
 export async function seedOrderStatuses(db: AppDb) {
   for (const s of DEFAULT_ORDER_STATUSES) {
-    await upsertOrderStatus(db, s);
+    const existing = await db.select().from(orderStatuses).where(eq(orderStatuses.name, s.name)).limit(1);
+    await upsertOrderStatus(db, { ...s, id: existing.length > 0 ? existing[0].id : s.id });
   }
   return { statuses: DEFAULT_ORDER_STATUSES.length };
 }
 
 export async function seedCarriers(db: AppDb) {
   for (const c of DEFAULT_CARRIERS) {
-    await upsertCarrier(db, c);
+    const existing = await db.select().from(carriers).where(eq(carriers.name, c.name)).limit(1);
+    await upsertCarrier(db, { ...c, id: existing.length > 0 ? existing[0].id : c.id });
   }
   return { carriers: DEFAULT_CARRIERS.length };
 }
@@ -666,7 +703,8 @@ export async function upsertModelCategory(db: AppDb, body: any) {
 
 export async function seedModelCategories(db: AppDb) {
   for (const c of DEFAULT_MODEL_CATEGORIES) {
-    await upsertModelCategory(db, c);
+    const existing = await db.select().from(modelCategories).where(eq(modelCategories.name, c.name)).limit(1);
+    await upsertModelCategory(db, { ...c, id: existing.length > 0 ? existing[0].id : c.id });
   }
   return { categories: DEFAULT_MODEL_CATEGORIES.length };
 }

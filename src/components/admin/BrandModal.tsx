@@ -78,7 +78,7 @@ export const BrandModal: React.FC<BrandModalProps> = ({
 
     const brandId = brandToEdit
       ? brandToEdit.id
-      : name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      : crypto.randomUUID();
 
     let finalLogo = logo.trim();
 
