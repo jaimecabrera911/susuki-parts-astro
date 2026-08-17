@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS "brands" (
 CREATE TABLE IF NOT EXISTS "categories" (
     "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     "name" text NOT NULL,
-    "slug" text NOT NULL,
+    "slug" text NOT NULL UNIQUE,
     "icon_name" text,
     "description" text,
     "active" boolean NOT NULL DEFAULT true,
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS "categories" (
 -- 4. Model Categories / Categorías de Modelos
 CREATE TABLE IF NOT EXISTS "model_categories" (
     "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    "name" text NOT NULL,
+    "name" text NOT NULL UNIQUE,
     "slug" text,
     "order" integer NOT NULL DEFAULT 0,
     "active" boolean NOT NULL DEFAULT true
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS "models" (
     "brand_id" uuid REFERENCES "brands"("id") ON DELETE CASCADE,
     "name" text NOT NULL,
     "slug" text,
-    "category" text NOT NULL,
+    "category" text NOT NULL REFERENCES "model_categories"("name") ON UPDATE CASCADE ON DELETE RESTRICT,
     "image" text NOT NULL,
     "versions" text[] NOT NULL,
     "active" boolean NOT NULL DEFAULT true,
@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS "parts" (
     "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     "sku" text NOT NULL DEFAULT '',
     "name" text NOT NULL,
-    "category" text NOT NULL,
+    "category" text NOT NULL REFERENCES "categories"("slug") ON UPDATE CASCADE ON DELETE RESTRICT,
     "price" double precision NOT NULL,
     "stock" integer NOT NULL DEFAULT 0,
     "image" text NOT NULL,
@@ -210,7 +210,7 @@ CREATE TABLE IF NOT EXISTS "reviews" (
 -- 19. Order Statuses Catalog
 CREATE TABLE IF NOT EXISTS "order_statuses" (
     "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    "name" text NOT NULL,
+    "name" text NOT NULL UNIQUE,
     "color" text NOT NULL DEFAULT 'slate',
     "short" text,
     "group" text,
@@ -222,7 +222,7 @@ CREATE TABLE IF NOT EXISTS "order_statuses" (
 -- 20. Shipping Carriers Catalog
 CREATE TABLE IF NOT EXISTS "carriers" (
     "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    "name" text NOT NULL,
+    "name" text NOT NULL UNIQUE,
     "is_default" boolean NOT NULL DEFAULT false,
     "order" integer NOT NULL DEFAULT 0,
     "active" boolean NOT NULL DEFAULT true
@@ -252,10 +252,10 @@ CREATE TABLE IF NOT EXISTS "orders" (
     "motorcycle" jsonb,
     "guarantee_code" text NOT NULL,
     "payment_method" text NOT NULL,
-    "status" text NOT NULL,
+    "status" text NOT NULL REFERENCES "order_statuses"("name") ON UPDATE CASCADE ON DELETE RESTRICT,
     "payment_reference" text,
     "tracking_number" text,
-    "shipping_carrier" text,
+    "shipping_carrier" text REFERENCES "carriers"("name") ON UPDATE CASCADE ON DELETE SET NULL,
     "tracking_url" text,
     "notes" text,
     "prefix" text NOT NULL DEFAULT 'SZ-ORD',
@@ -321,7 +321,7 @@ CREATE TABLE IF NOT EXISTS "shipping_zones" (
 CREATE TABLE IF NOT EXISTS "shipping_methods" (
     "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     "name" text NOT NULL,
-    "carrier" text NOT NULL DEFAULT 'Servientrega',
+    "carrier" text NOT NULL DEFAULT 'Servientrega' REFERENCES "carriers"("name") ON UPDATE CASCADE ON DELETE RESTRICT,
     "description" text,
     "price" double precision NOT NULL DEFAULT 0,
     "estimated_days" integer NOT NULL DEFAULT 3,

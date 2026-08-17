@@ -13,13 +13,25 @@ export const brands = pgTable('brands', {
   description: text('description')
 });
 
+// 1b. Model Categories Table (motorcycle category catalog for models)
+export const modelCategories = pgTable('model_categories', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull().unique(),
+  slug: text('slug'),
+  order: integer('order').notNull().default(0),
+  active: boolean('active').notNull().default(true)
+}, (table) => ({
+  activeIdx: index('idx_model_categories_active').on(table.active),
+  nameUniqueIdx: uniqueIndex('uq_model_categories_name').on(table.name)
+}));
+
 // 2. Models Table
 export const models = pgTable('models', {
   id: uuid('id').defaultRandom().primaryKey(),
   brandId: uuid('brand_id').references(() => brands.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   slug: text('slug'),
-  category: text('category').notNull(),
+  category: text('category').notNull().references(() => modelCategories.name, { onDelete: 'restrict', onUpdate: 'cascade' }),
   image: text('image').notNull(),
   versions: text('versions').array().notNull(),
   active: boolean('active').notNull().default(true),
@@ -43,25 +55,15 @@ export const modelYears = pgTable('model_years', {
 export const categories = pgTable('categories', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
-  slug: text('slug').notNull(),
+  slug: text('slug').notNull().unique(),
   iconName: text('icon_name'),
   description: text('description'),
   active: boolean('active').notNull().default(true),
   order: integer('order').notNull().default(0),
   parentId: uuid('parent_id').references((): AnyPgColumn => categories.id, { onDelete: 'cascade' })
 }, (table) => ({
-  parentIdx: index('idx_categories_parent_id').on(table.parentId)
-}));
-
-// 3b. Model Categories Table (motorcycle category catalog for models)
-export const modelCategories = pgTable('model_categories', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  name: text('name').notNull(),
-  slug: text('slug'),
-  order: integer('order').notNull().default(0),
-  active: boolean('active').notNull().default(true)
-}, (table) => ({
-  activeIdx: index('idx_model_categories_active').on(table.active)
+  parentIdx: index('idx_categories_parent_id').on(table.parentId),
+  slugUniqueIdx: uniqueIndex('uq_categories_slug').on(table.slug)
 }));
 
 // 5. OEM Spare Parts Table
@@ -69,7 +71,7 @@ export const parts = pgTable('parts', {
   id: uuid('id').defaultRandom().primaryKey(),
   sku: text('sku').notNull().default(''),
   name: text('name').notNull(),
-  category: text('category').notNull(),
+  category: text('category').notNull().references(() => categories.slug, { onDelete: 'restrict', onUpdate: 'cascade' }),
   price: doublePrecision('price').notNull(),
   stock: integer('stock').notNull().default(0),
   image: text('image').notNull(),
@@ -165,7 +167,7 @@ export const schematicApplicableModels = pgTable('schematic_applicable_models', 
 // 6e. Order Statuses Table (DB-driven catalog)
 export const orderStatuses = pgTable('order_statuses', {
   id: uuid('id').defaultRandom().primaryKey(),
-  name: text('name').notNull(),
+  name: text('name').notNull().unique(),
   color: text('color').notNull().default('slate'),
   short: text('short'),
   group: text('group'),
@@ -173,18 +175,20 @@ export const orderStatuses = pgTable('order_statuses', {
   order: integer('order').notNull().default(0),
   active: boolean('active').notNull().default(true)
 }, (table) => ({
-  activeIdx: index('idx_order_statuses_active').on(table.active)
+  activeIdx: index('idx_order_statuses_active').on(table.active),
+  nameUniqueIdx: uniqueIndex('uq_order_statuses_name').on(table.name)
 }));
 
 // 6f. Shipping Carriers Table (DB-driven catalog)
 export const carriers = pgTable('carriers', {
   id: uuid('id').defaultRandom().primaryKey(),
-  name: text('name').notNull(),
+  name: text('name').notNull().unique(),
   is_default: boolean('is_default').notNull().default(false),
   order: integer('order').notNull().default(0),
   active: boolean('active').notNull().default(true)
 }, (table) => ({
-  activeIdx: index('idx_carriers_active').on(table.active)
+  activeIdx: index('idx_carriers_active').on(table.active),
+  nameUniqueIdx: uniqueIndex('uq_carriers_name').on(table.name)
 }));
 
 // 7. Customer Orders Table
@@ -211,10 +215,10 @@ export const orders = pgTable('orders', {
   motorcycle: jsonb('motorcycle'),
   guaranteeCode: text('guarantee_code').notNull(),
   paymentMethod: text('payment_method').notNull(),
-  status: text('status').notNull(),
+  status: text('status').notNull().references(() => orderStatuses.name, { onDelete: 'restrict', onUpdate: 'cascade' }),
   paymentReference: text('payment_reference'),
   trackingNumber: text('tracking_number'),
-  shippingCarrier: text('shipping_carrier'),
+  shippingCarrier: text('shipping_carrier').references(() => carriers.name, { onDelete: 'set null', onUpdate: 'cascade' }),
   trackingUrl: text('tracking_url'),
   notes: text('notes'),
   prefix: text('prefix').notNull().default('SZ-ORD'),
@@ -229,7 +233,7 @@ export const orders = pgTable('orders', {
 export const shippingMethods = pgTable('shipping_methods', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
-  carrier: text('carrier').notNull().default('Servientrega'),
+  carrier: text('carrier').notNull().default('Servientrega').references(() => carriers.name, { onDelete: 'restrict', onUpdate: 'cascade' }),
   description: text('description'),
   price: doublePrecision('price').notNull().default(0),
   estimatedDays: integer('estimated_days').notNull().default(3),
