@@ -303,7 +303,6 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
             className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 bg-[#E60012] text-white text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-1.5 rounded-lg shadow-md opacity-90 group-hover:opacity-100 transition-opacity cursor-pointer z-20"
           >
             <BiLinkExternal className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Abrir</span>
           </div>
         </div>
       </div>
