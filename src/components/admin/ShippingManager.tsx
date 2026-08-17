@@ -491,8 +491,13 @@ export const ShippingManager: React.FC = () => {
                     {zone.departments.length > 0 ? (
                       <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto custom-scrollbar pr-1">
                         {zone.departments.map(dept => (
-                          <span key={dept} className="px-2 py-0.5 text-[10px] bg-white border border-slate-200 text-slate-700 font-semibold rounded-md">
-                            {dept}
+                          <span key={dept.name} className="px-2 py-0.5 text-[10px] bg-white border border-slate-200 text-slate-700 font-semibold rounded-md flex items-center gap-1">
+                            {dept.name}
+                            {dept.cities.length > 0 && (
+                              <span className="px-1 py-px text-[9px] font-mono font-extrabold bg-red-50 text-[#E60012] border border-red-100 rounded">
+                                {dept.cities.length} ciudad{dept.cities.length !== 1 ? 'es' : ''}
+                              </span>
+                            )}
                           </span>
                         ))}
                       </div>

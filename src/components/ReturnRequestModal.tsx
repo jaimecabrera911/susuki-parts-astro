@@ -131,6 +131,8 @@ export const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
         throw new Error('Por favor adjunta al menos 1 foto como evidencia de la pieza defectuosa o equivocada.');
       }
 
+      const notes = [detailedNotes, replacementPartNotes.trim() ? `Cambio por: ${replacementPartNotes.trim()}` : ''].filter(Boolean).join(' | ');
+
       const payload = {
         orderId: order.id,
         orderDate: order.date,
@@ -140,13 +142,13 @@ export const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
         documentId: order.documentId || '',
         reason: `${reason}${detailedNotes ? `: ${detailedNotes}` : ''}`,
         resolutionType,
-        replacementPartId: replacementPartNotes || null,
+        replacementPartId: null,
         refundAmount: subtotalRefund,
         bonusAmount: bonusAmount,
         evidencePhotos: photos,
         itemDetailsJson: returnItemsList,
         itemsJson: returnItemsList,
-        notes: detailedNotes
+        notes
       };
 
       const res = await fetch('/api/returns', {

@@ -146,18 +146,18 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
   };
 
   return (
-    <div id="shipping-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
-      <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8 font-sans">
+    <div id="shipping-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
+      <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[90vh] flex flex-col font-sans animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-900 text-white">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#E60012] text-white flex items-center justify-center font-black shrink-0 shadow-md shadow-red-500/20">
               <Truck className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-base font-black tracking-tight text-white font-display">
-                {initialMethod ? 'EDITAR MÉTODOS DE ENVÍO OEM' : 'NUEVO MÉTODO DE ENVÍO SUZUKI'}
+                {initialMethod ? 'EDITAR MÉTODO DE ENVÍO' : 'NUEVO MÉTODO DE ENVÍO SUZUKI'}
               </h3>
               <p className="text-xs text-slate-300 font-mono">
                 PERSISTENCIA DE TARIFAS Y TRANSPORTADORAS EN NEON DB
@@ -165,6 +165,7 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-2 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
           >
@@ -172,8 +173,10 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
           </button>
         </div>
 
-        {/* Body Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 bg-[#f7f9fb]">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          {/* Scrollable Body */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-[#f7f9fb] custom-scrollbar">
           
           {/* Nombre y Transportadora */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -271,7 +274,9 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
                       <div className="min-w-0 flex-1">
                         <span className="text-xs font-bold text-slate-900 block truncate">{zone.name}</span>
                         <span className="text-[10px] text-slate-500 block truncate">
-                          {zone.departments.length > 0 ? zone.departments.join(', ') : 'Resto del país / Cobertura general'}
+                          {zone.departments.length > 0
+                            ? zone.departments.map(d => d.name + (d.cities.length ? ` (${d.cities.length} ciudad${d.cities.length !== 1 ? 'es' : ''})` : '')).join(', ')
+                            : 'Resto del país / Cobertura general'}
                         </span>
                       </div>
                       <div className="w-36 shrink-0 relative">
@@ -394,12 +399,14 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
             </button>
           </div>
 
+          </div>
+
           {/* Footer Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+          <div className="flex items-center justify-end gap-3 px-6 py-4 bg-white border-t border-slate-200 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+              className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
             >
               CANCELAR
             </button>

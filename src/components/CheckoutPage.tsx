@@ -64,6 +64,7 @@ export function getShippingMethodCost(
   department: string,
   rawSubtotal: number,
   zones: ShippingZone[],
+  city?: string,
 ): number {
   if (!method) return 0;
   if (method.carrier === "Retiro en tienda") return 0;
@@ -73,31 +74,45 @@ export function getShippingMethodCost(
   )
     return 0;
 
-  const deptClean = department.trim().toLowerCase();
-  if (deptClean && zones && zones.length > 0) {
-    // Find matching zone for department
-    const matchedZone = zones.find(
-      (z) =>
-        z.active &&
-        z.departments.some((d) => d.trim().toLowerCase() === deptClean),
-    );
+  const deptClean = (department || "").trim().toLowerCase();
+  const cityClean = (city || "").trim().toLowerCase();
+  const activeZones = (zones || []).filter((z) => z.active);
 
-    if (matchedZone && method.zoneRates && method.zoneRates.length > 0) {
-      const zRate = method.zoneRates.find((zr) => zr.zoneId === matchedZone.id);
-      if (zRate !== undefined && zRate.price !== undefined) {
-        return zRate.price;
+  if (deptClean) {
+    const candidates: ShippingZone[] = [];
+    const seen = new Set<string>();
+
+    // 1. Zonas que cubren la ciudad exacta (más específicas)
+    for (const z of activeZones) {
+      for (const d of z.departments) {
+        if (d.name.trim().toLowerCase() !== deptClean) continue;
+        if (cityClean && d.cities.some((c) => c.trim().toLowerCase() === cityClean)) {
+          if (!seen.has(z.id)) { seen.add(z.id); candidates.push(z); }
+        }
       }
     }
 
-    // Catch-all zone (empty departments array)
-    if (!matchedZone && method.zoneRates && method.zoneRates.length > 0) {
-      const catchAllZone = zones.find(
-        (z) => z.active && z.departments.length === 0,
-      );
-      if (catchAllZone) {
-        const zRate = method.zoneRates.find(
-          (zr) => zr.zoneId === catchAllZone.id,
-        );
+    // 2. Zonas que cubren el departamento completo
+    for (const z of activeZones) {
+      for (const d of z.departments) {
+        if (d.name.trim().toLowerCase() !== deptClean) continue;
+        if (d.cities.length === 0) {
+          if (!seen.has(z.id)) { seen.add(z.id); candidates.push(z); }
+        }
+      }
+    }
+
+    // 3. Zonas nacionales (catch-all)
+    for (const z of activeZones) {
+      if (z.departments.length === 0) {
+        if (!seen.has(z.id)) { seen.add(z.id); candidates.push(z); }
+      }
+    }
+
+    // Escalera por especificidad: devuelve la primera tarifa que el método tenga definida
+    for (const z of candidates) {
+      if (method.zoneRates && method.zoneRates.length > 0) {
+        const zRate = method.zoneRates.find((zr) => zr.zoneId === z.id);
         if (zRate !== undefined && zRate.price !== undefined) {
           return zRate.price;
         }
@@ -370,6 +385,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     formData.department,
     rawSubtotal,
     shippingZones,
+    formData.city,
   );
 
   const totals = calculateCartTotals(
@@ -1105,6 +1121,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                     formData.department,
                     rawSubtotal,
                     shippingZones,
+                    formData.city,
                   );
 
                   const deliveryInfo = getEstimatedDeliveryInfo(

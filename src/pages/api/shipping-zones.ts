@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
-import { shippingZones, shippingZoneStates, states } from '../../db/schema';
+import { shippingZones, shippingZoneStates, shippingZoneCities, states, cities } from '../../db/schema';
 import { upsertShippingZone, seedShipping } from '../../db/writers';
 import { eq } from 'drizzle-orm';
 
@@ -15,22 +15,57 @@ export const GET: APIRoute = async () => {
       data = await db.select().from(shippingZones);
     }
 
-    const mappings = await db.select().from(shippingZoneStates);
-    const stateRows = await db.select().from(states);
+    const [mappings, cityMappings, stateRows, cityRows] = await Promise.all([
+      db.select().from(shippingZoneStates),
+      db.select().from(shippingZoneCities),
+      db.select().from(states),
+      db.select().from(cities)
+    ]);
     const stateNameById = new Map(stateRows.map(s => [s.id, s.name]));
-    const depsByZone = new Map<string, string[]>();
+    const cityStateById = new Map(cityRows.map(c => [c.id, c.stateId]));
+    const cityNameById = new Map(cityRows.map(c => [c.id, c.name]));
+
+    const wholeDeptsByZone = new Map<string, string[]>();
     for (const m of mappings) {
       const name = stateNameById.get(m.stateId);
       if (!name) continue;
-      const arr = depsByZone.get(m.zoneId) || [];
+      const arr = wholeDeptsByZone.get(m.zoneId) || [];
       arr.push(name);
-      depsByZone.set(m.zoneId, arr);
+      wholeDeptsByZone.set(m.zoneId, arr);
     }
 
-    const formatted = data.map(sz => ({
-      ...sz,
-      departments: depsByZone.get(sz.id) || []
-    }));
+    const cityNamesByZone = new Map<string, { stateName: string; cityName: string }[]>();
+    for (const m of cityMappings) {
+      const stateId = cityStateById.get(m.cityId);
+      const stateName = stateId ? stateNameById.get(stateId) : undefined;
+      const cityName = cityNameById.get(m.cityId);
+      if (!stateName || !cityName) continue;
+      const arr = cityNamesByZone.get(m.zoneId) || [];
+      arr.push({ stateName, cityName });
+      cityNamesByZone.set(m.zoneId, arr);
+    }
+
+    const formatted = data.map(sz => {
+      const wholeDepts = wholeDeptsByZone.get(sz.id) || [];
+      const wholeSet = new Set(wholeDepts);
+      const cityGroups = new Map<string, string[]>();
+      for (const c of cityNamesByZone.get(sz.id) || []) {
+        if (wholeSet.has(c.stateName)) continue; // depto completo ya cubre sus ciudades
+        const arr = cityGroups.get(c.stateName) || [];
+        arr.push(c.cityName);
+        cityGroups.set(c.stateName, arr);
+      }
+
+      const departments = [
+        ...wholeDepts.map(name => ({ name, cities: [] as string[] })),
+        ...[...cityGroups.entries()].map(([name, cityList]) => ({ name, cities: cityList }))
+      ];
+
+      return {
+        ...sz,
+        departments
+      };
+    });
 
     return new Response(JSON.stringify({ success: true, count: formatted.length, data: formatted }), {
       headers: { 'Content-Type': 'application/json' }

@@ -16,7 +16,7 @@ export const brands = pgTable('brands', {
 // 1b. Model Categories Table (motorcycle category catalog for models)
 export const modelCategories = pgTable('model_categories', {
   id: uuid('id').defaultRandom().primaryKey(),
-  name: text('name').notNull().unique(),
+  name: text('name').notNull(),
   slug: text('slug'),
   order: integer('order').notNull().default(0),
   active: boolean('active').notNull().default(true)
@@ -55,7 +55,7 @@ export const modelYears = pgTable('model_years', {
 export const categories = pgTable('categories', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
-  slug: text('slug').notNull().unique(),
+  slug: text('slug').notNull(),
   iconName: text('icon_name'),
   description: text('description'),
   active: boolean('active').notNull().default(true),
@@ -118,7 +118,7 @@ export const partImages = pgTable('part_images', {
 // 6d. Schematic Sections Table
 export const schematicSections = pgTable('schematic_sections', {
   id: uuid('id').defaultRandom().primaryKey(),
-  name: text('name').notNull().unique(),
+  name: text('name').notNull(),
   slug: text('slug'),
   order: integer('order').notNull().default(0),
   active: boolean('active').notNull().default(true)
@@ -167,7 +167,7 @@ export const schematicApplicableModels = pgTable('schematic_applicable_models', 
 // 6e. Order Statuses Table (DB-driven catalog)
 export const orderStatuses = pgTable('order_statuses', {
   id: uuid('id').defaultRandom().primaryKey(),
-  name: text('name').notNull().unique(),
+  name: text('name').notNull(),
   color: text('color').notNull().default('slate'),
   short: text('short'),
   group: text('group'),
@@ -182,7 +182,7 @@ export const orderStatuses = pgTable('order_statuses', {
 // 6f. Shipping Carriers Table (DB-driven catalog)
 export const carriers = pgTable('carriers', {
   id: uuid('id').defaultRandom().primaryKey(),
-  name: text('name').notNull().unique(),
+  name: text('name').notNull(),
   is_default: boolean('is_default').notNull().default(false),
   order: integer('order').notNull().default(0),
   active: boolean('active').notNull().default(true)
@@ -266,6 +266,17 @@ export const shippingZoneStates = pgTable('shipping_zone_states', {
   zoneIdx: index('idx_zone_states_zone_id').on(table.zoneId),
   stateIdx: index('idx_zone_states_state_id').on(table.stateId),
   uniqueZoneState: uniqueIndex('idx_zone_states_unique').on(table.zoneId, table.stateId)
+}));
+
+// 7b2b. Shipping Zone ↔ Cities Mapping Table (3NF Normalized)
+export const shippingZoneCities = pgTable('shipping_zone_cities', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  zoneId: uuid('zone_id').notNull().references(() => shippingZones.id, { onDelete: 'cascade' }),
+  cityId: uuid('city_id').notNull().references(() => cities.id, { onDelete: 'cascade' })
+}, (table) => ({
+  zoneIdx: index('idx_zone_cities_zone_id').on(table.zoneId),
+  cityIdx: index('idx_zone_cities_city_id').on(table.cityId),
+  uniqueZoneCity: uniqueIndex('idx_zone_cities_unique').on(table.zoneId, table.cityId)
 }));
 
 // 7b3. Shipping Method ↔ Zone Rates Table (3NF Normalized)
@@ -448,7 +459,7 @@ export const orderReturns = pgTable('order_returns', {
 // 15. Site / Store Settings Table (Modular Key-Value Architecture)
 export const siteSettings = pgTable('site_settings', {
   id: uuid('id').defaultRandom().primaryKey(),
-  key: text('key').notNull().unique(),
+  key: text('key').notNull(),
   value: jsonb('value').notNull(),
   category: text('category').notNull().default('general'),
   description: text('description'),
@@ -472,6 +483,5 @@ export const coupons = pgTable('coupons', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 }, (table) => ({
-  codeIdx: uniqueIndex('idx_coupons_code').on(table.code),
   activeIdx: index('idx_coupons_active').on(table.active)
 }));

@@ -182,11 +182,16 @@ export interface ZoneRate {
   price: number;
 }
 
+export interface ShippingZoneDepartment {
+  name: string;
+  cities: string[]; // [] = departamento completo (todas sus ciudades)
+}
+
 export interface ShippingZone {
   id: string;
   name: string;
   description?: string;
-  departments: string[];
+  departments: ShippingZoneDepartment[];
   active: boolean;
   createdAt?: string;
 }

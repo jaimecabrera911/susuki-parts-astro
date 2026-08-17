@@ -5,7 +5,10 @@ export const DEFAULT_SHIPPING_ZONES: ShippingZone[] = [
     id: 'zone-local',
     name: 'Zona Local (Bogotá & Cundinamarca)',
     description: 'Tarifas preferenciales para envíos locales y Sabana de Bogotá.',
-    departments: ['Bogotá D.C.', 'Cundinamarca'],
+    departments: [
+      { name: 'Bogotá D.C.', cities: [] },
+      { name: 'Cundinamarca', cities: [] }
+    ],
     active: true
   },
   {
@@ -13,8 +16,18 @@ export const DEFAULT_SHIPPING_ZONES: ShippingZone[] = [
     name: 'Zona Departamentos Principales',
     description: 'Ciudades y departamentos principales de Colombia (Antioquia, Valle, Atlántico, Santander, etc.).',
     departments: [
-      'Antioquia', 'Valle del Cauca', 'Atlántico', 'Santander', 'Bolívar', 
-      'Risaralda', 'Caldas', 'Quindío', 'Tolima', 'Huila', 'Meta', 'Norte de Santander'
+      { name: 'Antioquia', cities: [] },
+      { name: 'Valle del Cauca', cities: [] },
+      { name: 'Atlántico', cities: [] },
+      { name: 'Santander', cities: [] },
+      { name: 'Bolívar', cities: [] },
+      { name: 'Risaralda', cities: [] },
+      { name: 'Caldas', cities: [] },
+      { name: 'Quindío', cities: [] },
+      { name: 'Tolima', cities: [] },
+      { name: 'Huila', cities: [] },
+      { name: 'Meta', cities: [] },
+      { name: 'Norte de Santander', cities: [] }
     ],
     active: true
   },

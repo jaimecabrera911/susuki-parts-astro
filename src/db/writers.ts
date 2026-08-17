@@ -7,6 +7,7 @@ import {
   orders, orderItems, orderReturns, siteSettings,
   users, userFavorites,
   shippingMethods, shippingZones, shippingZoneStates, shippingMethodZoneRates,
+  shippingZoneCities,
   countries, states, cities
 } from './schema';
 import { eq, and } from 'drizzle-orm';
@@ -448,18 +449,38 @@ export async function upsertShippingZone(db: AppDb, body: any) {
     createdAt: body.createdAt ? new Date(body.createdAt) : new Date()
   };
 
+  const depts = Array.isArray(body.departments) ? body.departments : [];
+
   await db.transaction(async (tx) => {
     await tx.insert(shippingZones).values(data).onConflictDoUpdate({ target: shippingZones.id, set: data });
 
     await tx.delete(shippingZoneStates).where(eq(shippingZoneStates.zoneId, id));
-    for (const dept of body.departments || []) {
-      const stateId = await resolveStateRef(tx as unknown as AppDb, dept);
-      if (stateId) {
+    await tx.delete(shippingZoneCities).where(eq(shippingZoneCities.zoneId, id));
+
+    for (const dept of depts) {
+      const name = typeof dept === 'string' ? dept : (dept && (dept.name || dept.id || dept.stateId));
+      if (!name) continue;
+
+      const cityList = (dept && typeof dept === 'object' && Array.isArray(dept.cities)) ? dept.cities : [];
+      const stateId = await resolveStateRef(tx as unknown as AppDb, name);
+
+      if (stateId && cityList.length === 0) {
         await tx.insert(shippingZoneStates).values({
           id: crypto.randomUUID(),
           zoneId: id,
           stateId
         }).onConflictDoNothing();
+      } else if (stateId) {
+        for (const cityRef of cityList) {
+          const cityId = await resolveCityRef(tx as unknown as AppDb, stateId, cityRef);
+          if (cityId) {
+            await tx.insert(shippingZoneCities).values({
+              id: crypto.randomUUID(),
+              zoneId: id,
+              cityId
+            }).onConflictDoNothing();
+          }
+        }
       }
     }
   });
@@ -546,6 +567,22 @@ export async function resolveStateRef(db: AppDb, ref: any): Promise<string | nul
 
   const countryId = await ensureCountry(db, STORE_DEFAULT_LOCATION.country);
   return ensureState(db, countryId, value);
+}
+
+export async function resolveCityRef(db: AppDb, stateId: string, ref: any): Promise<string | null> {
+  if (!ref) return null;
+  const value = typeof ref === 'object' && ref !== null ? ref.id || ref.cityId : ref;
+  if (!value) return null;
+
+  const byId = isValidUuid(value)
+    ? await db.select().from(cities).where(eq(cities.id, value)).limit(1)
+    : [];
+  if (byId.length > 0) return byId[0].id;
+
+  const byName = await db.select().from(cities).where(and(eq(cities.stateId, stateId), eq(cities.name, value))).limit(1);
+  if (byName.length > 0) return byName[0].id;
+
+  return null;
 }
 
 export async function resolveZoneRef(db: AppDb, ref: any): Promise<string | null> {
@@ -775,7 +812,7 @@ export async function upsertOrderReturn(db: AppDb, body: any) {
     resolutionType: body.resolutionType || 'refund',
     isPreDispatchCancel: Boolean(body.isPreDispatchCancel),
     isUnpaidCancel: Boolean(body.isUnpaidCancel),
-    replacementPartId: body.replacementPartId || null,
+    replacementPartId: isValidUuid(body.replacementPartId) ? body.replacementPartId : null,
     storeCreditCode,
     bonusAmount,
     status: (Boolean(body.isUnpaidCancel) || Boolean(body.isPreDispatchCancel) || body.resolutionType === 'cancellation') ? 'Aprobada' : (body.status || 'Pendiente'),
