@@ -138,29 +138,34 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
     }
   }, [initialPartId, viewMode]);
 
+  const getDiagramSection = (d: ExplodedDiagram) => d.section?.trim() || d.category?.trim() || 'Motor';
+
   // Build sections that actually have at least one diagram (for the sidebar)
   const availableSections = useMemo(() => {
     const set = new Set<string>();
-    allDiagrams.forEach(d => set.add(d.section));
-    return MOTORCYCLE_SECTION_ORDER.filter(s => set.has(s));
+    allDiagrams.forEach(d => set.add(getDiagramSection(d)));
+    const canonical = MOTORCYCLE_SECTION_ORDER.filter(s => set.has(s));
+    const extra = Array.from(set).filter(s => !canonical.includes(s));
+    return [...canonical, ...extra];
   }, [allDiagrams]);
 
   // Apply motorcycle filter first, then section filter, then search
   const filteredDiagrams = useMemo(() => {
     return allDiagrams.filter(d => {
+      const sec = getDiagramSection(d);
       // Motorcycle model filter — only diagrams applicable to the active model
       if (activeMotorcycle && d.applicableModelIds && d.applicableModelIds.length > 0 && !d.applicableModelIds.includes(activeMotorcycle.modelId)) {
         return false;
       }
       // Section filter
-      if (activeSection !== 'all' && d.section !== activeSection) return false;
+      if (activeSection !== 'all' && sec !== activeSection) return false;
       // Search
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const match = d.title.toLowerCase().includes(q)
           || (d.modelTarget && d.modelTarget.toLowerCase().includes(q))
           || d.category.toLowerCase().includes(q)
-          || d.section.toLowerCase().includes(q);
+          || sec.toLowerCase().includes(q);
         if (!match) return false;
       }
       return true;
@@ -170,15 +175,21 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   // Group filtered diagrams by section in canonical order
   const groupedBySection = useMemo(() => {
     const groups: { section: string; diagrams: ExplodedDiagram[] }[] = [];
-    const seen = new Set<string>();
     const orderedSections = activeSection === 'all' ? availableSections : [activeSection];
     orderedSections.forEach(sec => {
-      const diagrams = filteredDiagrams.filter(d => d.section === sec);
+      const diagrams = filteredDiagrams.filter(d => getDiagramSection(d) === sec);
       if (diagrams.length > 0) {
         groups.push({ section: sec, diagrams });
-        seen.add(sec);
       }
     });
+
+    // Fallback: If there are filtered diagrams not matched in orderedSections, add them under their section
+    const groupedIds = new Set(groups.flatMap(g => g.diagrams.map(d => d.id)));
+    const remaining = filteredDiagrams.filter(d => !groupedIds.has(d.id));
+    if (remaining.length > 0) {
+      groups.push({ section: 'General', diagrams: remaining });
+    }
+
     return groups;
   }, [filteredDiagrams, activeSection, availableSections]);
 
@@ -308,7 +319,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                   {availableSections.map(sec => {
                     const isSelected = activeSection === sec;
                     const count = allDiagrams.filter(d =>
-                      d.section === sec &&
+                      getDiagramSection(d) === sec &&
                       (!activeMotorcycle || !d.applicableModelIds || d.applicableModelIds.length === 0 || d.applicableModelIds.includes(activeMotorcycle.modelId))
                     ).length;
                     return (

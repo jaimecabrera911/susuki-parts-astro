@@ -109,6 +109,7 @@ export interface SuzukiPart {
 
 export interface ExplodedDiagram {
   id: string;
+  tenantId?: string;
   title: string;
   category: string;
   /** Sección de la motocicleta a la que pertenece el despiece (Engine, Brakes, Air & Fuel, etc.) */

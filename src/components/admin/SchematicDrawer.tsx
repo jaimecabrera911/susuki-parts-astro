@@ -18,6 +18,7 @@ import {
 import type { ExplodedDiagram, SuzukiPart, SuzukiModel } from "../../types";
 import { SearchableModelMultiSelect } from "./SearchableModelMultiSelect";
 import { SearchablePartSelect } from "./SearchablePartSelect";
+import { UPLOAD_IMAGE } from "../../services/api";
 
 interface SchematicDrawerProps {
   isOpen: boolean;
@@ -46,6 +47,8 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
   const [applicableModelIds, setApplicableModelIds] = useState<string[]>([]);
   const [modelTarget, setModelTarget] = useState("");
   const [diagramImage, setDiagramImage] = useState("");
+  const [pendingDiagramFile, setPendingDiagramFile] = useState<File | null>(null);
+  const [uploadingDiagram, setUploadingDiagram] = useState(false);
   const [description, setDescription] = useState("");
   const [hotspots, setHotspots] = useState<ExplodedDiagram["hotspots"]>([]);
 
@@ -63,15 +66,14 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
   const [editingHotspotIndex, setEditingHotspotIndex] = useState<number | null>(
     null,
   );
-
   const [itemNumberInput, setItemNumberInput] = useState<number>(1);
   const [labelInput, setLabelInput] = useState("");
   const [partIdInput, setPartIdInput] = useState("");
 
+  const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
 
   const handleFileSelect = (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -81,6 +83,7 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
       return;
     }
     setError("");
+    setPendingDiagramFile(file);
     const reader = new FileReader();
     reader.onload = (e) => {
       if (e.target?.result) {
@@ -267,11 +270,28 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       setError("El título del despiece es obligatorio.");
       return;
+    }
+
+    let finalDiagramImage = diagramImage.trim();
+
+    if (pendingDiagramFile) {
+      setUploadingDiagram(true);
+      try {
+        const result = await UPLOAD_IMAGE(pendingDiagramFile, "schematics");
+        finalDiagramImage = result.url;
+      } catch (err: any) {
+        setError(
+          err?.message || "No se pudo subir la imagen del despiece a la nube.",
+        );
+        setUploadingDiagram(false);
+        return;
+      }
+      setUploadingDiagram(false);
     }
 
     const schematicId = schematicToEdit
@@ -280,12 +300,13 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
 
     const newSchematic: ExplodedDiagram = {
       id: schematicId,
+      tenantId: schematicToEdit?.tenantId,
       title: title.trim(),
       category: category.trim(),
       section,
       applicableModelIds,
       modelTarget: modelTarget.trim(),
-      diagramImage: diagramImage.trim(),
+      diagramImage: finalDiagramImage,
       description: description.trim(),
       hotspots,
     };
@@ -1058,9 +1079,17 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
           <button
             type="button"
             onClick={handleSubmit}
-            className="px-6 py-2.5 rounded-xl bg-[#E60012] hover:bg-[#b5000b] text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-all"
+            disabled={uploadingDiagram}
+            className="px-6 py-2.5 rounded-xl bg-[#E60012] hover:bg-[#b5000b] disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-all flex items-center gap-2"
           >
-            {schematicToEdit ? "Guardar Cambios" : "Crear Despiece"}
+            {uploadingDiagram ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Subiendo plano...</span>
+              </>
+            ) : (
+              schematicToEdit ? "Guardar Cambios" : "Crear Despiece"
+            )}
           </button>
         </div>
       </div>

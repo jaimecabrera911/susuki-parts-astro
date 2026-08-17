@@ -334,8 +334,8 @@ export const users = pgTable('users', {
 export const userGarages = pgTable('user_garages', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  brandId: text('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
-  modelId: text('model_id').notNull().references(() => models.id, { onDelete: 'cascade' }),
+  brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
+  modelId: uuid('model_id').notNull().references(() => models.id, { onDelete: 'cascade' }),
   modelName: text('model_name').notNull(),
   year: integer('year').notNull(),
   version: text('version').notNull(),
@@ -351,7 +351,7 @@ export const userGarages = pgTable('user_garages', {
 export const userFavorites = pgTable('user_favorites', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  partId: text('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
+  partId: uuid('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').defaultNow().notNull()
 }, (table) => ({
   userPartIdx: index('idx_user_favorites_user_part').on(table.userId, table.partId),
@@ -361,7 +361,7 @@ export const userFavorites = pgTable('user_favorites', {
 // 11. Product Reviews Table
 export const reviews = pgTable('reviews', {
   id: uuid('id').defaultRandom().primaryKey(),
-  partId: text('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
+  partId: uuid('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   userName: text('user_name').notNull(),
   rating: integer('rating').notNull(),
@@ -377,8 +377,8 @@ export const reviews = pgTable('reviews', {
 // 12. Direct Part Compatibility Table (3NF Normalized)
 export const partCompatibilities = pgTable('part_compatibilities', {
   id: uuid('id').defaultRandom().primaryKey(),
-  partId: text('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
-  modelId: text('model_id').notNull().references(() => models.id, { onDelete: 'cascade' }),
+  partId: uuid('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
+  modelId: uuid('model_id').notNull().references(() => models.id, { onDelete: 'cascade' }),
   yearStart: integer('year_start'),
   yearEnd: integer('year_end'),
   version: text('version'),
@@ -391,7 +391,7 @@ export const partCompatibilities = pgTable('part_compatibilities', {
 export const orderItems = pgTable('order_items', {
   id: uuid('id').defaultRandom().primaryKey(),
   orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
-  partId: text('part_id'),
+  partId: uuid('part_id').references(() => parts.id, { onDelete: 'set null' }),
   part: jsonb('part').notNull(), // snapshot of the part at purchase time
   quantity: integer('quantity').notNull(),
   unitPrice: doublePrecision('unit_price').notNull(),
@@ -414,7 +414,7 @@ export const orderReturns = pgTable('order_returns', {
   resolutionType: text('resolution_type').notNull().default('refund'), // 'refund' | 'exchange' | 'store_credit'
   isPreDispatchCancel: boolean('is_pre_dispatch_cancel').notNull().default(false),
   isUnpaidCancel: boolean('is_unpaid_cancel').notNull().default(false),
-  replacementPartId: text('replacement_part_id'),
+  replacementPartId: uuid('replacement_part_id').references(() => parts.id, { onDelete: 'set null' }),
   storeCreditCode: text('store_credit_code'),
   status: text('status').notNull().default('Pendiente'),
   refundAmount: doublePrecision('refund_amount').default(0),

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { FaMotorcycle } from "react-icons/fa";
 import type { Brand, SuzukiModel, ExplodedDiagram } from "../../types";
-import { fetchModelCategories } from "../../services/api";
+import { fetchModelCategories, UPLOAD_IMAGE } from "../../services/api";
 
 interface ModelDrawerProps {
   isOpen: boolean;
@@ -57,6 +57,8 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
   const [brandId, setBrandId] = useState("suzuki");
   const [category, setCategory] = useState(categoryOptions[0]);
   const [image, setImage] = useState("");
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [yearStart, setYearStart] = useState<number>();
   const [yearEnd, setYearEnd] = useState<number>();
   const [versionInput, setVersionInput] = useState("");
@@ -76,6 +78,7 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
       return;
     }
     setError("");
+    setPendingImageFile(file);
     const reader = new FileReader();
     reader.onload = (e) => {
       if (e.target?.result) {
@@ -148,6 +151,8 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
       setActive(true);
       setNotes("Verificado con catálogo oficial OEM.");
     }
+    setPendingImageFile(null);
+    setUploadingImage(false);
     setError("");
   }, [modelToEdit, isOpen]);
 
@@ -217,7 +222,7 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       setError("El nombre del modelo es obligatorio.");
@@ -232,6 +237,22 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
     if (yearStart > yearEnd) {
       setError("El año inicial no puede ser mayor al año final.");
       return;
+    }
+
+    let finalImage = image.trim();
+    if (pendingImageFile) {
+      setUploadingImage(true);
+      try {
+        const result = await UPLOAD_IMAGE(pendingImageFile, "models");
+        finalImage = result.url;
+      } catch (err: any) {
+        setError(
+          err?.message || "No se pudo subir la foto del modelo al almacenamiento.",
+        );
+        setUploadingImage(false);
+        return;
+      }
+      setUploadingImage(false);
     }
 
     const yearsArray: number[] = [];
@@ -253,7 +274,7 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
       name: name.trim(),
       category,
       image:
-        image.trim() ||
+        finalImage ||
         "https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/models/default.jpg",
       years: yearsArray,
       versions: versions.length > 0 ? versions : ["Standard"],
@@ -851,9 +872,17 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
           <button
             type="button"
             onClick={handleSubmit}
-            className="px-6 py-2.5 rounded-xl bg-[#E60012] hover:bg-[#b5000b] text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-all"
+            disabled={uploadingImage}
+            className="px-6 py-2.5 rounded-xl bg-[#E60012] hover:bg-[#b5000b] disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-all flex items-center gap-2"
           >
-            {modelToEdit ? "Guardar Cambios" : "Crear Modelo"}
+            {uploadingImage ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Subiendo foto...</span>
+              </>
+            ) : (
+              modelToEdit ? "Guardar Cambios" : "Crear Modelo"
+            )}
           </button>
         </div>
       </div>
