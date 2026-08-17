@@ -479,33 +479,23 @@ export const AdminDashboard: React.FC = () => {
 
   const handleCreateSchematicForModel = (
     model: SuzukiModel,
-    presetCategory?: string,
+    sectionName?: string,
   ) => {
-    setIsModelDrawerOpen(false);
-    const minY = model.years?.length ? Math.min(...model.years) : "";
-    const maxY = model.years?.length ? Math.max(...model.years) : "";
-
-    const catName = presetCategory || "";
-
-    const sectionMap: Record<string, string> = {
-      "Frenos & Suspensión": "Brakes",
-      "Transmisión & Embrague": "Drive & Transmission",
-      "Eléctrico & Encendido": "Frame & Electrical",
-      "Chasis & Carrocería": "Frame & Electrical",
-      "Motor & Admisión": "Engine",
-    };
+    const minY = model.years?.[0] || 2020;
+    const maxY = model.years?.[model.years.length - 1] || 2024;
+    const sec = sectionName || "Motor";
 
     const presetSchematic: ExplodedDiagram = {
       id: crypto.randomUUID(),
-      title: `Despiece ${catName} - ${model.name}`,
-      category: catName,
-      section: sectionMap[catName] || "",
+      title: `Despiece ${sec} - ${model.name}`,
+      category: sec,
+      section: sec,
       applicableModelIds: [model.id],
       modelTarget: model.years?.length
         ? `${model.name} (${minY}-${maxY})`
         : model.name,
       diagramImage: "",
-      description: `Diagrama despiece oficial para ${model.name}${catName ? ` (${catName}).` : "."}`,
+      description: `Diagrama despiece oficial para ${model.name} (${sec}).`,
       hotspots: [],
     };
 

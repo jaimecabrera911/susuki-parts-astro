@@ -113,13 +113,25 @@ export const partImages = pgTable('part_images', {
   uniquePartPrimary: uniqueIndex('idx_part_images_part_primary').on(table.partId).where(sql`${table.isPrimary} = true`)
 }));
 
+// 6d. Schematic Sections Table
+export const schematicSections = pgTable('schematic_sections', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull().unique(),
+  slug: text('slug'),
+  order: integer('order').notNull().default(0),
+  active: boolean('active').notNull().default(true)
+}, (table) => ({
+  activeIdx: index('idx_schematic_sections_active').on(table.active),
+  nameUniqueIdx: uniqueIndex('uq_schematic_sections_name').on(table.name)
+}));
+
 // 6. Exploded Diagrams / Schematics Table
 export const schematics = pgTable('schematics', {
   id: uuid('id').defaultRandom().primaryKey(),
   title: text('title').notNull(),
   slug: text('slug'),
   category: text('category').notNull(),
-  section: text('section').notNull(),
+  section: text('section').notNull().references(() => schematicSections.name, { onDelete: 'restrict', onUpdate: 'cascade' }),
   diagramImage: text('diagram_image').notNull(),
   description: text('description').notNull()
 }, (table) => ({
@@ -148,17 +160,6 @@ export const schematicApplicableModels = pgTable('schematic_applicable_models', 
 }, (table) => ({
   schematicModelIdx: index('idx_schematic_models_lookup').on(table.schematicId, table.modelId),
   uniqueSchematicModel: uniqueIndex('idx_schematic_models_unique').on(table.schematicId, table.modelId)
-}));
-
-// 6d. Schematic Sections Table
-export const schematicSections = pgTable('schematic_sections', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  name: text('name').notNull(),
-  slug: text('slug'),
-  order: integer('order').notNull().default(0),
-  active: boolean('active').notNull().default(true)
-}, (table) => ({
-  activeIdx: index('idx_schematic_sections_active').on(table.active)
 }));
 
 // 6e. Order Statuses Table (DB-driven catalog)

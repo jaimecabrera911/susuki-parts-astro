@@ -89,8 +89,8 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
 
   const allDiagrams = liveSchematics;
 
-  // Find schematic info by explicit hotspot match or schematicId.
-  // Sin fallback por categoría: el despiece solo se muestra con vínculo real.
+  // Find schematic info strictly by explicit hotspot match or explicit part.schematicId.
+  // No heurísticas ni fallbacks por modelo: solo se muestra si el repuesto tiene vínculo real.
   const diagramInfo = useMemo(() => {
     // 1. Direct Hotspot Match: Find schematic where this part is pinned in hotspots
     const hotspotMatch = allDiagrams.find(
@@ -125,50 +125,6 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
           image: diagram.diagramImage || "",
         };
       }
-    }
-
-    // 3. Model Compatibility & Applicable Models Match:
-    // If the part is compatible with a model, and that model is linked to a schematic
-    const modelCompatMatch = allDiagrams.find((d) => {
-      const schematicAppModels = Array.isArray(d.applicableModelIds)
-        ? d.applicableModelIds
-        : (typeof d.applicableModelIds === "string"
-            ? JSON.parse(d.applicableModelIds || "[]")
-            : []);
-
-      if (schematicAppModels.length === 0) return false;
-
-      const isModelCompatible = (part.compatibility || []).some((c) =>
-        schematicAppModels.includes(c.modelId)
-      );
-
-      if (!isModelCompatible) return false;
-
-      if (part.category && (d.category || d.section)) {
-        const partCat = part.category.toLowerCase().trim();
-        const diagCat = (d.category || "").toLowerCase().trim();
-        const diagSec = (d.section || "").toLowerCase().trim();
-        if (
-          diagCat.includes(partCat) ||
-          partCat.includes(diagCat) ||
-          diagSec.includes(partCat) ||
-          partCat.includes(diagSec)
-        ) {
-          return true;
-        }
-      }
-
-      return true;
-    });
-
-    if (modelCompatMatch) {
-      return {
-        id: modelCompatMatch.id,
-        title: modelCompatMatch.title,
-        section: modelCompatMatch.section,
-        hotspot: part.diagramHotspot ?? null,
-        image: modelCompatMatch.diagramImage || "",
-      };
     }
 
     return null;

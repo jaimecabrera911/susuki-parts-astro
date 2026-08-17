@@ -138,12 +138,13 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
 
   useEffect(() => {
     if (schematicToEdit) {
-      setTitle(schematicToEdit.title);
-      setCategory(schematicToEdit.category);
+      setTitle(schematicToEdit.title || "");
+      setCategory(schematicToEdit.category || "");
       setSection(schematicToEdit.section || "");
       setApplicableModelIds(schematicToEdit.applicableModelIds || []);
       setModelTarget(schematicToEdit.modelTarget || "");
       setDiagramImage(schematicToEdit.diagramImage || "");
+      setPendingDiagramFile(null);
       setDescription(schematicToEdit.description || "");
       setHotspots(schematicToEdit.hotspots || []);
     } else {
@@ -153,9 +154,15 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
       setIsCustomSection(false);
       setApplicableModelIds([]);
       setModelTarget("");
+      setDiagramImage("");
+      setPendingDiagramFile(null);
       setDescription("");
       setHotspots([]);
     }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    setActiveSubTab("form");
     setZoomLevel(1);
     setPendingHotspot(null);
     setEditingHotspotIndex(null);

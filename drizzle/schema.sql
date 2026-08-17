@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS "model_years" (
 -- 7. Schematic Sections / Secciones de Despiece
 CREATE TABLE IF NOT EXISTS "schematic_sections" (
     "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    "name" text NOT NULL,
+    "name" text NOT NULL UNIQUE,
     "slug" text,
     "order" integer NOT NULL DEFAULT 0,
     "active" boolean NOT NULL DEFAULT true
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS "schematics" (
     "title" text NOT NULL,
     "slug" text,
     "category" text NOT NULL,
-    "section" text NOT NULL,
+    "section" text NOT NULL REFERENCES "schematic_sections"("name") ON UPDATE CASCADE ON DELETE RESTRICT,
     "diagram_image" text NOT NULL,
     "description" text NOT NULL
 );

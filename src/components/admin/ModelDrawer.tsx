@@ -172,31 +172,31 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
     );
   }, [schematics, currentModelId]);
 
-  // Group linked schematics by Category / Section
+  // Group linked schematics by Section (Sección Técnica)
   const groupedLinkedSchematics = useMemo(() => {
     const map = new Map<string, ExplodedDiagram[]>();
     linkedSchematics.forEach((s) => {
-      const cat = s.category || s.section || "";
-      if (!map.has(cat)) {
-        map.set(cat, []);
+      const sec = s.section?.trim() || s.category?.trim() || "General";
+      if (!map.has(sec)) {
+        map.set(sec, []);
       }
-      map.get(cat)!.push(s);
+      map.get(sec)!.push(s);
     });
-    return Array.from(map.entries()).map(([catName, list]) => ({
-      categoryName: catName,
+    return Array.from(map.entries()).map(([sectionName, list]) => ({
+      sectionName,
       schematicsList: list,
     }));
   }, [linkedSchematics]);
 
-  // Group unlinked schematics by Category for optgroup dropdown
+  // Group unlinked schematics by Section for optgroup dropdown
   const groupedUnlinkedSchematics = useMemo(() => {
     const map = new Map<string, ExplodedDiagram[]>();
     unlinkedSchematics.forEach((s) => {
-      const cat = s.category || s.section || "";
-      if (!map.has(cat)) {
-        map.set(cat, []);
+      const sec = s.section?.trim() || s.category?.trim() || "General";
+      if (!map.has(sec)) {
+        map.set(sec, []);
       }
-      map.get(cat)!.push(s);
+      map.get(sec)!.push(s);
     });
     return Array.from(map.entries());
   }, [unlinkedSchematics]);
@@ -679,14 +679,14 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
                       <option value="">
                         Selecciona un despiece para vincular a {name}...
                       </option>
-                      {groupedUnlinkedSchematics.map(([catGroup, items]) => (
+                      {groupedUnlinkedSchematics.map(([secGroup, items]) => (
                         <optgroup
-                          key={catGroup}
-                          label={`📁 ${catGroup.toUpperCase()}`}
+                          key={secGroup}
+                          label={`📂 SECCIÓN: ${secGroup.toUpperCase()}`}
                         >
                           {items.map((s) => (
                             <option key={s.id} value={s.id}>
-                              [{s.section}] {s.title}
+                              [{s.category || s.section}] {s.title}
                             </option>
                           ))}
                         </optgroup>
@@ -705,7 +705,7 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
                 </div>
               )}
 
-              {/* List of Schematics Grouped by Categories */}
+              {/* List of Schematics Grouped by Sections */}
               <div className="space-y-5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-900 font-mono uppercase">
@@ -713,22 +713,22 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
                     {linkedSchematics.length})
                   </span>
                   <span className="text-[11px] font-mono text-slate-500 font-bold">
-                    Organizados en {groupedLinkedSchematics.length} categorías
+                    Organizados en {groupedLinkedSchematics.length} secciones
                   </span>
                 </div>
 
                 {groupedLinkedSchematics.map(
-                  ({ categoryName, schematicsList }) => (
+                  ({ sectionName, schematicsList }) => (
                     <div
-                      key={categoryName}
+                      key={sectionName}
                       className="p-4 md:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3"
                     >
-                      {/* Category Header with Add Schematic to Category Button */}
+                      {/* Section Header with Add Schematic to Section Button */}
                       <div className="flex flex-wrap items-center justify-between pb-2 border-b border-slate-100 gap-2">
                         <div className="flex items-center gap-2">
-                          <Tag className="w-4 h-4 text-[#0A3088]" />
+                          <Layers className="w-4 h-4 text-[#0A3088]" />
                           <h4 className="font-extrabold text-slate-900 text-xs uppercase tracking-wider font-mono">
-                            {categoryName}
+                            {sectionName}
                           </h4>
                           <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-[#0A3088] border border-blue-200">
                             {schematicsList.length}{" "}
@@ -744,19 +744,19 @@ export const ModelDrawer: React.FC<ModelDrawerProps> = ({
                             if (modelToEdit) {
                               onCreateSchematicForModel(
                                 modelToEdit,
-                                categoryName,
+                                sectionName,
                               );
                             }
                           }}
                           className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-red-50 text-[#E60012] border border-red-200 hover:bg-[#E60012] hover:text-white transition-all flex items-center gap-1 shadow-xs"
-                          title={`Agregar nuevo despiece a ${categoryName}`}
+                          title={`Agregar nuevo despiece a la sección ${sectionName}`}
                         >
                           <Plus className="w-3.5 h-3.5" />
                           <span>Agregar</span>
                         </button>
                       </div>
 
-                      {/* Schematics Grid inside this Category */}
+                      {/* Schematics Grid inside this Section */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                         {schematicsList.map((schematic) => (
                           <div

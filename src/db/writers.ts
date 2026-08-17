@@ -205,17 +205,29 @@ export async function upsertPart(db: AppDb, body: any) {
 
 export async function upsertSchematic(db: AppDb, body: any) {
   const id = ensureUuid(body.id);
+  const section = (body.section && String(body.section).trim()) || 'Motor';
+  const category = (body.category && String(body.category).trim()) || section;
+
   const data = {
     id,
     title: body.title,
     slug: body.slug || body.title?.toLowerCase().replace(/\s+/g, '-'),
-    category: body.category,
-    section: body.section,
+    category,
+    section,
     diagramImage: body.diagramImage,
     description: body.description || ''
   };
 
   await db.transaction(async (tx) => {
+    // Ensure section exists in schematic_sections catalog to satisfy FK constraint
+    await tx.insert(schematicSections).values({
+      id: crypto.randomUUID(),
+      name: section,
+      slug: section.toLowerCase().replace(/\s+/g, '-'),
+      order: 10,
+      active: true
+    }).onConflictDoNothing();
+
     await tx.insert(schematics).values(data).onConflictDoUpdate({ target: schematics.id, set: data });
 
     await tx.delete(schematicApplicableModels).where(eq(schematicApplicableModels.schematicId, id));
