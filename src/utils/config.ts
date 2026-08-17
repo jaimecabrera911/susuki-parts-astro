@@ -80,6 +80,7 @@ export const emptySiteSettings = (): SiteSettings => ({
   returnMaxDays: 0,
   orderPrefix: '',
   returnPrefix: '',
+  defaultSpecs: [],
   footerConfig: undefined,
   updatedAt: ''
 });

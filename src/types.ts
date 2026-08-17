@@ -52,6 +52,12 @@ export interface TechnicalSpec {
   value: string;
 }
 
+export interface TechnicalSpecTemplate {
+  id?: string;
+  label: string;
+  defaultValue?: string;
+}
+
 export type AvailabilityStatus = 'in_stock' | 'international' | 'on_order';
 
 export const AVAILABILITY_META: Record<AvailabilityStatus, { label: string; shortLabel: string; sortOrder: number; bgClass: string; textClass: string; borderClass: string }> = {
@@ -282,6 +288,7 @@ export interface SiteSettings {
   returnMaxDays: number;
   orderPrefix: string;
   returnPrefix: string;
+  defaultSpecs?: TechnicalSpecTemplate[];
   footerConfig?: FooterConfig;
   updatedAt?: string;
 }

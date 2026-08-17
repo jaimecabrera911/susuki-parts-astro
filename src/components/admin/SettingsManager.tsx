@@ -21,6 +21,12 @@ import {
   MessageCircle,
   Share2,
   FileText,
+  Sliders,
+  GripVertical,
+  ChevronUp,
+  ChevronDown,
+  Sparkles,
+  Info,
 } from "lucide-react";
 import { FaFacebookF, FaInstagram, FaYoutube } from "react-icons/fa";
 import type {
@@ -29,6 +35,7 @@ import type {
   FooterLink,
   CityRecord,
   SocialLinks,
+  TechnicalSpecTemplate,
 } from "../../types";
 import {
   GET_SETTINGS,
@@ -38,10 +45,11 @@ import {
 } from "../../services/api";
 import { LocationSelector } from "../LocationSelector";
 
-type SettingsTab = "general" | "taxes" | "returns" | "documents" | "footer";
+type SettingsTab = "general" | "specs" | "taxes" | "returns" | "documents" | "footer";
 
 const SUBTABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "General", icon: Settings },
+  { id: "specs", label: "Especificaciones", icon: Sliders },
   { id: "taxes", label: "Impuestos (IVA)", icon: Percent },
   { id: "returns", label: "Devoluciones", icon: RotateCcw },
   { id: "documents", label: "Documentos", icon: FileText },
@@ -75,6 +83,7 @@ const EMPTY_SETTINGS: SiteSettings = {
   returnMaxDays: 0,
   orderPrefix: "",
   returnPrefix: "",
+  defaultSpecs: [],
   footerConfig: EMPTY_FOOTER,
 };
 
@@ -208,6 +217,71 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
       "legalLinks",
       (settings.footerConfig?.legalLinks || []).filter((_, i) => i !== index),
     );
+
+  // Default Technical Specifications state & handlers
+  const [newSpecLabel, setNewSpecLabel] = useState("");
+  const [newSpecDefaultValue, setNewSpecDefaultValue] = useState("");
+  const [draggedSpecIndex, setDraggedSpecIndex] = useState<number | null>(null);
+
+  const defaultSpecs = settings.defaultSpecs || [];
+
+  const handleAddDefaultSpec = (labelToAdd?: string, valueToAdd?: string) => {
+    const label = (labelToAdd ?? newSpecLabel).trim();
+    const defaultValue = (valueToAdd ?? newSpecDefaultValue).trim();
+    if (!label) return;
+
+    const exists = defaultSpecs.some(
+      (s) => s.label.toLowerCase() === label.toLowerCase()
+    );
+    if (exists) {
+      if (onShowToast) onShowToast(`La especificación "${label}" ya existe en la lista.`, "error");
+      return;
+    }
+
+    const updated = [...defaultSpecs, { label, defaultValue }];
+    set("defaultSpecs", updated);
+    if (!labelToAdd) {
+      setNewSpecLabel("");
+      setNewSpecDefaultValue("");
+    }
+  };
+
+  const handleRemoveDefaultSpec = (index: number) => {
+    const updated = defaultSpecs.filter((_, idx) => idx !== index);
+    set("defaultSpecs", updated);
+  };
+
+  const handleUpdateDefaultSpec = (index: number, field: "label" | "defaultValue", value: string) => {
+    const updated = [...defaultSpecs];
+    updated[index] = { ...updated[index], [field]: value };
+    set("defaultSpecs", updated);
+  };
+
+  const handleMoveDefaultSpec = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= defaultSpecs.length || fromIndex === toIndex) return;
+    const updated = [...defaultSpecs];
+    const [moved] = updated.splice(fromIndex, 1);
+    updated.splice(toIndex, 0, moved);
+    set("defaultSpecs", updated);
+  };
+
+  const handleSpecDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedSpecIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", index.toString());
+  };
+
+  const handleSpecDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleSpecDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedSpecIndex === null || draggedSpecIndex === targetIndex) return;
+    handleMoveDefaultSpec(draggedSpecIndex, targetIndex);
+    setDraggedSpecIndex(null);
+  };
 
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
 
@@ -600,6 +674,215 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
                 <option value="despiece">Despiece técnico</option>
                 <option value="images">Imágenes del producto</option>
               </select>
+            </div>
+          </div>
+        )}
+
+        {activeSubTab === "specs" && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 font-display flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-[#E60012]" />
+                  Especificaciones Técnicas por Defecto
+                </h3>
+                <p className="text-xs text-slate-500 font-sans mt-0.5">
+                  Define las especificaciones que se precargarán automáticamente al crear repuestos. Puedes reordenarlas arrastrándolas o usando las flechas.
+                </p>
+              </div>
+              <span className="text-xs font-mono font-bold px-3 py-1 bg-slate-100 text-slate-700 rounded-xl border border-slate-200 shrink-0 self-start sm:self-auto">
+                {defaultSpecs.length} {defaultSpecs.length === 1 ? "plantilla" : "plantillas"}
+              </span>
+            </div>
+
+            {/* Presets rápidos */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>Plantillas Sugeridas Rápidas:</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { label: "Origen", defaultValue: "Japón (OEM)" },
+                  { label: "Garantía", defaultValue: "6 Meses" },
+                  { label: "Material", defaultValue: "" },
+                  { label: "Posición", defaultValue: "" },
+                  { label: "Diámetro", defaultValue: "" },
+                  { label: "Peso", defaultValue: "" },
+                  { label: "Tipo de Repuesto", defaultValue: "Original Suzuki" },
+                  { label: "Acabado / Color", defaultValue: "" },
+                ].map((preset) => {
+                  const alreadyAdded = defaultSpecs.some(
+                    (s) => s.label.toLowerCase() === preset.label.toLowerCase()
+                  );
+                  return (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      disabled={alreadyAdded}
+                      onClick={() => handleAddDefaultSpec(preset.label, preset.defaultValue)}
+                      className={`px-2.5 py-1 text-xs font-mono rounded-lg border transition-all flex items-center gap-1 cursor-pointer ${
+                        alreadyAdded
+                          ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60"
+                          : "bg-white text-slate-700 border-slate-300 hover:border-red-500 hover:text-[#E60012] shadow-2xs"
+                      }`}
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>{preset.label}</span>
+                      {alreadyAdded && <CheckCircle2 className="w-3 h-3 text-emerald-600" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Formulario para agregar nueva especificación */}
+            <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-3">
+              <span className="block text-xs font-bold text-slate-800 font-sans uppercase tracking-wider">
+                Crear Nueva Especificación por Defecto
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-[1.5fr_2fr_auto] gap-3 items-end">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1 font-mono">
+                    Nombre / Etiqueta <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newSpecLabel}
+                    onChange={(e) => setNewSpecLabel(e.target.value)}
+                    placeholder="Ej. Material, Diámetro, Rosca..."
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:border-[#E60012] focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1 font-mono">
+                    Valor Sugerido Opcional (se puede cambiar por repuesto)
+                  </label>
+                  <input
+                    type="text"
+                    value={newSpecDefaultValue}
+                    onChange={(e) => setNewSpecDefaultValue(e.target.value)}
+                    placeholder="Ej. Acero cromado (opcional)"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:border-[#E60012] focus:bg-white"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleAddDefaultSpec()}
+                  disabled={!newSpecLabel.trim()}
+                  className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 shadow-xs uppercase tracking-wider font-sans"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Agregar</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Lista reordenable de especificaciones por defecto */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-bold text-slate-700 font-mono uppercase tracking-wider flex items-center gap-1.5">
+                  <Sliders className="w-3.5 h-3.5 text-[#E60012]" />
+                  Orden de Plantillas ({defaultSpecs.length})
+                </span>
+                <span className="text-[11px] text-slate-400 font-sans">
+                  Arrastra o usa las flechas para ordenar
+                </span>
+              </div>
+
+              {defaultSpecs.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-300 space-y-2">
+                  <Sliders className="w-8 h-8 text-slate-300 mx-auto" />
+                  <p className="text-xs font-bold text-slate-700">No hay especificaciones por defecto configuradas.</p>
+                  <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+                    Agrega etiquetas arriba o haz clic en las plantillas sugeridas para que los nuevos repuestos se creen automáticamente con estas propiedades.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {defaultSpecs.map((spec, index) => (
+                    <div
+                      key={index}
+                      draggable
+                      onDragStart={(e) => handleSpecDragStart(e, index)}
+                      onDragOver={handleSpecDragOver}
+                      onDrop={(e) => handleSpecDrop(e, index)}
+                      className={`flex items-center gap-2 p-3 bg-white border rounded-2xl shadow-2xs transition-all ${
+                        draggedSpecIndex === index
+                          ? "opacity-50 border-dashed border-[#E60012] bg-red-50/30 scale-[0.99]"
+                          : "border-slate-200 hover:border-slate-300"
+                      }`}
+                    >
+                      {/* Drag Grip Handle */}
+                      <div
+                        className="cursor-grab active:cursor-grabbing p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
+                        title="Arrastrar para reordenar"
+                      >
+                        <GripVertical className="w-4 h-4" />
+                      </div>
+
+                      {/* Number Badge */}
+                      <span className="w-6 h-6 rounded-lg bg-slate-100 border border-slate-200 text-[10px] font-mono font-bold text-slate-600 flex items-center justify-center shrink-0">
+                        {index + 1}
+                      </span>
+
+                      {/* Spec Label Input */}
+                      <div className="w-1/3 min-w-[130px]">
+                        <input
+                          type="text"
+                          value={spec.label}
+                          onChange={(e) => handleUpdateDefaultSpec(index, "label", e.target.value)}
+                          placeholder="Nombre (ej. Origen)"
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-[#E60012] focus:bg-white"
+                        />
+                      </div>
+
+                      {/* Spec Default Value Input */}
+                      <div className="flex-1 min-w-[150px]">
+                        <input
+                          type="text"
+                          value={spec.defaultValue || ""}
+                          onChange={(e) => handleUpdateDefaultSpec(index, "defaultValue", e.target.value)}
+                          placeholder="Valor sugerido (opcional)"
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-sans text-slate-800 focus:outline-none focus:border-[#E60012] focus:bg-white"
+                        />
+                      </div>
+
+                      {/* Move Up / Down Buttons */}
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <button
+                          type="button"
+                          disabled={index === 0}
+                          onClick={() => handleMoveDefaultSpec(index, index - 1)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                          title="Mover arriba"
+                        >
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={index === defaultSpecs.length - 1}
+                          onClick={() => handleMoveDefaultSpec(index, index + 1)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                          title="Mover abajo"
+                        >
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Delete Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDefaultSpec(index)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
+                        title="Eliminar plantilla"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

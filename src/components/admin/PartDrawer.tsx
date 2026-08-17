@@ -12,6 +12,12 @@ import {
   ArrowUp,
   ArrowDown,
   Star,
+  GripVertical,
+  ChevronUp,
+  ChevronDown,
+  Sliders,
+  Sparkles,
+  RotateCcw,
 } from "lucide-react";
 import type {
   SuzukiPart,
@@ -22,6 +28,7 @@ import type {
 } from "../../types";
 import { SearchableModelSelect } from "../SearchableModelSelect";
 import { UPLOAD_IMAGE } from "../../services/api";
+import { useSiteSettings } from "../SiteSettingsProvider";
 
 interface PartDrawerProps {
   isOpen: boolean;
@@ -69,11 +76,14 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
   const [description, setDescription] = useState("");
   const [uploading, setUploading] = useState(false);
   const MAX_IMAGES = 8;
+  const { settings } = useSiteSettings();
+  const configuredDefaultSpecs = settings.defaultSpecs || [];
 
   // Technical Specs List
   const [specs, setSpecs] = useState<TechnicalSpec[]>([]);
   const [specLabel, setSpecLabel] = useState("");
   const [specValue, setSpecValue] = useState("");
+  const [draggedSpecIdx, setDraggedSpecIdx] = useState<number | null>(null);
 
   // Compatibility Rules List
   const [compatibility, setCompatibility] = useState<CompatibilityRule[]>([]);
@@ -142,10 +152,6 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
     });
   };
 
-  const handleRemoveImage = (index: number) => {
-    setGallery((prev) => prev.filter((_, i) => i !== index));
-  };
-
   const handleSetPrimary = (index: number) => {
     setGallery((prev) => {
       if (index === 0) return prev;
@@ -156,6 +162,10 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
     });
   };
 
+  const handleRemoveImage = (index: number) => {
+    setGallery((prev) => prev.filter((_, i) => i !== index));
+  };
+
   useEffect(() => {
     if (models.length > 0 && !selectedModelId) {
       setSelectedModelId(models[0].id);
@@ -164,12 +174,13 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
 
   useEffect(() => {
     if (partToEdit) {
-      setSku(partToEdit.sku || `SKU-${partToEdit.id}`);
-      setName(partToEdit.name);
-      setPrimaryOem(partToEdit.oemNumbers[0] || "");
-      setSecondaryOems(partToEdit.oemNumbers.slice(1));
+      setSku(partToEdit.sku || "");
+      setName(partToEdit.name || "");
+      const [p, ...sec] = partToEdit.oemNumbers || [];
+      setPrimaryOem(p || "");
+      setSecondaryOems(sec || []);
       setSecondaryOemInput("");
-      setCategory(partToEdit.category);
+      setCategory(partToEdit.category || "filtros");
       setPrice(partToEdit.price);
       setTaxable(partToEdit.taxable !== false);
       setPriceIncludesTax(partToEdit.priceIncludesTax === true);
@@ -202,14 +213,17 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       setAvailability("in_stock");
       setGallery([]);
       setDescription("");
-      setSpecs([
-        { label: "Origen", value: "" },
-        { label: "Garantía", value: "" },
-      ]);
+      const initialSpecs = configuredDefaultSpecs.length > 0
+        ? configuredDefaultSpecs.map((d) => ({
+            label: d.label,
+            value: d.defaultValue || "",
+          }))
+        : [];
+      setSpecs(initialSpecs);
       setCompatibility([]);
     }
     setError("");
-  }, [partToEdit, isOpen]);
+  }, [partToEdit, isOpen, configuredDefaultSpecs.length]);
 
   if (!isOpen) return null;
 
@@ -225,15 +239,54 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
     setSecondaryOems(secondaryOems.filter((o) => o !== oemToRemove));
   };
 
-  const handleAddSpec = () => {
-    if (specLabel.trim() || specValue.trim()) {
+  const handleAddSpec = (labelToAdd?: string, valueToAdd?: string) => {
+    const l = (labelToAdd ?? specLabel).trim();
+    const v = (valueToAdd ?? specValue).trim();
+    if (l || v) {
       setSpecs([
         ...specs,
-        { label: specLabel.trim(), value: specValue.trim() },
+        { label: l, value: v },
       ]);
-      setSpecLabel("");
-      setSpecValue("");
+      if (!labelToAdd) {
+        setSpecLabel("");
+        setSpecValue("");
+      }
     }
+  };
+
+  const handleResetToDefaultSpecs = () => {
+    if (!configuredDefaultSpecs.length) return;
+    const defaults = configuredDefaultSpecs.map((s) => ({
+      label: s.label,
+      value: s.defaultValue || "",
+    }));
+    setSpecs(defaults);
+  };
+
+  const handleMoveSpec = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= specs.length || fromIndex === toIndex) return;
+    const updated = [...specs];
+    const [moved] = updated.splice(fromIndex, 1);
+    updated.splice(toIndex, 0, moved);
+    setSpecs(updated);
+  };
+
+  const handleSpecDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedSpecIdx(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", index.toString());
+  };
+
+  const handleSpecDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleSpecDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedSpecIdx === null || draggedSpecIdx === targetIndex) return;
+    handleMoveSpec(draggedSpecIdx, targetIndex);
+    setDraggedSpecIdx(null);
   };
 
   const handleUpdateSpec = (
@@ -809,74 +862,197 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
           </div>
 
           {/* Technical Specs Builder */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-900 font-mono uppercase">
-                Especificaciones Técnicas
-              </span>
-              <span className="text-[11px] font-mono text-slate-500 font-bold">
-                {specs.length} especificaciones
-              </span>
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span className="text-xs font-bold text-slate-900 font-mono uppercase flex items-center gap-1.5">
+                  <Sliders className="w-3.5 h-3.5 text-[#E60012]" />
+                  Especificaciones Técnicas
+                </span>
+                <p className="text-[11px] text-slate-500 font-sans mt-0.5">
+                  Precargadas desde configuración. Puedes editar valores, ordenar o agregar personalizadas solo para este repuesto.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <span className="text-[11px] font-mono text-slate-500 font-bold bg-white px-2 py-0.5 rounded-lg border border-slate-200">
+                  {specs.length} {specs.length === 1 ? "propiedad" : "propiedades"}
+                </span>
+                {configuredDefaultSpecs.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleResetToDefaultSpecs}
+                    className="text-[10px] font-mono font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                    title="Restablecer a las especificaciones por defecto de la configuración"
+                  >
+                    <RotateCcw className="w-3 h-3 text-[#E60012]" />
+                    <span>Cargar Plantillas</span>
+                  </button>
+                )}
+              </div>
             </div>
 
+            {/* Chips sugeridos rápidos de configuración que aún no están en este repuesto */}
+            {configuredDefaultSpecs.length > 0 && (
+              (() => {
+                const missingDefaults = configuredDefaultSpecs.filter(
+                  (def) => !specs.some((s) => s.label.toLowerCase() === def.label.toLowerCase())
+                );
+                if (missingDefaults.length === 0) return null;
+                return (
+                  <div className="p-2.5 bg-white rounded-xl border border-slate-200 space-y-1.5">
+                    <div className="flex items-center gap-1 text-[11px] font-bold text-slate-600 font-sans">
+                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      <span>Sugeridas de Configuración (pendientes por agregar):</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {missingDefaults.map((def) => (
+                        <button
+                          key={def.label}
+                          type="button"
+                          onClick={() => handleAddSpec(def.label, def.defaultValue || "")}
+                          className="px-2 py-0.5 text-[10px] font-mono font-bold bg-slate-50 text-slate-700 border border-slate-200 hover:border-red-500 hover:text-[#E60012] hover:bg-red-50/50 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                          title={`Agregar ${def.label} con valor sugerido "${def.defaultValue || 'Vacío'}"`}
+                        >
+                          <Plus className="w-2.5 h-2.5" />
+                          <span>{def.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+
+            {/* Formulario para agregar una especificación personalizada a este repuesto */}
             <div className="flex gap-2">
               <input
                 type="text"
                 value={specLabel}
                 onChange={(e) => setSpecLabel(e.target.value)}
-                placeholder="Propiedad (ej. Material)"
-                className="w-1/3 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900"
+                placeholder="Propiedad personalizada (ej. Material, Diámetro)"
+                className="w-1/3 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#E60012]"
               />
               <input
                 type="text"
                 value={specValue}
                 onChange={(e) => setSpecValue(e.target.value)}
                 placeholder="Valor (ej. Sintético viscoso)"
-                className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900"
+                className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#E60012]"
               />
               <button
                 type="button"
-                onClick={handleAddSpec}
-                className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1"
+                onClick={() => handleAddSpec()}
+                disabled={!specLabel.trim() && !specValue.trim()}
+                className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                title="Agregar especificación personalizada a este repuesto"
               >
                 <Plus className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Agregar</span>
               </button>
             </div>
 
-            <div className="space-y-2 pt-1">
-              {specs.map((sp, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-2 p-2 rounded-xl bg-white border border-slate-200 text-xs shadow-2xs"
-                >
-                  <input
-                    type="text"
-                    value={sp.label}
-                    onChange={(e) =>
-                      handleUpdateSpec(idx, "label", e.target.value)
-                    }
-                    placeholder="Propiedad (ej. Origen)"
-                    className="w-1/3 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-900 font-mono font-bold"
-                  />
-                  <input
-                    type="text"
-                    value={sp.value}
-                    onChange={(e) =>
-                      handleUpdateSpec(idx, "value", e.target.value)
-                    }
-                    placeholder="Valor (ej. Genuine Suzuki Parts - Japan)"
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-900 font-medium"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveSpec(idx)}
-                    className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors shrink-0"
-                    title="Eliminar especificación"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+            {/* Lista de especificaciones del repuesto con drag & drop y reorden */}
+            <div className="space-y-1.5 pt-1">
+              {specs.length === 0 ? (
+                <div className="p-4 text-center bg-white rounded-xl border border-dashed border-slate-200 text-slate-400 text-xs">
+                  Sin especificaciones técnicas asignadas para este repuesto.
                 </div>
-              ))}
+              ) : (
+                specs.map((sp, idx) => {
+                  const isDefaultTemplate = configuredDefaultSpecs.some(
+                    (d) => d.label.toLowerCase() === sp.label.toLowerCase()
+                  );
+
+                  return (
+                    <div
+                      key={idx}
+                      draggable
+                      onDragStart={(e) => handleSpecDragStart(e, idx)}
+                      onDragOver={handleSpecDragOver}
+                      onDrop={(e) => handleSpecDrop(e, idx)}
+                      className={`flex items-center gap-2 p-2.5 rounded-xl bg-white border text-xs shadow-2xs transition-all ${
+                        draggedSpecIdx === idx
+                          ? "opacity-50 border-dashed border-[#E60012] bg-red-50/20"
+                          : "border-slate-200 hover:border-slate-300"
+                      }`}
+                    >
+                      {/* Grip */}
+                      <div
+                        className="cursor-grab active:cursor-grabbing p-0.5 text-slate-400 hover:text-slate-700 rounded transition-colors"
+                        title="Arrastrar para reordenar"
+                      >
+                        <GripVertical className="w-3.5 h-3.5" />
+                      </div>
+
+                      {/* Number index */}
+                      <span className="text-[10px] font-mono text-slate-400 font-bold w-4 text-center shrink-0">
+                        {idx + 1}
+                      </span>
+
+                      {/* Label */}
+                      <div className="w-1/3 relative">
+                        <input
+                          type="text"
+                          value={sp.label}
+                          onChange={(e) =>
+                            handleUpdateSpec(idx, "label", e.target.value)
+                          }
+                          placeholder="Propiedad (ej. Origen)"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-mono font-bold focus:bg-white focus:outline-none focus:border-[#E60012]"
+                        />
+                        {isDefaultTemplate && (
+                          <span className="absolute right-1.5 top-2 w-1.5 h-1.5 rounded-full bg-emerald-500" title="Plantilla por defecto" />
+                        )}
+                      </div>
+
+                      {/* Value */}
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          value={sp.value}
+                          onChange={(e) =>
+                            handleUpdateSpec(idx, "value", e.target.value)
+                          }
+                          placeholder="Valor (ej. Genuine Suzuki Parts - Japan)"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-medium focus:bg-white focus:outline-none focus:border-[#E60012]"
+                        />
+                      </div>
+
+                      {/* Move Up/Down Buttons */}
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => handleMoveSpec(idx, idx - 1)}
+                          className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                          title="Mover arriba"
+                        >
+                          <ChevronUp className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={idx === specs.length - 1}
+                          onClick={() => handleMoveSpec(idx, idx + 1)}
+                          className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                          title="Mover abajo"
+                        >
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      {/* Remove Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSpec(idx)}
+                        className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
+                        title="Eliminar especificación de este repuesto"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 

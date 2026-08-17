@@ -881,6 +881,8 @@ export async function getSiteSettings(db: AppDb): Promise<SiteSettings> {
   const social = settingsMap.get('store.social') || {};
   const footer = settingsMap.get('store.footer') || {};
   const product = settingsMap.get('store.product') || {};
+  const specsConfig = settingsMap.get('store.specs') || {};
+  const defaultSpecs = Array.isArray(specsConfig.defaultSpecs) ? specsConfig.defaultSpecs : [];
 
   return {
     id: 'default',
@@ -901,6 +903,7 @@ export async function getSiteSettings(db: AppDb): Promise<SiteSettings> {
     returnMaxDays: typeof returns.returnMaxDays === 'number' ? returns.returnMaxDays : 30,
     orderPrefix: typeof documents.orderPrefix === 'string' && documents.orderPrefix.trim() ? documents.orderPrefix.trim() : 'SZ-ORD',
     returnPrefix: typeof documents.returnPrefix === 'string' && documents.returnPrefix.trim() ? documents.returnPrefix.trim() : 'SZ-RET',
+    defaultSpecs,
     socialLinks: { ...STORE_BOOTSTRAP.socialLinks, ...social },
     footerConfig: { ...FOOTER_BOOTSTRAP, ...footer },
     updatedAt: new Date().toISOString()
@@ -943,6 +946,19 @@ export async function upsertSiteSettings(db: AppDb, body: any) {
     returnPrefix: typeof body.returnPrefix === 'string' && body.returnPrefix.trim() ? body.returnPrefix.trim() : existing.returnPrefix,
   };
 
+  const defaultSpecs = Array.isArray(body.defaultSpecs)
+    ? body.defaultSpecs
+        .filter((s: any) => s && typeof s.label === 'string' && s.label.trim().length > 0)
+        .map((s: any) => ({
+          label: s.label.trim(),
+          defaultValue: typeof s.defaultValue === 'string' ? s.defaultValue.trim() : ''
+        }))
+    : (existing.defaultSpecs ?? []);
+
+  const specs = {
+    defaultSpecs,
+  };
+
   const social = body.socialLinks && typeof body.socialLinks === 'object'
     ? body.socialLinks
     : (existing.socialLinks ?? {});
@@ -961,6 +977,7 @@ export async function upsertSiteSettings(db: AppDb, body: any) {
     { key: 'store.tax', value: tax, category: 'billing', description: 'Configuración de impuestos y tasas' },
     { key: 'store.returns', value: returns, category: 'logistics', description: 'Políticas de garantía y devoluciones' },
     { key: 'store.documents', value: documents, category: 'general', description: 'Prefijos de numeración de pedidos y devoluciones' },
+    { key: 'store.specs', value: specs, category: 'catalog', description: 'Especificaciones técnicas por defecto para repuestos' },
     { key: 'store.social', value: social, category: 'social', description: 'Enlaces a redes sociales y canales de atención' },
     { key: 'store.footer', value: footer, category: 'general', description: 'Pie de página y avisos legales' },
     { key: 'store.product', value: product, category: 'general', description: 'Elemento principal mostrado en el detalle de producto' },
