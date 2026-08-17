@@ -16,16 +16,18 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatOrderDate } from "../utils/formatDate";
+import { formatDocumentNumber } from "../utils/formatDocumentNumber";
 import { OrderDetailModal } from "./OrderDetailModal";
 
 interface ReturnsTableProps {
   returnsList: any[];
   orders?: any[];
+  isLoading?: boolean;
 }
 
 import { ReturnStatusTimeline } from "./ReturnStatusTimeline";
 
-export const ReturnsTable: React.FC<ReturnsTableProps> = ({ returnsList, orders = [] }) => {
+export const ReturnsTable: React.FC<ReturnsTableProps> = ({ returnsList, orders = [], isLoading = false }) => {
   const allReturns = returnsList || [];
 
   // Filtering & Search
@@ -209,7 +211,16 @@ export const ReturnsTable: React.FC<ReturnsTableProps> = ({ returnsList, orders 
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
-              {paginatedReturns.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <div className="w-8 h-8 border-3 border-[#E60012] border-t-transparent rounded-full animate-spin" />
+                      <p className="text-xs font-mono font-bold text-slate-600 animate-pulse">Cargando devoluciones...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : paginatedReturns.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400 font-medium">
                     No se encontraron solicitudes de devolución que coincidan con la búsqueda.
@@ -230,9 +241,9 @@ export const ReturnsTable: React.FC<ReturnsTableProps> = ({ returnsList, orders 
                       {/* Column 1: RMA Code & Order ID */}
                       <td className="py-4 px-4 font-mono font-black text-slate-900 group-hover:text-[#E60012]">
                         <div>
-                          <span>{ret.id}</span>
+                          <span>{formatDocumentNumber(ret.id, ret.prefix, ret.documentNumber)}</span>
                           <span className="text-[11px] font-mono font-normal text-slate-500 block mt-0.5">
-                            Pedido: {ret.orderId}
+                            Pedido: {formatDocumentNumber(ret.orderId, ret.orderPrefix, ret.orderDocumentNumber)}
                           </span>
                         </div>
                       </td>

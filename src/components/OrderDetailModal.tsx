@@ -27,6 +27,7 @@ import {
 import { getPrimaryOem } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatOrderDate } from "../utils/formatDate";
+import { formatDocumentNumber } from "../utils/formatDocumentNumber";
 import { shouldShowProductImages } from "../utils/config";
 import { ProductImageEmptyState } from "./ProductImageEmptyState";
 import { BANK_DETAILS } from "../data/bankDetails";
@@ -218,7 +219,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             <div>
               <div className="flex items-center gap-3">
                 <span className="font-mono font-black text-slate-900 text-xl sm:text-2xl tracking-tight">
-                  {order.id}
+                  {formatDocumentNumber(order.id, order.prefix, order.documentNumber)}
                 </span>
                 <span
                   className={`text-xs font-bold uppercase px-3 py-1 rounded-full flex items-center gap-1 ${
@@ -296,11 +297,32 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 </span>
               </div>
               <div className="text-slate-500 mt-1.5 font-mono text-[11px]">
-                Transportadora:{" "}
-                <strong className="text-slate-800">
-                  {order.shippingCarrier || defaultCarrier}
-                </strong>{" "}
-                ({order.shippingMethodName || "No especificado"})
+                {order.status && (
+                  order.status.toLowerCase().includes("despachad") ||
+                  order.status.toLowerCase().includes("tránsito") ||
+                  order.status.toLowerCase().includes("transito") ||
+                  order.status.toLowerCase().includes("entregad") ||
+                  order.status.toLowerCase().includes("completad")
+                ) ? (
+                  <>
+                    Transportadora:{" "}
+                    <strong className="text-slate-800">
+                      {order.shippingCarrier || defaultCarrier}
+                    </strong>{" "}
+                    {order.trackingNumber && (
+                      <span className="ml-1 text-slate-700 font-bold">
+                        (Guía: {order.trackingNumber})
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    Método de Envío:{" "}
+                    <strong className="text-slate-800">
+                      {order.shippingMethodName || "Envío a domicilio"}
+                    </strong>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -494,7 +516,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
             <div className="flex items-center justify-between text-slate-600">
               <span>
-                Costo de Despacho ({order.shippingCarrier || defaultCarrier}):
+                Costo de Despacho ({order.shippingMethodName || "Envío a domicilio"}):
               </span>
               <span className="font-bold text-slate-900">
                 {order.shippingCost === 0 || !order.shippingCost
@@ -518,7 +540,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     <div className="flex items-center gap-2">
                       <RotateCcw className="w-5 h-5 text-amber-600" />
                       <span className="font-black text-xs uppercase tracking-wider font-display text-slate-900">
-                        Trámite de Devolución {activeReturn.id}
+                        Trámite de Devolución {formatDocumentNumber(activeReturn.id, activeReturn.prefix, activeReturn.documentNumber)}
                       </span>
                     </div>
                     <span

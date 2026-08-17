@@ -27,6 +27,7 @@ interface CategoriesManagerProps {
   onToggleCategoryActive: (id: string) => void;
   onDeleteCategory: (id: string) => void;
   onSaveCategory: (category: Category) => void;
+  isLoading?: boolean;
 }
 
 const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
@@ -45,7 +46,8 @@ export const CategoriesManager: React.FC<CategoriesManagerProps> = ({
   onEditCategory,
   onToggleCategoryActive,
   onDeleteCategory,
-  onSaveCategory
+  onSaveCategory,
+  isLoading = false,
 }) => {
   const [expandedCatIds, setExpandedCatIds] = useState<string[]>(categories.map(c => c.id));
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -260,13 +262,20 @@ export const CategoriesManager: React.FC<CategoriesManagerProps> = ({
           );
         })}
 
-        {filteredCategories.length === 0 && (
+        {isLoading ? (
+          <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-400 shadow-xs">
+            <div className="flex flex-col items-center justify-center space-y-3">
+              <div className="w-8 h-8 border-3 border-[#E60012] border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs font-mono font-bold text-slate-600 animate-pulse">Cargando categorías...</p>
+            </div>
+          </div>
+        ) : filteredCategories.length === 0 ? (
           <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-500 shadow-xs">
             <FolderTree className="w-10 h-10 mx-auto mb-3 text-slate-300" />
             <p className="font-extrabold text-slate-800 text-base font-display">No se encontraron categorías</p>
             <p className="text-xs text-slate-400 mt-1">Intenta buscar con otros términos o crea una nueva categoría.</p>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Search, Filter, Eye, Edit, Truck, CheckCircle2, Clock, Package, AlertCircle, FileText, ChevronDown } from 'lucide-react';
 import type { Order, OrderStatus } from '../../types';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { formatDocumentNumber } from '../../utils/formatDocumentNumber';
 import { fetchOrderStatuses } from '../../services/api';
 
 interface OrdersManagerProps {
@@ -9,6 +10,7 @@ interface OrdersManagerProps {
   searchQuery: string;
   onEditOrder: (order: Order) => void;
   onViewOrder: (order: Order) => void;
+  isLoading?: boolean;
 }
 
 interface StatusRow {
@@ -34,7 +36,8 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
   orders,
   searchQuery,
   onEditOrder,
-  onViewOrder
+  onViewOrder,
+  isLoading = false,
 }) => {
   const [statusRows, setStatusRows] = useState<StatusRow[]>([]);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
@@ -190,7 +193,7 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
                   <td className="py-4 px-5">
                     <div>
                       <p className="font-extrabold text-slate-900 group-hover:text-[#E60012] transition-colors font-mono">
-                        {ord.id}
+                        {formatDocumentNumber(ord.id, ord.prefix, ord.documentNumber)}
                       </p>
                       <p className="text-[11px] font-mono text-slate-400 font-bold">{ord.date}</p>
                     </div>
@@ -220,13 +223,25 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
 
                   {/* Carrier & Tracking */}
                   <td className="py-4 px-4 text-xs font-mono font-bold">
-                    {ord.trackingNumber ? (
+                    {(['Despachado', 'En tránsito', 'Entregado'].includes(ord.status) ||
+                      ord.status.toLowerCase().includes('tránsito') ||
+                      ord.status.toLowerCase().includes('transito') ||
+                      ord.status.toLowerCase().includes('despachado') ||
+                      ord.status.toLowerCase().includes('entregado')) && ord.trackingNumber ? (
                       <div>
                         <p className="text-slate-900">{ord.shippingCarrier || 'Envío'}</p>
                         <p className="text-[10px] text-blue-700 font-bold">{ord.trackingNumber}</p>
                       </div>
                     ) : (
-                      <span className="text-slate-400 text-[11px]">Sin guía asignada</span>
+                      <span className="text-slate-400 text-[11px] font-normal font-sans">
+                        {(['Despachado', 'En tránsito', 'Entregado'].includes(ord.status) ||
+                          ord.status.toLowerCase().includes('tránsito') ||
+                          ord.status.toLowerCase().includes('transito') ||
+                          ord.status.toLowerCase().includes('despachado') ||
+                          ord.status.toLowerCase().includes('entregado'))
+                          ? 'Sin guía asignada'
+                          : 'Pendiente de despacho'}
+                      </span>
                     )}
                   </td>
 
@@ -258,14 +273,23 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
                 </tr>
               ))}
 
-              {filteredOrders.length === 0 && (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <div className="w-8 h-8 border-3 border-[#E60012] border-t-transparent rounded-full animate-spin" />
+                      <p className="text-xs font-mono font-bold text-slate-600 animate-pulse">Cargando pedidos...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400 font-medium">
                     <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                     <p className="text-xs font-mono font-bold">No se encontraron pedidos con los filtros aplicados</p>
                   </td>
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </table>
         </div>

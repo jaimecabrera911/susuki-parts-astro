@@ -177,10 +177,13 @@ export const AdminDashboard: React.FC = () => {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
 
+  const [isLoadingData, setIsLoadingData] = useState(true);
+
   // Load all data from Neon DB API on mount — no localStorage, no mocks
   useEffect(() => {
     if (!authorized) return;
     async function loadLiveData() {
+      setIsLoadingData(true);
       try {
         const [b, m, c, p, s, o, r, u] = await Promise.all([
           fetchBrands(),
@@ -202,10 +205,12 @@ export const AdminDashboard: React.FC = () => {
         setUsers(u);
       } catch (err) {
         console.error("Error loading data from DB API:", err);
+      } finally {
+        setIsLoadingData(false);
       }
     }
     loadLiveData();
-  }, []);
+  }, [authorized]);
 
   const handleSaveUser = async (savedUser: UserProfile) => {
     const exists = users.some((u) => u.id === savedUser.id);
@@ -817,6 +822,7 @@ export const AdminDashboard: React.FC = () => {
             <BrandsManager
               brands={brands}
               searchQuery={searchQuery}
+              isLoading={isLoadingData}
               onAddBrand={() => {
                 setBrandToEdit(null);
                 setIsBrandModalOpen(true);
@@ -836,6 +842,7 @@ export const AdminDashboard: React.FC = () => {
               brands={brands}
               schematics={schematics}
               searchQuery={searchQuery}
+              isLoading={isLoadingData}
               onAddModel={() => {
                 setModelToEdit(null);
                 setModelDrawerInitialTab("data");
@@ -866,6 +873,7 @@ export const AdminDashboard: React.FC = () => {
               categories={categories}
               parts={parts}
               searchQuery={searchQuery}
+              isLoading={isLoadingData}
               onAddCategory={() => {
                 setCategoryToEdit(null);
                 setIsCategoryModalOpen(true);
@@ -885,6 +893,7 @@ export const AdminDashboard: React.FC = () => {
               parts={parts}
               models={models}
               searchQuery={searchQuery}
+              isLoading={isLoadingData}
               onAddPart={() => {
                 setPartToEdit(null);
                 setIsPartDrawerOpen(true);
@@ -905,6 +914,7 @@ export const AdminDashboard: React.FC = () => {
               models={models}
               parts={parts}
               searchQuery={searchQuery}
+              isLoading={isLoadingData}
               onAddSchematic={() => {
                 setSchematicToEdit(null);
                 setIsSchematicDrawerOpen(true);
@@ -926,6 +936,7 @@ export const AdminDashboard: React.FC = () => {
             <OrdersManager
               orders={orders}
               searchQuery={searchQuery}
+              isLoading={isLoadingData}
               onEditOrder={(ord) => {
                 setOrderToEdit(ord);
                 setIsOrderModalOpen(true);
@@ -941,6 +952,7 @@ export const AdminDashboard: React.FC = () => {
             <ReturnsManager
               returnsList={returnsList}
               searchQuery={searchQuery}
+              isLoading={isLoadingData}
               onEditReturn={(item) => {
                 setReturnToEdit(item);
                 setIsReturnModalOpen(true);
@@ -962,6 +974,7 @@ export const AdminDashboard: React.FC = () => {
             <UsersManager
               users={users}
               searchQuery={searchQuery}
+              isLoading={isLoadingData}
               onAddUser={() => {
                 setUserToEdit(null);
                 setIsUserModalOpen(true);

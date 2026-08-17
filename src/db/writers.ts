@@ -24,6 +24,13 @@ export function ensureUuid(val?: any): string {
   return crypto.randomUUID();
 }
 
+export function normalizeDocumentNumber(val?: any): string | null {
+  if (!val) return null;
+  const s = String(val).trim();
+  if (!s) return null;
+  return s.replace(/^[A-Z]+(?:-[A-Z]+)?-/, '');
+}
+
 export function parseJson(val: any, fallback: any = []) {
   if (!val) return fallback;
   if (typeof val !== 'string') return val;
@@ -239,7 +246,8 @@ export async function upsertSchematic(db: AppDb, body: any) {
 }
 
 export async function upsertOrder(db: AppDb, body: any) {
-  const id = ensureUuid(body.id);
+  const rawId = body.id;
+  const id = ensureUuid(rawId);
   let date = new Date();
   if (body.date) {
     const parsed = new Date(body.date);
@@ -283,7 +291,7 @@ export async function upsertOrder(db: AppDb, body: any) {
     trackingUrl: body.trackingUrl || null,
     notes: body.notes || '',
     prefix: settings.orderPrefix,
-    documentNumber: body.documentNumber || null
+    documentNumber: normalizeDocumentNumber(body.documentNumber || (isValidUuid(rawId) ? String(Math.floor(100000 + Math.random() * 900000)) : rawId))
   };
 
   await db.transaction(async (tx) => {
@@ -731,7 +739,8 @@ export async function seedGeography(db: AppDb) {
 }
 
 export async function upsertOrderReturn(db: AppDb, body: any) {
-  const id = ensureUuid(body.id);
+  const rawId = body.id;
+  const id = ensureUuid(rawId);
   const date = body.createdAt ? new Date(body.createdAt) : new Date();
 
   // Auto generate Store Credit Code if resolution is store_credit and none exists
@@ -771,7 +780,7 @@ export async function upsertOrderReturn(db: AppDb, body: any) {
     itemsJson: Array.isArray(body.itemsJson) ? body.itemsJson : (typeof body.itemsJson === 'string' ? parseJson(body.itemsJson, []) : []),
     notes: body.notes || '',
     prefix: (await getSiteSettings(db)).returnPrefix,
-    documentNumber: body.documentNumber || null,
+    documentNumber: normalizeDocumentNumber(body.documentNumber || (isValidUuid(rawId) ? null : rawId)),
     createdAt: date,
     updatedAt: new Date()
   };

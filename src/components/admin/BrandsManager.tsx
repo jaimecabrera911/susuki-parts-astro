@@ -9,6 +9,7 @@ interface BrandsManagerProps {
   onEditBrand: (brand: Brand) => void;
   onToggleActive: (id: string) => void;
   onDeleteBrand: (id: string) => void;
+  isLoading?: boolean;
 }
 
 export const BrandsManager: React.FC<BrandsManagerProps> = ({
@@ -17,7 +18,8 @@ export const BrandsManager: React.FC<BrandsManagerProps> = ({
   onAddBrand,
   onEditBrand,
   onToggleActive,
-  onDeleteBrand
+  onDeleteBrand,
+  isLoading = false,
 }) => {
   const [filterCountry, setFilterCountry] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
@@ -192,7 +194,16 @@ export const BrandsManager: React.FC<BrandsManagerProps> = ({
                 </tr>
               ))}
 
-              {filteredBrands.length === 0 && (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <div className="w-8 h-8 border-3 border-[#E60012] border-t-transparent rounded-full animate-spin" />
+                      <p className="text-xs font-mono font-bold text-slate-600 animate-pulse">Cargando marcas...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredBrands.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-slate-500">
                     <Building2 className="w-8 h-8 mx-auto mb-2 text-slate-300" />
@@ -200,7 +211,7 @@ export const BrandsManager: React.FC<BrandsManagerProps> = ({
                     <p className="text-xs text-slate-400 mt-0.5">Ajusta los términos de búsqueda o filtros.</p>
                   </td>
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </table>
         </div>

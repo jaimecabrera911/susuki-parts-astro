@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { X, ShieldCheck, CheckCircle2, Printer } from "lucide-react";
 import type { CartItem, ActiveMotorcycle } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
+import { formatDocumentNumber } from "../utils/formatDocumentNumber";
 import { saveOrderApi, fetchDefaultStatusName } from "../services/api";
 
 interface CheckoutModalProps {
@@ -237,16 +238,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   NÚMERO DE ORDEN:
                 </span>
                 <span className="font-mono font-extrabold text-slate-900">
-                  {completedOrder.id}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center text-xs border-b border-slate-200 pb-2">
-                <span className="text-slate-500 font-medium">
-                  CÓDIGO DE GARANTÍA COMPATIBILIDAD:
-                </span>
-                <span className="font-mono font-extrabold text-emerald-600">
-                  {completedOrder.guaranteeCode}
+                  {formatDocumentNumber(completedOrder.id, completedOrder.prefix, completedOrder.documentNumber)}
                 </span>
               </div>
 

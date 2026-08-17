@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, RotateCcw, ShieldCheck, Truck, CreditCard, DollarSign, Package, AlertCircle, MessageSquare, Send, User } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { formatDocumentNumber } from '../../utils/formatDocumentNumber';
 import { parseReturnNotes, formatMessageTime, type ReturnMessage } from '../../utils/returnNotes';
 import { getStoredUser } from '../../utils/auth';
 
@@ -167,11 +168,11 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({
           </div>
           <div>
             <h2 className="text-xl font-black text-slate-900 tracking-tight font-display">
-              Gestionar Devolución {returnItem.id}
+              Gestionar Devolución {formatDocumentNumber(returnItem.id, returnItem.prefix, returnItem.documentNumber)}
             </h2>
             <div className="flex flex-wrap items-center gap-2 mt-1">
               <span className="text-xs text-slate-500 font-medium">
-                Pedido: <strong className="font-mono text-slate-800">{returnItem.orderId}</strong>
+                Pedido: <strong className="font-mono text-slate-800">{formatDocumentNumber(returnItem.orderId, returnItem.orderPrefix, returnItem.orderDocumentNumber)}</strong>
               </span>
               <span className="text-slate-300">•</span>
               <span className="text-xs text-slate-500 font-medium">
@@ -217,7 +218,7 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({
                 <AlertCircle className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
                 <div>
                   <strong className="block text-purple-900">Atención: Pedido no pagado</strong>
-                  El pedido {returnItem.orderId} no fue pagado o la transferencia no fue confirmada. No procede ningún desembolso ni reembolso de dinero ($0 COP). El trámite debe finalizarse como Anulación/Cancelación.
+                  El pedido {formatDocumentNumber(returnItem.orderId, returnItem.orderPrefix, returnItem.orderDocumentNumber)} no fue pagado o la transferencia no fue confirmada. No procede ningún desembolso ni reembolso de dinero ($0 COP). El trámite debe finalizarse como Anulación/Cancelación.
                 </div>
               </div>
             )}

@@ -14,6 +14,7 @@ import {
 import { OrderDetailModal } from "./OrderDetailModal";
 import { getPrimaryOem } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
+import { formatDocumentNumber } from "../utils/formatDocumentNumber";
 import { formatOrderDate } from "../utils/formatDate";
 import { fetchOrderStatuses } from "../services/api";
 import { getCarrierTrackingUrl } from "../utils/tracking";
@@ -21,6 +22,7 @@ import { getCarrierTrackingUrl } from "../utils/tracking";
 interface OrdersTableProps {
   orders: any[];
   onNavigateToCatalog?: () => void;
+  isLoading?: boolean;
 }
 
 const STATUS_THEMES: Record<string, string> = {
@@ -36,6 +38,7 @@ const STATUS_THEMES: Record<string, string> = {
 export const OrdersTable: React.FC<OrdersTableProps> = ({
   orders,
   onNavigateToCatalog,
+  isLoading = false,
 }) => {
   const allOrders = orders || [];
 
@@ -171,7 +174,14 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
 
       {/* DataTable Container */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        {filteredOrders.length === 0 ? (
+        {isLoading ? (
+          <div className="p-12 text-center text-slate-400">
+            <div className="flex flex-col items-center justify-center space-y-3">
+              <div className="w-8 h-8 border-3 border-[#E60012] border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs font-mono font-bold text-slate-600 animate-pulse">Cargando historial de pedidos...</p>
+            </div>
+          </div>
+        ) : filteredOrders.length === 0 ? (
           <div className="p-12 text-center text-slate-400">
             <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <h3 className="text-sm font-bold text-slate-800">
@@ -210,7 +220,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                       className="hover:bg-red-50/30 transition-colors cursor-pointer group"
                     >
                       <td className="py-4 px-4 font-mono font-black text-slate-900 group-hover:text-[#E60012]">
-                        {order.id}
+                        {formatDocumentNumber(order.id, order.prefix, order.documentNumber)}
                       </td>
 
                       <td className="py-4 px-4 text-slate-600 font-medium whitespace-nowrap">

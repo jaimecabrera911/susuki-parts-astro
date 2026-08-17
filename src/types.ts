@@ -297,6 +297,8 @@ export interface Order {
   email: string;
   phone: string;
   documentId: string;
+  prefix?: string;
+  documentNumber?: string;
   country?: string;
   department?: string;
   city: string;
@@ -336,6 +338,8 @@ export interface OrderReturnItem {
 export interface OrderReturn {
   id: string;
   orderId: string;
+  prefix?: string;
+  documentNumber?: string;
   customerName: string;
   email: string;
   phone: string;

@@ -13,6 +13,7 @@ interface SchematicsManagerProps {
   onViewSchematic?: (schematic: ExplodedDiagram) => void;
   onDuplicateSchematic: (schematic: ExplodedDiagram) => void;
   onDeleteSchematic: (id: string) => void;
+  isLoading?: boolean;
 }
 
 export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
@@ -24,7 +25,8 @@ export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
   onEditSchematic,
   onViewSchematic,
   onDuplicateSchematic,
-  onDeleteSchematic
+  onDeleteSchematic,
+  isLoading = false,
 }) => {
   const [selectedSectionFilter, setSelectedSectionFilter] = useState<string>('all');
   const [selectedModelFilter, setSelectedModelFilter] = useState<string>('all');
@@ -242,7 +244,16 @@ export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
                 </tr>
               ))}
 
-              {filteredSchematics.length === 0 && (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <div className="w-8 h-8 border-3 border-[#E60012] border-t-transparent rounded-full animate-spin" />
+                      <p className="text-xs font-mono font-bold text-slate-600 animate-pulse">Cargando despieces...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredSchematics.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-slate-500">
                     <Layers className="w-8 h-8 mx-auto mb-2 text-slate-300" />
@@ -250,7 +261,7 @@ export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
                     <p className="text-xs text-slate-400 mt-0.5">Intenta modificando los términos de búsqueda o filtros.</p>
                   </td>
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </table>
         </div>

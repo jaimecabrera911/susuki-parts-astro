@@ -39,6 +39,7 @@ import type {
 } from "../types";
 import { getPrimaryOem } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
+import { formatDocumentNumber } from "../utils/formatDocumentNumber";
 import { BANK_DETAILS } from "../data/bankDetails";
 import {
   shouldShowProductImages,
@@ -565,11 +566,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 </span>
                 <div className="flex items-center justify-center gap-1.5 mt-0.5">
                   <span className="font-mono font-black text-slate-900 text-lg">
-                    {completedOrder.id}
+                    {formatDocumentNumber(completedOrder.id, completedOrder.prefix, completedOrder.documentNumber)}
                   </span>
                   <button
                     type="button"
-                    onClick={() => handleCopy(completedOrder.id, "orderId")}
+                    onClick={() => handleCopy(formatDocumentNumber(completedOrder.id, completedOrder.prefix, completedOrder.documentNumber), "orderId")}
                     className="text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
                     title="Copiar Número de Orden"
                   >
@@ -620,11 +621,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                   </span>
                 </div>
                 <div className="text-slate-500 mt-1.5 font-mono text-[11px]">
-                  Transportadora:{" "}
+                  Método de Envío:{" "}
                   <strong className="text-slate-800">
-                    {completedOrder.shippingCarrier || defaultCarrier}
-                  </strong>{" "}
-                  ({completedOrder.shippingMethodName})
+                    {completedOrder.shippingMethodName || "Envío a domicilio"}
+                  </strong>
                 </div>
               </div>
             </div>

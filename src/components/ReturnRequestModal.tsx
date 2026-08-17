@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, ArrowRight, ArrowLeft, Upload, Trash2, AlertTriangle, ShieldAlert, Tag, RefreshCw, DollarSign, CheckCircle2, ShieldCheck } from 'lucide-react';
 import type { Order, OrderReturnItem } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
+import { formatDocumentNumber } from '../utils/formatDocumentNumber';
 
 interface ReturnRequestModalProps {
   order: Order;
@@ -185,7 +186,7 @@ export const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
           <div>
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#0A3088]">Asistente de Garantías & Devoluciones</span>
             <h3 className="text-lg font-black text-slate-900 flex items-center gap-2 font-display">
-              Pedido #{order.id}
+              Pedido #{formatDocumentNumber(order.id, order.prefix, order.documentNumber)}
             </h3>
           </div>
           <button

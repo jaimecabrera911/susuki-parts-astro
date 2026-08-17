@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { RotateCcw, DollarSign, RefreshCw, Ticket, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { formatCurrency } from '../utils/formatCurrency';
+import { formatDocumentNumber } from '../utils/formatDocumentNumber';
 import { saveReturnApi } from '../services/api';
 
 interface RequestReturnModalProps {
@@ -196,7 +197,7 @@ export const RequestReturnModal: React.FC<RequestReturnModalProps> = ({
             </h2>
             <div className="flex flex-wrap items-center gap-2 mt-1">
               <span className="text-xs text-slate-500 font-medium">
-                Pedido: <strong className="font-mono text-slate-800">{order.id}</strong>
+                Pedido: <strong className="font-mono text-slate-800">{formatDocumentNumber(order.id, order.prefix, order.documentNumber)}</strong>
               </span>
               <span className="text-slate-300">•</span>
               <span className={`text-[10px] font-mono font-bold uppercase px-2.5 py-0.5 rounded-full border ${

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, ShoppingCart, User, MapPin, Truck, ShieldCheck, CheckCircle2, Clock, Package, AlertCircle, FileText, ExternalLink, Lock, Globe, Send, MessageSquare } from 'lucide-react';
 import type { Order, OrderStatus, OrderMessage } from '../../types';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { formatDocumentNumber } from '../../utils/formatDocumentNumber';
+import { formatOrderDate } from '../../utils/formatDate';
 import { fetchDefaultCarrierName, sendOrderMessageApi } from '../../services/api';
 import { parseOrderNotes, formatOrderMessageTime } from '../../utils/orderNotes';
 import { getStoredUser } from '../../utils/auth';
@@ -105,6 +107,23 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     return () => { cancelled = true; };
   }, []);
 
+  // Determine if shipping & tracking can be managed
+  const canManageShipping = Boolean(
+    ['Despachado', 'En tránsito', 'Entregado'].includes(status) ||
+    status.toLowerCase().includes('tránsito') ||
+    status.toLowerCase().includes('transito') ||
+    status.toLowerCase().includes('despachado') ||
+    status.toLowerCase().includes('entregado')
+  );
+
+  const isOrderDispatched = Boolean(
+    ['Despachado', 'En tránsito', 'Entregado'].includes(order.status) ||
+    order.status.toLowerCase().includes('tránsito') ||
+    order.status.toLowerCase().includes('transito') ||
+    order.status.toLowerCase().includes('despachado') ||
+    order.status.toLowerCase().includes('entregado')
+  );
+
   useEffect(() => {
     if (order) {
       setStatus(order.status);
@@ -117,21 +136,14 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     }
   }, [order]);
 
-  // Default the carrier to the DB default once the catalog is loaded
-  useEffect(() => {
-    if ((defaultCarrier || carrierOptions[0]) && !shippingCarrier) {
-      setShippingCarrier(defaultCarrier || carrierOptions[0]);
-    }
-  }, [carrierOptions, defaultCarrier]);
-
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     const updated: Order = {
       ...order,
       status,
-      shippingCarrier: shippingCarrier.trim(),
-      trackingNumber: trackingNumber.trim(),
-      trackingUrl: trackingUrl.trim(),
+      shippingCarrier: canManageShipping ? shippingCarrier.trim() : (order.shippingCarrier || ''),
+      trackingNumber: canManageShipping ? trackingNumber.trim() : (order.trackingNumber || ''),
+      trackingUrl: canManageShipping ? trackingUrl.trim() : (order.trackingUrl || ''),
       notes: notes.trim()
     };
     onSaveOrder(updated);
@@ -156,14 +168,14 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-xl font-black text-slate-900 font-display truncate">
-                  Pedido {order.id}
+                  Pedido {formatDocumentNumber(order.id, order.prefix, order.documentNumber)}
                 </h2>
                 <span className={`text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${getStatusTheme(status)}`}>
                   {status}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 font-mono">
-                Registrado el {order.date} • Garantía: {order.guaranteeCode}
+              <p className="text-xs text-slate-500 font-sans mt-0.5">
+                Registrado el <span className="font-semibold text-slate-700">{formatOrderDate(order.date)}</span>
               </p>
             </div>
           </div>
@@ -280,7 +292,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </div>
               ) : null}
               <div className="flex justify-between text-slate-600">
-                <span>Envío ({order.shippingCarrier || defaultCarrier}):</span>
+                <span>Envío {order.shippingMethodName ? `(${order.shippingMethodName})` : isOrderDispatched && order.shippingCarrier ? `(${order.shippingCarrier})` : ''}:</span>
                 <span className="font-bold text-slate-900">{order.shippingCost === 0 || !order.shippingCost ? '¡Flete GRATIS!' : formatCurrency(order.shippingCost)}</span>
               </div>
               <div className="flex justify-between text-slate-900 pt-2 border-t border-slate-200 font-black text-sm font-display">
@@ -291,11 +303,19 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           </div>
 
           {/* Logistics & Order Management Controls */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
-            <span className="text-xs font-bold text-slate-900 uppercase font-mono flex items-center gap-2">
-              <Truck className="w-4 h-4 text-[#0A3088]" />
-              <span>Gestión de Estado & Logística de Despacho</span>
-            </span>
+          <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="text-xs font-bold text-slate-900 uppercase font-mono flex items-center gap-2">
+                <Truck className="w-4 h-4 text-[#0A3088]" />
+                <span>Gestión de Estado & Logística de Despacho</span>
+              </span>
+              {!canManageShipping && (
+                <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                  Transporte habilitado solo en tránsito / despachado
+                </span>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
@@ -304,7 +324,20 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </label>
                 <select
                   value={status}
-                  onChange={(e) => setStatus(e.target.value as OrderStatus)}
+                  onChange={(e) => {
+                    const newStatus = e.target.value as OrderStatus;
+                    setStatus(newStatus);
+                    const isNewTransit = Boolean(
+                      ['Despachado', 'En tránsito', 'Entregado'].includes(newStatus) ||
+                      newStatus.toLowerCase().includes('tránsito') ||
+                      newStatus.toLowerCase().includes('transito') ||
+                      newStatus.toLowerCase().includes('despachado') ||
+                      newStatus.toLowerCase().includes('entregado')
+                    );
+                    if (isNewTransit && !shippingCarrier && (defaultCarrier || carrierOptions[0])) {
+                      setShippingCarrier(defaultCarrier || carrierOptions[0]);
+                    }
+                  }}
                   className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
                 >
                   {statusOptions.length === 0 && (
@@ -318,16 +351,19 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
               <div>
                 <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase mb-1">
-                  Empresa de Transportes
+                  Empresa de Transportes {canManageShipping ? '*' : ''}
                 </label>
                 <select
                   value={shippingCarrier}
                   onChange={(e) => setShippingCarrier(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
+                  disabled={!canManageShipping}
+                  className={`w-full border rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none transition-all ${
+                    canManageShipping
+                      ? "bg-white border-slate-200 focus:border-[#E60012]"
+                      : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
+                  }`}
                 >
-                  {carrierOptions.length === 0 && (
-                    <option value="" disabled>Cargando transportadoras...</option>
-                  )}
+                  <option value="">Seleccionar transportadora...</option>
                   {carrierOptions.map(c => (
                     <option key={c} value={c}>{c}</option>
                   ))}
@@ -336,14 +372,19 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
               <div>
                 <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase mb-1">
-                  Número de Guía de Transporte
+                  Número de Guía de Transporte {canManageShipping ? '*' : ''}
                 </label>
                 <input
                   type="text"
                   value={trackingNumber}
                   onChange={(e) => setTrackingNumber(e.target.value)}
-                  placeholder="Ej. SE789456123CO"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
+                  disabled={!canManageShipping}
+                  placeholder={canManageShipping ? "Ej. SE789456123CO" : "Habilitado en tránsito"}
+                  className={`w-full border rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none transition-all ${
+                    canManageShipping
+                      ? "bg-white border-slate-200 focus:border-[#E60012]"
+                      : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
+                  }`}
                 />
               </div>
 
@@ -352,7 +393,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase">
                     Enlace de Seguimiento de la Transportadora (Opcional)
                   </label>
-                  {getCarrierTrackingUrl({ shippingCarrier, trackingNumber, trackingUrl }) && (
+                  {canManageShipping && getCarrierTrackingUrl({ shippingCarrier, trackingNumber, trackingUrl }) && (
                     <a
                       href={getCarrierTrackingUrl({ shippingCarrier, trackingNumber, trackingUrl })}
                       target="_blank"
@@ -368,11 +409,18 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   type="url"
                   value={trackingUrl}
                   onChange={(e) => setTrackingUrl(e.target.value)}
-                  placeholder="https://www.servientrega.com/wps/portal/rastreo-de-envios?guia=..."
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#E60012]"
+                  disabled={!canManageShipping}
+                  placeholder={canManageShipping ? "https://www.servientrega.com/wps/portal/rastreo-de-envios?guia=..." : "Habilitado en tránsito"}
+                  className={`w-full border rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none transition-all ${
+                    canManageShipping
+                      ? "bg-white border-slate-200 focus:border-[#E60012]"
+                      : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
+                  }`}
                 />
                 <p className="text-[10px] text-slate-500 mt-1 font-sans">
-                  Si se deja en blanco, el sistema generará automáticamente la URL oficial de rastreo según la transportadora seleccionada.
+                  {canManageShipping
+                    ? "Si se deja en blanco, el sistema generará automáticamente la URL oficial de rastreo según la transportadora seleccionada."
+                    : "Los campos de guía y transportadora se activan únicamente cuando el pedido se encuentre en estado 'En tránsito', 'Despachado' o 'Entregado'."}
                 </p>
               </div>
 

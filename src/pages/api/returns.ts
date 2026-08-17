@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
-import { orderReturns } from '../../db/schema';
-import { eq, like, or, desc } from 'drizzle-orm';
+import { orderReturns, orders } from '../../db/schema';
+import { eq, like, or, desc, inArray } from 'drizzle-orm';
 import { upsertOrderReturn, deleteOrderReturn } from '../../db/writers';
 
 export const GET: APIRoute = async ({ url }) => {
@@ -31,7 +31,22 @@ export const GET: APIRoute = async ({ url }) => {
       data = await db.select().from(orderReturns).orderBy(desc(orderReturns.createdAt));
     }
 
-    return new Response(JSON.stringify({ success: true, count: data.length, data }), {
+    const orderIds = Array.from(new Set(data.map((r) => r.orderId).filter(Boolean)));
+    const ordersRows = orderIds.length
+      ? await db.select({ id: orders.id, prefix: orders.prefix, documentNumber: orders.documentNumber }).from(orders).where(inArray(orders.id, orderIds))
+      : [];
+    const orderByOrderId = new Map(ordersRows.map((o) => [o.id, o]));
+
+    const enriched = data.map((r) => {
+      const order = r.orderId ? orderByOrderId.get(r.orderId) : undefined;
+      return {
+        ...r,
+        orderPrefix: order?.prefix ?? null,
+        orderDocumentNumber: order?.documentNumber ?? null,
+      };
+    });
+
+    return new Response(JSON.stringify({ success: true, count: data.length, data: enriched }), {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { RotateCcw, Search, Filter, ShieldCheck, Truck, CreditCard, DollarSign, Package, AlertCircle, Edit, Trash2, CheckCircle2, Clock, XCircle, FileText } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { formatDocumentNumber } from '../../utils/formatDocumentNumber';
 
 interface ReturnsManagerProps {
   returnsList: any[];
@@ -8,6 +9,7 @@ interface ReturnsManagerProps {
   onEditReturn: (item: any) => void;
   onDeleteReturn: (id: string) => void;
   onViewOrder?: (orderId: string) => void;
+  isLoading?: boolean;
 }
 
 export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
@@ -15,7 +17,8 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
   searchQuery,
   onEditReturn,
   onDeleteReturn,
-  onViewOrder
+  onViewOrder,
+  isLoading = false,
 }) => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
@@ -186,7 +189,16 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
-              {filtered.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <div className="w-8 h-8 border-3 border-[#E60012] border-t-transparent rounded-full animate-spin" />
+                      <p className="text-xs font-mono font-bold text-slate-600 animate-pulse">Cargando devoluciones...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-slate-400 font-medium">
                     No se encontraron solicitudes de devolución que coincidan con la búsqueda.
@@ -200,8 +212,8 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
                     <tr key={r.id} className="hover:bg-slate-50/70 transition-colors">
                       {/* Column 1: RMA & Order */}
                       <td className="py-4 px-4 font-mono">
-                        <span className="font-extrabold text-slate-900 block">{r.id}</span>
-                        <span className="text-[11px] text-slate-400 font-semibold font-mono">Pedido: {r.orderId}</span>
+                        <span className="font-extrabold text-slate-900 block">{formatDocumentNumber(r.id, r.prefix, r.documentNumber)}</span>
+                        <span className="text-[11px] text-slate-400 font-semibold font-mono">Pedido: {formatDocumentNumber(r.orderId, r.orderPrefix, r.orderDocumentNumber)}</span>
                       </td>
 
                       {/* Column 2: Order Status */}

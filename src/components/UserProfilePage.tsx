@@ -89,12 +89,17 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   >(initialTab);
 
   const [userReturns, setUserReturns] = useState<any[]>([]);
+  const [isLoadingReturns, setIsLoadingReturns] = useState<boolean>(true);
 
   useEffect(() => {
     if (userProfile?.email) {
+      setIsLoadingReturns(true);
       fetchReturns(userProfile.email)
         .then((res) => setUserReturns(res || []))
-        .catch(() => setUserReturns([]));
+        .catch(() => setUserReturns([]))
+        .finally(() => setIsLoadingReturns(false));
+    } else {
+      setIsLoadingReturns(false);
     }
   }, [userProfile?.email]);
 
@@ -722,7 +727,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                 </div>
               </div>
 
-              <ReturnsTable returnsList={userReturns} orders={orders} />
+              <ReturnsTable returnsList={userReturns} orders={orders} isLoading={isLoadingReturns} />
             </div>
           )}
 

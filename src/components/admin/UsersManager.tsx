@@ -9,6 +9,7 @@ interface UsersManagerProps {
   onAddUser: () => void;
   onEditUser: (user: UserProfile) => void;
   onDeleteUser: (id: string) => void;
+  isLoading?: boolean;
 }
 
 export const UsersManager: React.FC<UsersManagerProps> = ({
@@ -16,7 +17,8 @@ export const UsersManager: React.FC<UsersManagerProps> = ({
   searchQuery,
   onAddUser,
   onEditUser,
-  onDeleteUser
+  onDeleteUser,
+  isLoading = false,
 }) => {
   const [roleFilter, setRoleFilter] = useState<'all' | 'customer' | 'admin'>('all');
   const [localSearch, setLocalSearch] = useState('');
@@ -263,14 +265,23 @@ export const UsersManager: React.FC<UsersManagerProps> = ({
                 </tr>
               ))}
 
-              {filteredUsers.length === 0 && (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <div className="w-8 h-8 border-3 border-[#E60012] border-t-transparent rounded-full animate-spin" />
+                      <p className="text-xs font-mono font-bold text-slate-600 animate-pulse">Cargando usuarios...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredUsers.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400 font-medium">
                     <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                     <p className="text-xs font-mono font-bold">No se encontraron usuarios con los filtros aplicados</p>
                   </td>
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </table>
         </div>

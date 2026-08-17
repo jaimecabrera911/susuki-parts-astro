@@ -12,6 +12,7 @@ interface PartsManagerProps {
   onDuplicatePart: (part: SuzukiPart) => void;
   onToggleAvailability: (id: string) => void;
   onDeletePart: (id: string) => void;
+  isLoading?: boolean;
 }
 
 const CATEGORIES: { id: string; label: string }[] = [
@@ -32,7 +33,8 @@ export const PartsManager: React.FC<PartsManagerProps> = ({
   onEditPart,
   onDuplicatePart,
   onToggleAvailability,
-  onDeletePart
+  onDeletePart,
+  isLoading = false,
 }) => {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
   const [selectedAvailabilityFilter, setSelectedAvailabilityFilter] = useState<string>('all');
@@ -247,7 +249,16 @@ export const PartsManager: React.FC<PartsManagerProps> = ({
                 );
               })}
 
-              {filteredParts.length === 0 && (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <div className="w-8 h-8 border-3 border-[#E60012] border-t-transparent rounded-full animate-spin" />
+                      <p className="text-xs font-mono font-bold text-slate-600 animate-pulse">Cargando repuestos...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredParts.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-500">
                     <Package className="w-8 h-8 mx-auto mb-2 text-slate-300" />
@@ -255,7 +266,7 @@ export const PartsManager: React.FC<PartsManagerProps> = ({
                     <p className="text-xs text-slate-400 mt-0.5">Intenta cambiando los términos de búsqueda o filtros.</p>
                   </td>
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </table>
         </div>

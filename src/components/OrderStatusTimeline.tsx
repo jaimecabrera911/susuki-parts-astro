@@ -24,12 +24,10 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
   compact = false,
 }) => {
   const {
-    id,
     status = "Pendiente de pago",
     trackingNumber,
     shippingCarrier,
     date,
-    guaranteeCode,
   } = order;
 
   const statusLower = status.toLowerCase();
@@ -75,37 +73,43 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
     currentStepIndex = 0;
   }
 
+  // Tracking details are only active once the order is in transit or completed
+  const isInTransit = currentStepIndex >= 3;
+  const trackingLink = isInTransit ? getCarrierTrackingUrl(order) : null;
+
   const steps = [
     {
       title: "Pedido Registrado",
-      subtitle: "Orden enviada",
+      subtitle: "Orden procesada",
       description: "Recibido en el sistema de repuestos OEM.",
       icon: Clock,
     },
     {
       title: "Pago Confirmado",
       subtitle: "Verificación bancaria",
-      description: "Comprobante verificado por contabilidad.",
+      description: "Pago validado correctamente.",
       icon: CreditCard,
     },
     {
       title: "En Preparación",
       subtitle: "Despacho bodega",
-      description: "Inspección técnica de número de parte y empaque.",
+      description: "Inspección técnica y empaque.",
       icon: Package,
     },
     {
-      title: "Despachado / Tránsito",
-      subtitle: shippingCarrier || "Transportadora",
-      description: trackingNumber
-        ? `Nº Guía: ${trackingNumber} (${shippingCarrier || "Envío a domicilio"})`
-        : `En camino con ${shippingCarrier || "transportadora asignada"}.`,
+      title: "Despachado",
+      subtitle: isInTransit ? (shippingCarrier || "Transportadora") : "Pendiente de despacho",
+      description: isInTransit
+        ? trackingNumber
+          ? `Nº Guía: ${trackingNumber}`
+          : `En ruta con ${shippingCarrier || "transportadora"}`
+        : "Se asignará transportadora y guía al despachar desde bodega.",
       icon: Truck,
     },
     {
       title: "Entregado",
-      subtitle: "Garantía Activa",
-      description: "Entregado satisfactoriamente al destinatario.",
+      subtitle: "Entrega confirmada",
+      description: "Recibido a satisfacción por el cliente.",
       icon: ShieldCheck,
     },
   ];
@@ -114,18 +118,18 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
     return (
       <div
         id="order-status-timeline"
-        className="bg-red-50 border border-red-200 rounded-2xl p-5 text-red-900 shadow-xs"
+        className="bg-red-50/80 border border-red-200/80 rounded-2xl p-5 text-red-900 shadow-xs"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center font-bold shrink-0">
-            <AlertCircle className="w-6 h-6" />
+          <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center font-bold shrink-0 shadow-sm">
+            <AlertCircle className="w-5 h-5" />
           </div>
           <div>
-            <h4 className="font-extrabold text-sm uppercase font-display text-red-950">
+            <h4 className="font-extrabold text-sm uppercase tracking-wide font-display text-red-950">
               PEDIDO CANCELADO O ANULADO
             </h4>
-            <p className="text-xs text-red-800 mt-0.5 font-sans">
-              La orden <strong>{id}</strong> ha sido cancelada. Si necesitas asistencia, contáctanos vía WhatsApp.
+            <p className="text-xs text-red-700 mt-0.5 font-sans">
+              Esta orden fue cancelada. Si tienes dudas o inquietudes, contáctanos por soporte.
             </p>
           </div>
         </div>
@@ -133,58 +137,50 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
     );
   }
 
-  const trackingLink = getCarrierTrackingUrl(order);
-
   return (
     <div
       id="order-status-timeline"
-      className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm space-y-5 relative overflow-hidden"
+      className="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-sm space-y-6 relative overflow-hidden"
     >
-      {/* Header Info */}
+      {/* Header Info - Clean & Distinctive */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-3 relative z-10">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono font-black uppercase text-[#E60012] tracking-wider bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-md">
-              Seguimiento de Pedido
-            </span>
-            <span className="text-slate-300">•</span>
-            <span className="font-mono text-xs text-slate-900 font-extrabold">
-              {id}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#E60012] animate-pulse shrink-0" />
+            <h3 className="text-sm font-black font-display text-slate-900 tracking-tight">
+              Progreso del Envío
+            </h3>
+            <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full font-sans border border-slate-200/60">
+              Estado: <strong className="text-slate-800">{status}</strong>
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1 font-sans">
             Fecha de emisión:{" "}
-            <strong className="text-slate-800">{formatOrderDate(date)}</strong>
+            <span className="text-slate-700 font-medium">{formatOrderDate(date)}</span>
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {trackingLink && (
+        {isInTransit && trackingLink && (
+          <div className="flex items-center gap-2">
             <a
               href={trackingLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[11px] font-mono text-white bg-[#E60012] hover:bg-red-700 px-3 py-1 rounded-lg border border-red-300 font-bold flex items-center gap-1.5 transition-all shadow-xs"
+              className="text-[11px] font-mono text-white bg-[#E60012] hover:bg-red-700 px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all shadow-xs hover:shadow-sm active:scale-98"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               <span>Rastrear Envío ↗</span>
             </a>
-          )}
-          {guaranteeCode && (
-            <span className="text-[10px] font-mono font-extrabold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Certificado: {guaranteeCode}</span>
-            </span>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Timeline Steps (Desktop Grid & Mobile List) */}
-      <div className="relative z-10 py-2">
+      {/* Timeline Steps (Desktop Horizontal & Mobile Vertical) */}
+      <div className="relative z-10 py-1">
         {/* Horizontal Connector Line for Desktop */}
-        <div className="hidden md:block absolute top-[28px] left-[7%] right-[7%] h-1 bg-slate-200 rounded-full -z-0">
+        <div className="hidden md:block absolute top-[24px] left-[8%] right-[8%] h-1 bg-slate-100 rounded-full -z-0">
           <div
-            className="h-full bg-gradient-to-r from-[#E60012] via-amber-500 to-emerald-500 rounded-full transition-all duration-500"
+            className="h-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-[#E60012] rounded-full transition-all duration-500 shadow-2xs"
             style={{
               width: `${(currentStepIndex / (steps.length - 1)) * 100}%`,
             }}
@@ -192,39 +188,36 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
         </div>
 
         {/* Steps Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 md:gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 md:gap-3">
           {steps.map((step, idx) => {
             const Icon = step.icon;
             const isDone = idx < currentStepIndex;
             const isCurrent = idx === currentStepIndex;
 
-            let circleStyle = "bg-slate-100 text-slate-400 border-slate-300";
-            let textColor = "text-slate-400";
-            let titleColor = "text-slate-500";
+            let circleStyle = "bg-white text-slate-300 border-slate-200 shadow-2xs";
+            let titleColor = "text-slate-400 font-medium";
 
             if (isDone) {
               circleStyle =
-                "bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20";
-              textColor = "text-emerald-700";
-              titleColor = "text-slate-900 font-extrabold";
+                "bg-emerald-500 text-white border-emerald-500 shadow-sm shadow-emerald-500/20";
+              titleColor = "text-slate-800 font-bold";
             } else if (isCurrent) {
               circleStyle =
-                "bg-[#E60012] text-white border-[#E60012] ring-4 ring-[#E60012]/20 shadow-md shadow-red-500/20 animate-pulse";
-              textColor = "text-[#E60012]";
+                "bg-[#E60012] text-white border-[#E60012] ring-4 ring-red-100 shadow-md shadow-red-500/25";
               titleColor = "text-[#E60012] font-black";
             }
 
             return (
               <div
                 key={idx}
-                className="relative flex md:flex-col items-start md:items-center gap-3.5 md:gap-2.5 md:text-center group"
+                className="relative flex md:flex-col items-start md:items-center gap-3.5 md:gap-3 md:text-center group"
               >
                 {/* Step Circle Icon */}
                 <div
                   className={`w-12 h-12 rounded-2xl border-2 flex items-center justify-center shrink-0 z-10 transition-all duration-300 ${circleStyle}`}
                 >
                   {isDone ? (
-                    <CheckCircle2 className="w-6 h-6" />
+                    <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
                   ) : (
                     <Icon className="w-5 h-5" />
                   )}
@@ -233,7 +226,7 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
                 {/* Vertical Line for Mobile Layout */}
                 {idx < steps.length - 1 && (
                   <div
-                    className={`md:hidden absolute left-6 top-12 bottom-[-24px] w-0.5 ${
+                    className={`md:hidden absolute left-[23px] top-12 bottom-[-24px] w-0.5 ${
                       isDone ? "bg-emerald-500" : "bg-slate-200"
                     }`}
                   />
@@ -243,15 +236,15 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 md:justify-center">
                     <span
-                      className={`text-[10px] font-mono uppercase font-extrabold px-2 py-0.5 rounded-md ${
+                      className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
                         isCurrent
-                          ? "bg-red-50 text-[#E60012] border border-red-200"
+                          ? "bg-red-50 text-[#E60012] border border-red-200/80"
                           : isDone
-                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                            : "bg-slate-100 text-slate-500 border border-slate-200"
+                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200/60"
+                            : "bg-slate-100 text-slate-400 border border-slate-200/50"
                       }`}
                     >
-                      Paso {idx + 1}
+                      {isDone ? "Completado" : isCurrent ? "Paso Actual" : `Paso ${idx + 1}`}
                     </span>
                   </div>
 
@@ -261,7 +254,7 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
                     {step.title}
                   </h5>
 
-                  <p className="text-[11px] font-mono text-slate-500 font-semibold truncate mt-0.5">
+                  <p className="text-[11px] font-mono text-slate-500 font-medium truncate mt-0.5">
                     {step.subtitle}
                   </p>
 
@@ -277,20 +270,24 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
         </div>
       </div>
 
-      {/* Dispatch Extra Info Footer */}
-      {(trackingNumber || shippingCarrier) && (
-        <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs relative z-10">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-red-100 text-[#E60012] flex items-center justify-center font-bold shrink-0 border border-red-200">
+      {/* Dispatch Extra Info Footer - STRICTLY ONLY DISPLAYED WHEN ORDER IS IN TRANSIT OR DELIVERED */}
+      {isInTransit && (shippingCarrier || trackingNumber) && (
+        <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-200/70 flex flex-wrap items-center justify-between gap-3 text-xs relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-red-50 text-[#E60012] flex items-center justify-center font-bold shrink-0 border border-red-100 shadow-2xs">
               <Truck className="w-4 h-4 text-[#E60012]" />
             </div>
             <div>
-              <span className="text-[10px] font-mono font-extrabold uppercase text-slate-500 block">
+              <span className="text-[10px] font-mono font-bold uppercase text-slate-400 block tracking-wider">
                 INFORMACIÓN DE DESPACHO Y GUÍA
               </span>
-              <span className="font-extrabold text-slate-900 text-xs">
+              <span className="font-extrabold text-slate-900 text-xs font-sans">
                 {shippingCarrier || "Transportadora"}
-                {trackingNumber && `: ${trackingNumber}`}
+                {trackingNumber && (
+                  <span className="font-mono text-slate-700 font-bold ml-1.5">
+                    (Guía: {trackingNumber})
+                  </span>
+                )}
               </span>
             </div>
           </div>
@@ -300,15 +297,15 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
               href={trackingLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[11px] font-mono text-white bg-[#E60012] hover:bg-red-700 px-3 py-1.5 rounded-lg border border-red-300 font-extrabold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+              className="text-[11px] font-mono text-white bg-[#E60012] hover:bg-red-700 px-3.5 py-1.5 rounded-xl border border-red-300 font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              <span>Rastrear Envío en Vivo ↗</span>
+              <span>Rastrear Envío ↗</span>
             </a>
           ) : (
             trackingNumber && (
-              <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200 font-bold flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-emerald-600" /> En tránsito nacional
+              <span className="text-[11px] font-mono text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 font-bold flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5 text-emerald-600" /> En tránsito
               </span>
             )
           )}
@@ -317,3 +314,5 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
     </div>
   );
 };
+
+

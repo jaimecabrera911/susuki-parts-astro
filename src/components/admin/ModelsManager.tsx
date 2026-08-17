@@ -15,6 +15,7 @@ interface ModelsManagerProps {
   onDuplicateModel: (model: SuzukiModel) => void;
   onToggleActive: (id: string) => void;
   onDeleteModel: (id: string) => void;
+  isLoading?: boolean;
 }
 
 export const ModelsManager: React.FC<ModelsManagerProps> = ({
@@ -28,7 +29,8 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   onManageSchematics,
   onDuplicateModel,
   onToggleActive,
-  onDeleteModel
+  onDeleteModel,
+  isLoading = false,
 }) => {
   const [selectedBrandFilter, setSelectedBrandFilter] = useState<string>('all');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
@@ -299,7 +301,16 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                 );
               })}
 
-              {filteredModels.length === 0 && (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <div className="w-8 h-8 border-3 border-[#E60012] border-t-transparent rounded-full animate-spin" />
+                      <p className="text-xs font-mono font-bold text-slate-600 animate-pulse">Cargando modelos...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredModels.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-500">
                     <FaMotorcycle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
@@ -307,7 +318,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
                     <p className="text-xs text-slate-400 mt-0.5">Filtra por marca o categoría.</p>
                   </td>
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </table>
         </div>
