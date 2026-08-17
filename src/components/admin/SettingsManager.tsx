@@ -26,7 +26,6 @@ import {
   ChevronUp,
   ChevronDown,
   Sparkles,
-  Info,
 } from "lucide-react";
 import { FaFacebookF, FaInstagram, FaYoutube } from "react-icons/fa";
 import type {
@@ -35,7 +34,6 @@ import type {
   FooterLink,
   CityRecord,
   SocialLinks,
-  TechnicalSpecTemplate,
 } from "../../types";
 import {
   GET_SETTINGS,

@@ -298,12 +298,18 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
           </div>
 
           {/* Hover CTA overlay */}
-          <div
+          <button
+            type="button"
             onClick={openSchematics}
-            className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 bg-[#E60012] text-white text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-1.5 rounded-lg shadow-md opacity-90 group-hover:opacity-100 transition-opacity cursor-pointer z-20"
+            title="Abrir plano"
+            aria-label="Abrir plano"
+            className="group/btn absolute bottom-3 right-3 inline-flex items-center gap-1.5 bg-[#E60012] hover:bg-red-700 text-white text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-1.5 rounded-lg shadow-md opacity-90 group-hover:opacity-100 transition-all cursor-pointer z-20"
           >
             <BiLinkExternal className="w-3.5 h-3.5" aria-hidden="true" />
-          </div>
+            <span className="pointer-events-none absolute right-0 bottom-full mb-2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-bold text-white shadow-md opacity-0 group-hover/btn:opacity-100 transition-opacity">
+              Abrir plano
+            </span>
+          </button>
         </div>
       </div>
     );
