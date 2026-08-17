@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Truck, Plus, Search, Edit2, Trash2, CheckCircle2, XCircle, 
-  Clock, DollarSign, Calendar, RefreshCw, Building2, ShieldCheck, MapPin 
+  Clock, DollarSign, Calendar, RefreshCw, Building2, ShieldCheck, MapPin, Eye 
 } from 'lucide-react';
 import type { ShippingMethod, ShippingZone } from '../../types';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { ShippingModal } from './ShippingModal';
 import { ZoneModal } from './ZoneModal';
+import { ShippingViewModal } from './ShippingViewModal';
 import { 
   fetchShippingMethods, saveShippingMethodApi, deleteShippingMethodApi,
   fetchShippingZones, saveShippingZoneApi, deleteShippingZoneApi
@@ -37,6 +38,10 @@ export const ShippingManager: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMethod, setEditingMethod] = useState<ShippingMethod | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // View Shipping Method Modal state
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [viewingMethod, setViewingMethod] = useState<ShippingMethod | null>(null);
 
   // Zone Modal state
   const [isZoneModalOpen, setIsZoneModalOpen] = useState(false);
@@ -80,6 +85,11 @@ export const ShippingManager: React.FC = () => {
   const handleOpenEditModal = (method: ShippingMethod) => {
     setEditingMethod(method);
     setIsModalOpen(true);
+  };
+
+  const handleOpenViewModal = (method: ShippingMethod) => {
+    setViewingMethod(method);
+    setIsViewModalOpen(true);
   };
 
   const handleSaveMethod = async (methodData: Partial<ShippingMethod>) => {
@@ -309,6 +319,8 @@ export const ShippingManager: React.FC = () => {
                   border: 'border-slate-200'
                 };
 
+                const customRatesCount = method.zoneRates?.length || 0;
+
                 return (
                   <div 
                     key={method.id} 
@@ -319,21 +331,16 @@ export const ShippingManager: React.FC = () => {
                     }`}
                   >
                     <div>
-                      {/* Card Header: Name + Active Toggle */}
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <div>
-                          <span className={`inline-block px-2.5 py-0.5 text-[10px] font-mono font-extrabold uppercase rounded-lg border mb-1.5 ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}>
-                            {method.carrier}
-                          </span>
-                          <h3 className="text-sm font-black text-slate-900 leading-tight">
-                            {method.name}
-                          </h3>
-                        </div>
+                      {/* Card Header: Carrier + Active Status Toggle */}
+                      <div className="flex items-start justify-between gap-3 mb-2.5">
+                        <span className={`inline-block px-2.5 py-0.5 text-[10px] font-mono font-extrabold uppercase rounded-lg border ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}>
+                          {method.carrier}
+                        </span>
 
                         <button
                           onClick={() => handleToggleActive(method)}
                           title={method.active ? 'Desactivar opción' : 'Activar opción'}
-                          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                          className={`p-1 rounded-lg transition-colors cursor-pointer ${
                             method.active
                               ? 'text-[#059669] hover:bg-emerald-50'
                               : 'text-slate-400 hover:bg-slate-100'
@@ -343,111 +350,106 @@ export const ShippingManager: React.FC = () => {
                         </button>
                       </div>
 
-                      {/* Description */}
-                      {method.description && (
-                        <p className="text-xs text-slate-600 mb-4 line-clamp-2 leading-relaxed">
+                      {/* Title */}
+                      <h3 className="text-sm font-black text-slate-900 font-display leading-tight mb-1.5 line-clamp-1">
+                        {method.name}
+                      </h3>
+
+                      {/* Description / Summary */}
+                      {method.description ? (
+                        <p className="text-xs text-slate-500 line-clamp-1 leading-relaxed mb-3.5">
                           {method.description}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-slate-400 italic mb-3.5">
+                          Sin descripción adicional
                         </p>
                       )}
 
-                      {/* Info Meta Grid */}
-                      <div className="space-y-2 py-3 border-y border-slate-100 text-xs">
-                        <div className="flex items-center justify-between text-slate-700 font-mono">
-                          <span className="text-slate-500 font-sans font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-                            <DollarSign className="w-3.5 h-3.5 text-[#E60012]" /> Flete Base:
+                      {/* Compact Key Metrics */}
+                      <div className="grid grid-cols-2 gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100 mb-2.5">
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-sans">
+                            Flete Base
                           </span>
-                          <span className="font-extrabold text-slate-900">
+                          <span className="font-mono text-xs font-black text-slate-900 truncate block">
                             {method.price === 0 ? (
-                              <span className="text-[#059669] font-black">¡GRATIS! ($0 COP)</span>
+                              <span className="text-[#059669]">¡Gratis!</span>
                             ) : (
                               formatCurrency(method.price)
                             )}
                           </span>
                         </div>
 
-                        {/* Zone Rates breakdown preview */}
-                        {method.zoneRates && method.zoneRates.length > 0 && (
-                          <div className="bg-slate-50 p-2 rounded-xl border border-slate-200/80 space-y-1 text-[11px]">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-sans">TARIFAS POR ZONA:</span>
-                            {method.zoneRates.map(zr => {
-                              const zoneObj = zones.find(z => z.id === zr.zoneId);
-                              return (
-                                <div key={zr.zoneId} className="flex justify-between font-mono text-slate-700">
-                                  <span className="truncate text-slate-500">{zoneObj?.name || zr.zoneId}:</span>
-                                  <span className="font-bold text-slate-900">{formatCurrency(zr.price)}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-between text-slate-700 font-mono">
-                          <span className="text-slate-500 font-sans font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5 text-amber-600" /> Tiempo Entrega:
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-sans">
+                            Entrega
                           </span>
-                          <span className="font-extrabold text-slate-900">
-                            {method.estimatedDays === 0 ? 'Entrega Inmediata' : `${method.estimatedDays} días hábiles`}
+                          <span className="font-mono text-xs font-bold text-slate-700 flex items-center gap-1 truncate">
+                            <Clock className="w-3 h-3 text-amber-600 shrink-0" />
+                            <span>{method.estimatedDays === 0 ? 'Inmediata' : `${method.estimatedDays} días`}</span>
                           </span>
                         </div>
+                      </div>
 
-                        {/* Dispatch Days */}
-                        <div className="flex items-center justify-between text-slate-700 font-mono">
-                          <span className="text-slate-500 font-sans font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-blue-600" /> Despachos:
-                          </span>
-                          <div className="flex gap-1">
-                            {(method.dispatchDays || ['1','2','3','4','5']).map(d => (
-                              <span key={d} className="px-1.5 py-0.5 text-[9px] font-mono font-extrabold bg-slate-100 rounded text-slate-700 border border-slate-200">
-                                {DAY_NAMES[d] || d}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Free threshold if set */}
-                        {method.freeShippingThreshold && (
-                          <div className="flex items-center justify-between text-[#059669] text-[11px] font-mono font-extrabold pt-1">
-                            <span className="font-sans font-bold text-slate-500 uppercase">Gratis en compras &gt;</span>
-                            <span>{formatCurrency(method.freeShippingThreshold)}</span>
-                          </div>
-                        )}
+                      {/* Zone Coverage Indicator */}
+                      <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 px-1 py-0.5">
+                        <span className="flex items-center gap-1 font-sans">
+                          <MapPin className="w-3.5 h-3.5 text-[#E60012]" />
+                          <span>Tarifas por zona:</span>
+                        </span>
+                        <span className="font-bold text-slate-800">
+                          {customRatesCount > 0 ? `${customRatesCount} personalizadas` : 'Tarifa fija'}
+                        </span>
                       </div>
                     </div>
 
                     {/* Card Actions */}
-                    <div className="flex items-center justify-end gap-2 pt-4 mt-2">
+                    <div className="flex items-center justify-between gap-2 pt-3 mt-3 border-t border-slate-100">
                       <button
-                        onClick={() => handleOpenEditModal(method)}
-                        className="px-3 py-1.5 text-xs font-extrabold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                        onClick={() => handleOpenViewModal(method)}
+                        className="px-3 py-1.5 text-xs font-bold text-[#0A3088] hover:bg-blue-50 bg-blue-50/50 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer border border-blue-100"
+                        title="Ver detalle completo"
                       >
-                        <Edit2 className="w-3.5 h-3.5" />
-                        <span>Editar</span>
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Detalle</span>
                       </button>
 
-                      {deleteConfirmId === method.id ? (
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleDeleteMethod(method.id)}
-                            className="px-2.5 py-1 text-xs font-black text-white bg-rose-600 hover:bg-rose-700 rounded-lg cursor-pointer"
-                          >
-                            Confirmar
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirmId(null)}
-                            className="px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 rounded-lg cursor-pointer"
-                          >
-                            Cancelar
-                          </button>
-                        </div>
-                      ) : (
+                      <div className="flex items-center gap-1">
                         <button
-                          onClick={() => setDeleteConfirmId(method.id)}
-                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                          title="Eliminar método"
+                          onClick={() => handleOpenEditModal(method)}
+                          className="px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                          title="Editar método"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>Editar</span>
                         </button>
-                      )}
+
+                        {deleteConfirmId === method.id ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleDeleteMethod(method.id)}
+                              className="px-2 py-1 text-[11px] font-black text-white bg-rose-600 hover:bg-rose-700 rounded-lg cursor-pointer"
+                            >
+                              Sí
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirmId(null)}
+                              className="px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-100 rounded-lg cursor-pointer"
+                            >
+                              No
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setDeleteConfirmId(method.id)}
+                            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            title="Eliminar método"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                   </div>
@@ -548,6 +550,18 @@ export const ShippingManager: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* View Shipping Method Modal */}
+      <ShippingViewModal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        method={viewingMethod}
+        zones={zones}
+        onEdit={(method) => {
+          setIsViewModalOpen(false);
+          handleOpenEditModal(method);
+        }}
+      />
 
       {/* Shipping Method Modal */}
       <ShippingModal
