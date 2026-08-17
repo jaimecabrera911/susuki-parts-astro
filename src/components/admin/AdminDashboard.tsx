@@ -170,6 +170,7 @@ export const AdminDashboard: React.FC = () => {
 
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [orderToEdit, setOrderToEdit] = useState<Order | null>(null);
+  const [orderModalMode, setOrderModalMode] = useState<'view' | 'edit'>('edit');
 
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const [returnToEdit, setReturnToEdit] = useState<any | null>(null);
@@ -939,10 +940,12 @@ export const AdminDashboard: React.FC = () => {
               isLoading={isLoadingData}
               onEditOrder={(ord) => {
                 setOrderToEdit(ord);
+                setOrderModalMode('edit');
                 setIsOrderModalOpen(true);
               }}
               onViewOrder={(ord) => {
                 setOrderToEdit(ord);
+                setOrderModalMode('view');
                 setIsOrderModalOpen(true);
               }}
             />
@@ -965,6 +968,7 @@ export const AdminDashboard: React.FC = () => {
                 } else {
                   setOrderToEdit({ id: orderId, date: new Date().toISOString(), customerName: 'Cliente', email: '', phone: '', documentId: '', city: '', shippingAddress: '', postalCode: '', items: [], totalPrice: 0, guaranteeCode: '', paymentMethod: 'transferencia', status: 'Entregado' } as any);
                 }
+                setOrderModalMode('view');
                 setIsOrderModalOpen(true);
               }}
             />
@@ -1121,6 +1125,7 @@ export const AdminDashboard: React.FC = () => {
         isOpen={isOrderModalOpen}
         onClose={() => setIsOrderModalOpen(false)}
         order={orderToEdit}
+        mode={orderModalMode}
         onSaveOrder={handleSaveOrder}
       />
 

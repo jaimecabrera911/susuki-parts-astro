@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ShoppingCart, User, MapPin, Truck, ShieldCheck, CheckCircle2, Clock, Package, AlertCircle, FileText, ExternalLink, Lock, Globe, Send, MessageSquare } from 'lucide-react';
+import { X, ShoppingCart, User, MapPin, Truck, ShieldCheck, CheckCircle2, Clock, Package, AlertCircle, FileText, ExternalLink, Lock, Globe, Send, MessageSquare, Eye, Edit } from 'lucide-react';
 import type { Order, OrderStatus, OrderMessage } from '../../types';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDocumentNumber } from '../../utils/formatDocumentNumber';
@@ -14,6 +14,7 @@ interface OrderModalProps {
   onClose: () => void;
   order: Order | null;
   onSaveOrder: (updatedOrder: Order) => void;
+  mode?: 'view' | 'edit';
 }
 
 interface StatusOption {
@@ -36,9 +37,16 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   isOpen,
   onClose,
   order,
-  onSaveOrder
+  onSaveOrder,
+  mode = 'edit',
 }) => {
   if (!isOpen || !order) return null;
+
+  const [currentMode, setCurrentMode] = useState<'view' | 'edit'>(mode);
+
+  useEffect(() => {
+    if (mode) setCurrentMode(mode);
+  }, [mode, order]);
 
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [carrierOptions, setCarrierOptions] = useState<string[]>([]);
@@ -168,23 +176,41 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-xl font-black text-slate-900 font-display truncate">
-                  Pedido {formatDocumentNumber(order.id, order.prefix, order.documentNumber)}
+                  {currentMode === 'view' ? 'Detalle del Pedido' : 'Editar Pedido'} {formatDocumentNumber(order.id, order.prefix, order.documentNumber)}
                 </h2>
                 <span className={`text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${getStatusTheme(status)}`}>
                   {status}
                 </span>
+                {currentMode === 'view' && (
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
+                    <Eye className="w-3 h-3 text-emerald-600" /> Solo Lectura
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500 font-sans mt-0.5">
                 Registrado el <span className="font-semibold text-slate-700">{formatOrderDate(order.date)}</span>
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2.5 rounded-2xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {currentMode === 'view' && (
+              <button
+                type="button"
+                onClick={() => setCurrentMode('edit')}
+                className="px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#0A3088] text-xs font-bold font-mono flex items-center gap-1.5 border border-blue-200 transition-colors shadow-2xs"
+                title="Cambiar a modo edición"
+              >
+                <Edit className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Editar Pedido</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2.5 rounded-2xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content Body */}
@@ -309,7 +335,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 <Truck className="w-4 h-4 text-[#0A3088]" />
                 <span>Gestión de Estado & Logística de Despacho</span>
               </span>
-              {!canManageShipping && (
+              {currentMode === 'edit' && !canManageShipping && (
                 <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1.5">
                   <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
                   Transporte habilitado solo en tránsito / despachado
@@ -317,126 +343,171 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase mb-1">
-                  Estado del Pedido *
-                </label>
-                <select
-                  value={status}
-                  onChange={(e) => {
-                    const newStatus = e.target.value as OrderStatus;
-                    setStatus(newStatus);
-                    const isNewTransit = Boolean(
-                      ['Despachado', 'En tránsito', 'Entregado'].includes(newStatus) ||
-                      newStatus.toLowerCase().includes('tránsito') ||
-                      newStatus.toLowerCase().includes('transito') ||
-                      newStatus.toLowerCase().includes('despachado') ||
-                      newStatus.toLowerCase().includes('entregado')
-                    );
-                    if (isNewTransit && !shippingCarrier && (defaultCarrier || carrierOptions[0])) {
-                      setShippingCarrier(defaultCarrier || carrierOptions[0]);
-                    }
-                  }}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
-                >
-                  {statusOptions.length === 0 && (
-                    <option value="" disabled>Cargando estados...</option>
-                  )}
-                  {statusOptions.map(st => (
-                    <option key={st.id} value={st.name}>{st.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase mb-1">
-                  Empresa de Transportes {canManageShipping ? '*' : ''}
-                </label>
-                <select
-                  value={shippingCarrier}
-                  onChange={(e) => setShippingCarrier(e.target.value)}
-                  disabled={!canManageShipping}
-                  className={`w-full border rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none transition-all ${
-                    canManageShipping
-                      ? "bg-white border-slate-200 focus:border-[#E60012]"
-                      : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
-                  }`}
-                >
-                  <option value="">Seleccionar transportadora...</option>
-                  {carrierOptions.map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase mb-1">
-                  Número de Guía de Transporte {canManageShipping ? '*' : ''}
-                </label>
-                <input
-                  type="text"
-                  value={trackingNumber}
-                  onChange={(e) => setTrackingNumber(e.target.value)}
-                  disabled={!canManageShipping}
-                  placeholder={canManageShipping ? "Ej. SE789456123CO" : "Habilitado en tránsito"}
-                  className={`w-full border rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none transition-all ${
-                    canManageShipping
-                      ? "bg-white border-slate-200 focus:border-[#E60012]"
-                      : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
-                  }`}
-                />
-              </div>
-
-              <div className="sm:col-span-3">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase">
-                    Enlace de Seguimiento de la Transportadora (Opcional)
-                  </label>
-                  {canManageShipping && getCarrierTrackingUrl({ shippingCarrier, trackingNumber, trackingUrl }) && (
-                    <a
-                      href={getCarrierTrackingUrl({ shippingCarrier, trackingNumber, trackingUrl })}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] font-mono font-bold text-[#E60012] hover:underline flex items-center gap-1"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Probar Enlace de Rastreo</span>
-                    </a>
-                  )}
+            {currentMode === 'view' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+                  <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-1">Estado Actual</span>
+                  <span className={`inline-block text-xs font-mono font-bold px-2.5 py-1 rounded-full border ${getStatusTheme(order.status)}`}>
+                    {order.status}
+                  </span>
                 </div>
-                <input
-                  type="url"
-                  value={trackingUrl}
-                  onChange={(e) => setTrackingUrl(e.target.value)}
-                  disabled={!canManageShipping}
-                  placeholder={canManageShipping ? "https://www.servientrega.com/wps/portal/rastreo-de-envios?guia=..." : "Habilitado en tránsito"}
-                  className={`w-full border rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none transition-all ${
-                    canManageShipping
-                      ? "bg-white border-slate-200 focus:border-[#E60012]"
-                      : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
-                  }`}
-                />
-                <p className="text-[10px] text-slate-500 mt-1 font-sans">
-                  {canManageShipping
-                    ? "Si se deja en blanco, el sistema generará automáticamente la URL oficial de rastreo según la transportadora seleccionada."
-                    : "Los campos de guía y transportadora se activan únicamente cuando el pedido se encuentre en estado 'En tránsito', 'Despachado' o 'Entregado'."}
-                </p>
-              </div>
 
-              <div className="sm:col-span-3">
-                <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase mb-1">
-                  Notas de Despacho & Observaciones Internas
-                </label>
-                <textarea
-                  rows={2}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Añade notas sobre el empaque, guía de envío o soporte de pago..."
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#E60012] resize-none"
-                />
+                <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+                  <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-1">Empresa de Transporte</span>
+                  <span className="text-xs font-bold text-slate-900 block font-mono">
+                    {isOrderDispatched && order.shippingCarrier ? order.shippingCarrier : (isOrderDispatched ? 'Sin asignar' : 'Pendiente de despacho')}
+                  </span>
+                </div>
+
+                <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+                  <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-1">Número de Guía</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono font-bold text-blue-700 block">
+                      {isOrderDispatched && order.trackingNumber ? order.trackingNumber : (isOrderDispatched ? 'Sin guía asignada' : 'Pendiente')}
+                    </span>
+                    {isOrderDispatched && getCarrierTrackingUrl({ shippingCarrier: order.shippingCarrier, trackingNumber: order.trackingNumber, trackingUrl: order.trackingUrl }) && (
+                      <a
+                        href={getCarrierTrackingUrl({ shippingCarrier: order.shippingCarrier, trackingNumber: order.trackingNumber, trackingUrl: order.trackingUrl })}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-mono font-bold text-[#E60012] hover:underline flex items-center gap-1"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        <span>Rastrear</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {order.notes && (
+                  <div className="sm:col-span-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+                    <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block mb-1">Notas de Despacho & Observaciones</span>
+                    <p className="text-xs text-slate-700 font-medium whitespace-pre-wrap">{order.notes}</p>
+                  </div>
+                )}
               </div>
-            </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase mb-1">
+                    Estado del Pedido *
+                  </label>
+                  <select
+                    value={status}
+                    onChange={(e) => {
+                      const newStatus = e.target.value as OrderStatus;
+                      setStatus(newStatus);
+                      const isNewTransit = Boolean(
+                        ['Despachado', 'En tránsito', 'Entregado'].includes(newStatus) ||
+                        newStatus.toLowerCase().includes('tránsito') ||
+                        newStatus.toLowerCase().includes('transito') ||
+                        newStatus.toLowerCase().includes('despachado') ||
+                        newStatus.toLowerCase().includes('entregado')
+                      );
+                      if (isNewTransit && !shippingCarrier && (defaultCarrier || carrierOptions[0])) {
+                        setShippingCarrier(defaultCarrier || carrierOptions[0]);
+                      }
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
+                  >
+                    {statusOptions.length === 0 && (
+                      <option value="" disabled>Cargando estados...</option>
+                    )}
+                    {statusOptions.map(st => (
+                      <option key={st.id} value={st.name}>{st.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase mb-1">
+                    Empresa de Transportes {canManageShipping ? '*' : ''}
+                  </label>
+                  <select
+                    value={shippingCarrier}
+                    onChange={(e) => setShippingCarrier(e.target.value)}
+                    disabled={!canManageShipping}
+                    className={`w-full border rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none transition-all ${
+                      canManageShipping
+                        ? "bg-white border-slate-200 focus:border-[#E60012]"
+                        : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
+                    }`}
+                  >
+                    <option value="">Seleccionar transportadora...</option>
+                    {carrierOptions.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase mb-1">
+                    Número de Guía de Transporte {canManageShipping ? '*' : ''}
+                  </label>
+                  <input
+                    type="text"
+                    value={trackingNumber}
+                    onChange={(e) => setTrackingNumber(e.target.value)}
+                    disabled={!canManageShipping}
+                    placeholder={canManageShipping ? "Ej. SE789456123CO" : "Habilitado en tránsito"}
+                    className={`w-full border rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none transition-all ${
+                      canManageShipping
+                        ? "bg-white border-slate-200 focus:border-[#E60012]"
+                        : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
+                    }`}
+                  />
+                </div>
+
+                <div className="sm:col-span-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase">
+                      Enlace de Seguimiento de la Transportadora (Opcional)
+                    </label>
+                    {canManageShipping && getCarrierTrackingUrl({ shippingCarrier, trackingNumber, trackingUrl }) && (
+                      <a
+                        href={getCarrierTrackingUrl({ shippingCarrier, trackingNumber, trackingUrl })}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-mono font-bold text-[#E60012] hover:underline flex items-center gap-1"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Probar Enlace de Rastreo</span>
+                      </a>
+                    )}
+                  </div>
+                  <input
+                    type="url"
+                    value={trackingUrl}
+                    onChange={(e) => setTrackingUrl(e.target.value)}
+                    disabled={!canManageShipping}
+                    placeholder={canManageShipping ? "https://www.servientrega.com/wps/portal/rastreo-de-envios?guia=..." : "Habilitado en tránsito"}
+                    className={`w-full border rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none transition-all ${
+                      canManageShipping
+                        ? "bg-white border-slate-200 focus:border-[#E60012]"
+                        : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
+                    }`}
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1 font-sans">
+                    {canManageShipping
+                      ? "Si se deja en blanco, el sistema generará automáticamente la URL oficial de rastreo según la transportadora seleccionada."
+                      : "Los campos de guía y transportadora se activan únicamente cuando el pedido se encuentre en estado 'En tránsito', 'Despachado' o 'Entregado'."}
+                  </p>
+                </div>
+
+                <div className="sm:col-span-3">
+                  <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase mb-1">
+                    Notas de Despacho & Observaciones Internas
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Añade notas sobre el empaque, guía de envío o soporte de pago..."
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#E60012] resize-none"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Admin Order Chat & Internal Notes Panel */}
@@ -547,22 +618,42 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 text-xs font-bold transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2.5 rounded-xl bg-[#E60012] hover:bg-[#b5000b] text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-all flex items-center gap-1.5"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Guardar Cambios de Pedido</span>
-            </button>
-          </div>
+          {currentMode === 'view' ? (
+            <div className="flex justify-between items-center pt-2">
+              <button
+                type="button"
+                onClick={() => setCurrentMode('edit')}
+                className="px-5 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#0A3088] font-bold text-xs uppercase tracking-wider border border-blue-200 transition-colors flex items-center gap-1.5 shadow-2xs"
+              >
+                <Edit className="w-4 h-4" />
+                <span>Habilitar Modo Edición</span>
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-all"
+              >
+                Cerrar
+              </button>
+            </div>
+          ) : (
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setCurrentMode('view')}
+                className="px-5 py-2.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 text-xs font-bold transition-colors"
+              >
+                Cancelar Edición
+              </button>
+              <button
+                type="submit"
+                className="px-6 py-2.5 rounded-xl bg-[#E60012] hover:bg-[#b5000b] text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-all flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Guardar Cambios de Pedido</span>
+              </button>
+            </div>
+          )}
 
         </form>
       </div>
