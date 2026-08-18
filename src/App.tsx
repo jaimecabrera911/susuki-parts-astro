@@ -714,7 +714,7 @@ export default function App() {
       <main className="flex-1 pb-20 lg:pb-0">
         {/* Tab 1: Garage & Quick Home View */}
         {activeTab === "garage" && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+          <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
             {/* Primary Motorcycle Compatibility Selector */}
             <CompatibilitySelector
               activeMotorcycle={activeMotorcycle}
@@ -755,7 +755,7 @@ export default function App() {
               </div>
 
               {/* Grid of Parts */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-6">
                 {parts
                   .filter((part) => {
                     if (!activeMotorcycle) return true;
@@ -771,7 +771,7 @@ export default function App() {
                       return true;
                     });
                   })
-                  .slice(0, 4)
+                  .slice(0, 5)
                   .map((part) => (
                     <ProductCard
                       key={part.id}
@@ -793,7 +793,7 @@ export default function App() {
         {activeTab === "catalog" && (
           <div
             id="catalog-products-section"
-            className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6"
+            className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-6"
           >
             {/* Catalog Top Header Bar */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs">
@@ -867,7 +867,7 @@ export default function App() {
               {/* Right Products Grid */}
               <div className="flex-1 w-full">
                 {isLoadingData ? (
-                  <ProductCatalogSkeletonGrid count={6} />
+                  <ProductCatalogSkeletonGrid count={8} />
                 ) : filteredParts.length === 0 ? (
                   <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 max-w-lg mx-auto">
                     <ShieldCheck
@@ -890,7 +890,7 @@ export default function App() {
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 min-[1900px]:grid-cols-5 gap-6">
                     {filteredParts.map((part) => (
                       <ProductCard
                         key={part.id}

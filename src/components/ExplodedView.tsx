@@ -223,7 +223,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   // ============ CATALOG MODE ============
   if (viewMode === 'catalog') {
     return (
-      <div id="exploded-view" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div id="exploded-view" className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Page Header */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-6 shadow-xs">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -379,7 +379,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                     </div>
 
                     {/* Diagrams in this section */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
                       {group.diagrams.map(diagram => (
                         <DiagramCard
                           key={diagram.id}
@@ -409,7 +409,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   // ============ DETAIL MODE ============
   if (!currentDiagram) {
     return (
-      <div id="exploded-view" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div id="exploded-view" className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="bg-white border border-slate-200 rounded-2xl p-10 shadow-xs text-center">
           <Info className="w-10 h-10 text-slate-300 mx-auto mb-3" aria-hidden="true" />
           <h2 className="text-lg font-black text-slate-900">Sin diagramas disponibles</h2>
@@ -420,7 +420,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   }
 
   return (
-    <div id="exploded-view" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div id="exploded-view" className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Breadcrumb / Back Bar */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 mb-6 shadow-xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">

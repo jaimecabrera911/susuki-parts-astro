@@ -874,7 +874,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
   // MAIN CHECKOUT FORM & DETAIL PROCESS
   return (
-    <div id="checkout-page" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div id="checkout-page" className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       {/* Page Header */}
       <div className="mb-6">
         <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#E60012] uppercase tracking-wider mb-1">

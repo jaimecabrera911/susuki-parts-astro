@@ -76,7 +76,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenTutorial, onOpenContact })
       id="footer"
       className="mt-16 bg-[#0c1016] text-slate-400 border-t-2 border-[#E60012]"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {hasInfo && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
             {/* Brand column */}

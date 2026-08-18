@@ -36,7 +36,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
   }, [favoriteParts, searchTerm]);
 
   return (
-    <div id="favorites-page" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div id="favorites-page" className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       
       {/* Top Header */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs mb-8">
@@ -124,7 +124,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
         </div>
       ) : (
         /* FAVORITES PRODUCT GRID */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 min-[1900px]:grid-cols-5 gap-6">
           {filteredFavorites.map((part) => (
             <ProductCard
               key={part.id}
