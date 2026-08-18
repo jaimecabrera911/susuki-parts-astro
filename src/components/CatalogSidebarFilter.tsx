@@ -84,6 +84,20 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
     price: true,
     availability: true
   });
+  const [expandedParentCategories, setExpandedParentCategories] = useState<Set<string>>(new Set());
+
+  const toggleParentCategory = (catId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setExpandedParentCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(catId)) {
+        next.delete(catId);
+      } else {
+        next.add(catId);
+      }
+      return next;
+    });
+  };
 
   // Handle Escape key and body scroll lock for mobile drawer
   React.useEffect(() => {
@@ -444,36 +458,60 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
             {categories.map((cat) => {
               const count = getCategoryCount(cat.slug);
               const isSelected = selectedCategory === cat.slug;
+              const hasSubcategories = !!(cat.subcategories && cat.subcategories.length > 0);
+              const isChildSelected = hasSubcategories && (cat.subcategories?.some(sub => sub.slug === selectedCategory) ?? false);
+              const isExpanded = expandedParentCategories.has(cat.id) || isChildSelected;
               const IconComp = (LucideIcons as any)[cat.iconName || 'Wrench'] || LucideIcons.Wrench;
 
               return (
                 <div key={cat.id} className="space-y-1">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCategory(cat.slug)}
-                    className={`w-full flex items-center justify-between px-3 py-2 min-h-[36px] rounded-xl text-xs font-bold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] ${
-                      isSelected
-                        ? 'bg-[#E60012] text-white shadow-xs'
-                        : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2 truncate">
-                      <IconComp className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : 'text-slate-500'}`} aria-hidden="true" />
-                      <span className="truncate">{cat.name}</span>
-                    </span>
-                    <span
-                      className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                        isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategory(cat.slug)}
+                      className={`flex-1 flex items-center justify-between px-3 py-2 min-h-[36px] rounded-xl text-xs font-bold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] ${
+                        isSelected
+                          ? 'bg-[#E60012] text-white shadow-xs'
+                          : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
                       }`}
                     >
-                      {count}
-                    </span>
-                  </button>
+                      <span className="flex items-center gap-2 truncate">
+                        <IconComp className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : 'text-slate-500'}`} aria-hidden="true" />
+                        <span className="truncate">{cat.name}</span>
+                      </span>
+                      <span
+                        className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                          isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </button>
 
-                  {/* Subcategorías anidadas */}
-                  {cat.subcategories && cat.subcategories.length > 0 && (
-                    <div className="pl-6 space-y-1 border-l border-slate-100 ml-4">
-                      {cat.subcategories.map((sub) => {
+                    {hasSubcategories && (
+                      <button
+                        type="button"
+                        aria-label={`${isExpanded ? 'Contraer' : 'Expandir'} subcategorías de ${cat.name}`}
+                        onClick={(e) => toggleParentCategory(cat.id, e)}
+                        className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors cursor-pointer shrink-0 ${
+                          isSelected
+                            ? 'text-slate-600 hover:bg-slate-100'
+                            : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        {isExpanded ? (
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Subcategorías anidadas (contraídas por defecto) */}
+                  {hasSubcategories && isExpanded && (
+                    <div className="pl-6 space-y-1 border-l-2 border-slate-200 ml-4 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                      {cat.subcategories?.map((sub) => {
                         const subCount = getCategoryCount(sub.slug);
                         const isSubSelected = selectedCategory === sub.slug;
                         return (
