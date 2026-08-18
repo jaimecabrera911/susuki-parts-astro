@@ -98,7 +98,7 @@ export interface SuzukiPart {
   /** Referencias OEM del repuesto. La primera es la referencia principal (la que usa Suzuki). */
   oemNumbers: string[];
   name: string;
-  category: 'motor' | 'electrico' | 'frenos' | 'transmision' | 'filtros' | 'carroceria';
+  category: string;
   price: number;
   stock: number;
   image: string;

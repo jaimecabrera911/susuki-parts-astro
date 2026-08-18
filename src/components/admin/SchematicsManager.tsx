@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Layers, Plus, Edit, Trash2, Copy, Tag, Crosshair, Image as ImageIcon, Eye } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 import type { ExplodedDiagram, SuzukiModel, SuzukiPart } from '../../types';
-import { AdminPagination } from './AdminPagination';
-import { AdminFilterBar, FilterResetButton } from './AdminFilterBar';
 import { AdminSearchInput } from './AdminSearchInput';
+import { DataTable } from './DataTable';
+import type { DataTableColumn } from './DataTable';
 
 interface SchematicsManagerProps {
   schematics: ExplodedDiagram[];
@@ -19,6 +19,13 @@ interface SchematicsManagerProps {
   isLoading?: boolean;
 }
 
+const getModelIds = (schematic: ExplodedDiagram): string[] =>
+  Array.isArray(schematic.applicableModelIds)
+    ? schematic.applicableModelIds
+    : typeof schematic.applicableModelIds === 'string'
+      ? (JSON.parse(schematic.applicableModelIds || '[]') as string[])
+      : [];
+
 export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
   schematics,
   models,
@@ -31,113 +38,118 @@ export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
   onDeleteSchematic,
   isLoading = false,
 }) => {
-  const [selectedSectionFilter, setSelectedSectionFilter] = useState<string>('all');
-  const [selectedModelFilter, setSelectedModelFilter] = useState<string>('all');
-
   // Local search (independent from the global header search)
   const [localSearch, setLocalSearch] = useState('');
-
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-
-  // Reset to first page whenever filters or search change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, localSearch, selectedSectionFilter, selectedModelFilter]);
-
-  const availableSections = useMemo(() => {
-    const defaults = [
-      'Motor',
-      'Frenos',
-      'Admisión y Combustible',
-      'Transmisión y Kit de Arrastre',
-      'Sistema de Refrigeración',
-      'Chasis y Eléctrico',
-      'Sistema de Escape',
-      'Controles y Pedales',
-      'Tablero e Instrumentos'
-    ];
-    const fromSchematics = schematics.map(s => s.section).filter(Boolean);
-    return Array.from(new Set([...defaults, ...fromSchematics]));
-  }, [schematics]);
 
   const getModelTargetText = (schematic: ExplodedDiagram): string => {
     if (schematic.modelTarget && schematic.modelTarget.trim()) {
       return schematic.modelTarget;
     }
-    const appIds = Array.isArray(schematic.applicableModelIds)
-      ? schematic.applicableModelIds
-      : (typeof schematic.applicableModelIds === 'string'
-          ? JSON.parse(schematic.applicableModelIds || '[]')
-          : []);
-
+    const appIds = getModelIds(schematic);
     if (appIds.length > 0) {
-      const names = appIds.map((id: string) => {
-        const found = models.find(m => m.id === id);
-        return found ? found.name : id;
-      });
-      return names.join(', ');
+      return appIds
+        .map((id: string) => {
+          const found = models.find((m) => m.id === id);
+          return found ? found.name : id;
+        })
+        .join(', ');
     }
-
     return 'Todos los modelos';
   };
 
   const activeQuery = (searchQuery || localSearch).trim().toLowerCase();
 
-  const filteredSchematics = schematics.filter(s => {
-    const targetText = getModelTargetText(s).toLowerCase();
-    const matchesSearch =
-      s.title.toLowerCase().includes(activeQuery) ||
-      s.id.toLowerCase().includes(activeQuery) ||
-      s.category.toLowerCase().includes(activeQuery) ||
-      targetText.includes(activeQuery);
-
-    const matchesSection = selectedSectionFilter === 'all' || s.section === selectedSectionFilter;
-    const appIds = Array.isArray(s.applicableModelIds)
-      ? s.applicableModelIds
-      : (typeof s.applicableModelIds === 'string' ? JSON.parse(s.applicableModelIds || '[]') : []);
-    const matchesModel = selectedModelFilter === 'all' || appIds.includes(selectedModelFilter);
-
-    return matchesSearch && matchesSection && matchesModel;
-  });
-
-  // Pagination calculation
-  const totalPages = Math.ceil(filteredSchematics.length / pageSize) || 1;
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-  const startIndex = (safeCurrentPage - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, filteredSchematics.length);
-  const paginatedSchematics = filteredSchematics.slice(startIndex, endIndex);
-
-  // Dynamic filter options (derived from live data)
-  const sectionOptions = [
-    { value: 'all', label: 'Todas las Secciones' },
-    ...availableSections.map(s => ({ value: s, label: s })),
+  const columns: DataTableColumn<ExplodedDiagram>[] = [
+    {
+      key: 'esquema',
+      label: 'Esquema / Título',
+      minWidth: '250px',
+      sortable: true,
+      sortSelector: (s) => s.title,
+      render: (schematic) => (
+        <div className="flex items-center gap-3.5">
+          <div className="w-14 h-12 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center overflow-hidden p-1 shrink-0 shadow-xs">
+            {schematic.diagramImage ? (
+              <img
+                src={schematic.diagramImage}
+                alt={schematic.title}
+                className="w-full h-full object-contain rounded-lg"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            ) : (
+              <ImageIcon className="w-6 h-6 text-slate-400" />
+            )}
+          </div>
+          <div>
+            <p className="font-extrabold text-slate-900 group-hover:text-[#E60012] transition-colors font-display line-clamp-1">
+              {schematic.title}
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'section',
+      label: 'Sección Técnica',
+      minWidth: '160px',
+      filterable: true,
+      accessor: (s) => s.section || 'General',
+      render: (schematic) => (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold text-slate-700 bg-slate-100 border border-slate-200 font-mono uppercase">
+          <Tag className="w-3 h-3 text-[#0A3088]" />
+          <span>{schematic.section || 'General'}</span>
+        </span>
+      ),
+    },
+    {
+      key: 'model',
+      label: 'Modelo Objetivo',
+      minWidth: '180px',
+      filterable: true,
+      filterOptions: models.map((m) => ({ value: m.id, label: m.name })),
+      filterMatcher: (s, value) => getModelIds(s).includes(value),
+      render: (schematic) => (
+        <div className="flex items-center gap-2 font-sans font-bold">
+          <div className="w-6 h-6 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
+            <FaMotorcycle className="w-3.5 h-3.5 text-[#059669]" />
+          </div>
+          <span className="text-slate-800 font-bold">{getModelTargetText(schematic)}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'hotspots',
+      label: 'Puntos Hotspots',
+      minWidth: '140px',
+      filterable: true,
+      ranges: [{ label: 'Puntos', value: (s) => s.hotspots?.length || 0 }],
+      render: (schematic) => (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 font-mono">
+          <Crosshair className="w-3.5 h-3.5 text-[#d97706]" />
+          <span>{schematic.hotspots?.length || 0} puntos</span>
+        </span>
+      ),
+    },
   ];
 
-  const modelOptions = [
-    { value: 'all', label: 'Todos los Modelos' },
-    ...models.map(m => ({ value: m.id, label: m.name })),
-  ];
-
-  const handleResetFilters = () => {
-    setSelectedSectionFilter('all');
-    setSelectedModelFilter('all');
-    setLocalSearch('');
+  const handleSearchFilter = (schematic: ExplodedDiagram, query: string) => {
+    const targetText = getModelTargetText(schematic).toLowerCase();
+    return (
+      schematic.title.toLowerCase().includes(query) ||
+      schematic.id.toLowerCase().includes(query) ||
+      schematic.category.toLowerCase().includes(query) ||
+      (schematic.section || '').toLowerCase().includes(query) ||
+      targetText.includes(query)
+    );
   };
 
   return (
     <div id="schematics-manager" className="space-y-6">
-      {/* Action Toolbar */}
+      {/* Action & Search Toolbar */}
       <div className="flex flex-col lg:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-          <AdminFilterBar
-            filters={[
-              { key: 'section', label: 'Sección', options: sectionOptions, value: selectedSectionFilter, onChange: setSelectedSectionFilter },
-              { key: 'model', label: 'Modelo Objetivo', options: modelOptions, value: selectedModelFilter, onChange: setSelectedModelFilter },
-            ]}
-          />
-          <FilterResetButton onClick={handleResetFilters} />
           <AdminSearchInput
             value={localSearch}
             onChange={setLocalSearch}
@@ -147,7 +159,7 @@ export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
 
         <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
           <span className="text-xs text-slate-500 font-mono">
-            {filteredSchematics.length} de <strong className="text-slate-900">{schematics.length}</strong> despieces
+            <strong className="text-slate-900">{schematics.length}</strong> despieces
           </span>
           <button
             onClick={onAddSchematic}
@@ -159,147 +171,51 @@ export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
         </div>
       </div>
 
-      {/* Schematics Table */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono">
-                <th className="py-3.5 px-5">Esquema / Título</th>
-                <th className="py-3.5 px-4">Sección Técnica</th>
-                <th className="py-3.5 px-4">Modelo Objetivo</th>
-                <th className="py-3.5 px-4">Puntos Hotspots</th>
-                <th className="py-3.5 px-5 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 text-sm">
-              {paginatedSchematics.map((schematic) => (
-                <tr
-                  key={schematic.id}
-                  className="hover:bg-slate-50/70 transition-colors group"
-                >
-                  {/* Schematic Title & Thumbnail */}
-                  <td className="py-4 px-5">
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-14 h-12 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center overflow-hidden p-1 shrink-0 shadow-xs">
-                        {schematic.diagramImage ? (
-                          <img
-                            src={schematic.diagramImage}
-                            alt={schematic.title}
-                            className="w-full h-full object-contain rounded-lg"
-                            onError={(e) => {
-                              (e.target as HTMLElement).style.display = 'none';
-                            }}
-                          />
-                        ) : (
-                          <ImageIcon className="w-6 h-6 text-slate-400" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-extrabold text-slate-900 group-hover:text-[#E60012] transition-colors font-display line-clamp-1">
-                          {schematic.title}
-                        </p>
-                        <p className="text-[11px] font-mono text-slate-400 font-bold">ID: {schematic.id}</p>
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* Section Tag */}
-                  <td className="py-4 px-4">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold text-slate-700 bg-slate-100 border border-slate-200 font-mono uppercase">
-                      <Tag className="w-3 h-3 text-[#0A3088]" />
-                      <span>{schematic.section || 'General'}</span>
-                    </span>
-                  </td>
-
-                  {/* Model Target */}
-                  <td className="py-4 px-4 font-medium text-slate-700 text-xs">
-                    <div className="flex items-center gap-2 font-sans font-bold">
-                      <div className="w-6 h-6 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
-                        <FaMotorcycle className="w-3.5 h-3.5 text-[#059669]" />
-                      </div>
-                      <span className="text-slate-800 font-bold">{getModelTargetText(schematic)}</span>
-                    </div>
-                  </td>
-
-                  {/* Hotspots Count */}
-                  <td className="py-4 px-4">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 font-mono">
-                      <Crosshair className="w-3.5 h-3.5 text-[#d97706]" />
-                      <span>{schematic.hotspots?.length || 0} puntos</span>
-                    </span>
-                  </td>
-
-                  {/* Actions */}
-                  <td className="py-4 px-5 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {onViewSchematic && (
-                        <button
-                          onClick={() => onViewSchematic(schematic)}
-                          className="p-2 rounded-xl text-slate-500 hover:text-[#059669] hover:bg-emerald-50 transition-colors"
-                          title="Ver despiece interactivo"
-                        >
-                          <Eye className="w-4 h-4 text-[#059669]" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => onDuplicateSchematic(schematic)}
-                        className="p-2 rounded-xl text-slate-500 hover:text-[#0A3088] hover:bg-blue-50 transition-colors"
-                        title="Duplicar despiece"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => onEditSchematic(schematic)}
-                        className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-                        title="Editar lienzo de despiece"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => onDeleteSchematic(schematic.id)}
-                        className="p-2 rounded-xl text-slate-400 hover:text-[#dc2626] hover:bg-red-50 transition-colors"
-                        title="Eliminar despiece"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-
-              {isLoading ? (
-                <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-400">
-                    <div className="flex flex-col items-center justify-center space-y-3">
-                      <div className="w-8 h-8 border-3 border-[#E60012] border-t-transparent rounded-full animate-spin" />
-                      <p className="text-xs font-mono font-bold text-slate-600 animate-pulse">Cargando despieces...</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : filteredSchematics.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-500">
-                    <Layers className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                    <p className="font-bold text-slate-800">No se encontraron despieces</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Intenta modificando los términos de búsqueda o filtros.</p>
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-
-        <AdminPagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          pageSize={pageSize}
-          totalItems={filteredSchematics.length}
-          itemLabel="despieces"
-          onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
-        />
-      </div>
+      {/* Schematics DataTable with per-column dynamic filters */}
+      <DataTable
+        data={schematics}
+        columns={columns}
+        keyField="id"
+        loading={isLoading}
+        itemLabel="despieces"
+        emptyMessage="No se encontraron despieces"
+        searchQuery={activeQuery}
+        searchFilter={handleSearchFilter}
+        actions={(schematic) => (
+          <>
+            {onViewSchematic && (
+              <button
+                onClick={() => onViewSchematic(schematic)}
+                className="p-2 rounded-xl text-slate-500 hover:text-[#059669] hover:bg-emerald-50 transition-colors cursor-pointer"
+                title="Ver despiece interactivo"
+              >
+                <Eye className="w-4 h-4 text-[#059669]" />
+              </button>
+            )}
+            <button
+              onClick={() => onDuplicateSchematic(schematic)}
+              className="p-2 rounded-xl text-slate-500 hover:text-[#0A3088] hover:bg-blue-50 transition-colors cursor-pointer"
+              title="Duplicar despiece"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => onEditSchematic(schematic)}
+              className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+              title="Editar lienzo de despiece"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => onDeleteSchematic(schematic.id)}
+              className="p-2 rounded-xl text-slate-400 hover:text-[#dc2626] hover:bg-red-50 transition-colors cursor-pointer"
+              title="Eliminar despiece"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </>
+        )}
+      />
     </div>
   );
 };

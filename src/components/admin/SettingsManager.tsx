@@ -316,7 +316,7 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
   }
 
   return (
-    <div id="settings-manager" className="space-y-6 max-w-4xl">
+    <div id="settings-manager" className="space-y-6 w-full max-w-5xl mx-auto">
       {/* Header */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
@@ -413,6 +413,23 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 font-mono flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-slate-400" />
+                  Correo de Contacto
+                </label>
+                <input
+                  type="email"
+                  value={settings.contactEmail}
+                  onChange={(e) => set("contactEmail", e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#E60012] focus:border-[#E60012] text-sm font-sans text-slate-900"
+                  placeholder="contacto@suzukiparts.com.co"
+                />
+                <p className="text-[11px] text-slate-500 mt-1 font-sans">
+                  Canal de soporte y notificaciones a clientes.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 font-mono flex items-center gap-1.5">
                   <Phone className="w-3.5 h-3.5 text-slate-400" />
                   Número de WhatsApp
                 </label>
@@ -427,20 +444,6 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
                   Con código de país, sin espacios ni &quot;+&quot;. Se usa en
                   los botones de consulta.
                 </p>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 font-mono flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-slate-400" />
-                  Correo de Contacto
-                </label>
-                <input
-                  type="email"
-                  value={settings.contactEmail}
-                  onChange={(e) => set("contactEmail", e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#E60012] focus:border-[#E60012] text-sm font-sans text-slate-900"
-                  placeholder="contacto@suzukiparts.com.co"
-                />
               </div>
             </div>
 
@@ -531,7 +534,7 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
                 URLs opcionales. Las redes sin URL no se muestran en el footer ni
                 en la página de contacto.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-mono">
                     <FaFacebookF className="w-3.5 h-3.5 text-blue-600" />
@@ -584,7 +587,7 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
                     placeholder="https://youtube.com/@tutienda"
                   />
                 </div>
-                <div className="sm:col-span-2">
+                <div>
                   <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-mono">
                     <MessageCircle className="w-3.5 h-3.5 text-green-600" />
                     WhatsApp
@@ -623,55 +626,60 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
               </p>
             </div>
 
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between gap-4">
-              <div>
-                <span className="text-xs font-extrabold text-slate-900 block font-display flex items-center gap-1.5">
-                  <Image className="w-4 h-4 text-[#E60012]" />
-                  Mostrar Imágenes de Producto
-                </span>
-                <p className="text-xs text-slate-500 font-sans mt-0.5">
-                  Si está desactivado, las imágenes se ocultan en catálogo,
-                  carrito y checkout.
-                </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Mostrar Imágenes de Producto */}
+              <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col justify-between gap-4">
+                <div>
+                  <div className="flex items-center justify-between gap-3 mb-1.5">
+                    <span className="text-xs font-extrabold text-slate-900 font-display flex items-center gap-1.5">
+                      <Image className="w-4 h-4 text-[#E60012]" />
+                      Mostrar Imágenes de Producto
+                    </span>
+                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={settings.showProductImages}
+                        onChange={(e) => set("showProductImages", e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#E60012]"></div>
+                    </label>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-sans leading-relaxed">
+                    Si está desactivado, las imágenes de producto se ocultan en catálogo, carrito y checkout.
+                  </p>
+                </div>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                <input
-                  type="checkbox"
-                  checked={settings.showProductImages}
-                  onChange={(e) => set("showProductImages", e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#E60012]"></div>
-              </label>
-            </div>
 
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-              <label
-                htmlFor="detail-primary"
-                className="text-xs font-extrabold text-slate-900 block font-display flex items-center gap-1.5 mb-1"
-              >
-                <Layers className="w-4 h-4 text-[#E60012]" />
-                Elemento Principal en el Detalle de Producto
-              </label>
-              <p className="text-xs text-slate-500 font-sans mt-0.5 mb-3">
-                Controla qué se muestra como principal en el detalle de
-                producto: el despiece técnico o las imágenes del repuesto. El
-                otro elemento aparece debajo en versión compacta.
-              </p>
-              <select
-                id="detail-primary"
-                value={settings.detailPrimary || "despiece"}
-                onChange={(e) =>
-                  set(
-                    "detailPrimary",
-                    e.target.value === "images" ? "images" : "despiece",
-                  )
-                }
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#E60012] focus:border-[#E60012] text-sm font-sans text-slate-900 bg-white"
-              >
-                <option value="despiece">Despiece técnico</option>
-                <option value="images">Imágenes del producto</option>
-              </select>
+              {/* Elemento Principal en Detalle */}
+              <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col justify-between gap-3">
+                <div>
+                  <label
+                    htmlFor="detail-primary"
+                    className="text-xs font-extrabold text-slate-900 block font-display flex items-center gap-1.5 mb-1"
+                  >
+                    <Layers className="w-4 h-4 text-[#E60012]" />
+                    Elemento Principal en Detalle
+                  </label>
+                  <p className="text-[11px] text-slate-500 font-sans leading-relaxed mb-3">
+                    Prioridad en ficha de producto: diagrama técnico o fotos del repuesto.
+                  </p>
+                  <select
+                    id="detail-primary"
+                    value={settings.detailPrimary || "despiece"}
+                    onChange={(e) =>
+                      set(
+                        "detailPrimary",
+                        e.target.value === "images" ? "images" : "despiece",
+                      )
+                    }
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#E60012] focus:border-[#E60012] text-xs font-semibold font-sans text-slate-900 bg-white"
+                  >
+                    <option value="despiece">Despiece técnico</option>
+                    <option value="images">Imágenes del producto</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
         )}

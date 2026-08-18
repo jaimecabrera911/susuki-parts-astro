@@ -140,7 +140,7 @@ export const SearchablePartSelect: React.FC<SearchablePartSelectProps> = ({
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <p className="font-extrabold font-display truncate text-slate-900">{part.name}</p>
+                        <p className="font-extrabold font-display line-clamp-2 text-slate-900">{part.name}</p>
                       </div>
                       <p className="text-[10px] font-mono text-slate-500 font-bold">
                         OEM: {part.oemNumbers[0]} • {formatCurrency(part.price)}

@@ -25,6 +25,7 @@ import type {
   AvailabilityStatus,
   TechnicalSpec,
   CompatibilityRule,
+  Category,
 } from "../../types";
 import { SearchableModelSelect } from "../SearchableModelSelect";
 import { UPLOAD_IMAGE } from "../../services/api";
@@ -37,22 +38,8 @@ interface PartDrawerProps {
   onSave: (part: SuzukiPart) => void;
   partToEdit: SuzukiPart | null;
   models: SuzukiModel[];
+  categories: Category[];
 }
-
-const CATEGORY_OPTIONS: { id: SuzukiPart["category"]; label: string }[] = [
-  { id: "filtros", label: "Filtros (Aire, Aceite, Gasolina)" },
-  { id: "frenos", label: "Frenos (Pastillas, Discos, Guayas)" },
-  { id: "motor", label: "Motor (Pistones, Empaques, Bujías)" },
-  { id: "electrico", label: "Sistema Eléctrico (Baterías, Relés, Sensores)" },
-  {
-    id: "transmision",
-    label: "Transmisión (Cadenas, Spockets, Kit de Arrastre)",
-  },
-  {
-    id: "carroceria",
-    label: "Carrocería & Carenaje (Espejos, Manetas, Faros)",
-  },
-];
 
 export const PartDrawer: React.FC<PartDrawerProps> = ({
   isOpen,
@@ -60,13 +47,14 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
   onSave,
   partToEdit,
   models,
+  categories,
 }) => {
   const [sku, setSku] = useState("");
   const [name, setName] = useState("");
   const [primaryOem, setPrimaryOem] = useState("");
   const [secondaryOems, setSecondaryOems] = useState<string[]>([]);
   const [secondaryOemInput, setSecondaryOemInput] = useState("");
-  const [category, setCategory] = useState<SuzukiPart["category"]>("filtros");
+  const [category, setCategory] = useState<string>("");
   const [price, setPrice] = useState<number>(50000);
   const [taxable, setTaxable] = useState<boolean>(true);
   const [priceIncludesTax, setPriceIncludesTax] = useState<boolean>(false);
@@ -183,7 +171,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       setPrimaryOem(p || "");
       setSecondaryOems(sec || []);
       setSecondaryOemInput("");
-      setCategory(partToEdit.category || "filtros");
+      setCategory(partToEdit.category || "");
       setPrice(partToEdit.price);
       setTaxable(partToEdit.taxable !== false);
       setPriceIncludesTax(partToEdit.priceIncludesTax === true);
@@ -208,7 +196,8 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       setPrimaryOem("");
       setSecondaryOems([]);
       setSecondaryOemInput("");
-      setCategory("filtros");
+      const defaultSlug = categories[0]?.slug || "";
+      setCategory(defaultSlug);
       setPrice(0);
       setTaxable(true);
       setPriceIncludesTax(false);
@@ -226,7 +215,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       setCompatibility([]);
     }
     setError("");
-  }, [partToEdit, isOpen, configuredDefaultSpecs.length]);
+  }, [partToEdit, isOpen, configuredDefaultSpecs.length, categories]);
 
   useEffect(() => {
     setPriceInput(formatThousands(price));
@@ -497,13 +486,20 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
               </label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value as any)}
+                onChange={(e) => setCategory(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#E60012] focus:ring-2 focus:ring-[#E60012]/20 font-medium"
               >
-                {CATEGORY_OPTIONS.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label}
-                  </option>
+                {categories.map((c) => (
+                  <React.Fragment key={c.id}>
+                    <option value={c.slug} className="font-extrabold text-slate-900">
+                      {c.name}
+                    </option>
+                    {c.subcategories?.map((sub) => (
+                      <option key={sub.id} value={sub.slug} className="text-slate-600">
+                        {"\u00A0\u00A0\u00A0\u00A0— " + sub.name}
+                      </option>
+                    ))}
+                  </React.Fragment>
                 ))}
               </select>
             </div>

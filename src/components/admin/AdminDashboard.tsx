@@ -798,7 +798,7 @@ export const AdminDashboard: React.FC = () => {
         />
 
         {/* Content Body */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8 overflow-y-auto max-w-7xl mx-auto w-full">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8 overflow-y-auto w-full">
           {/* Toast Notification Banner */}
           {toast && (
             <div className="fixed bottom-24 lg:bottom-6 right-4 sm:right-6 z-50 animate-in slide-in-from-bottom-5 duration-200">
@@ -889,6 +889,7 @@ export const AdminDashboard: React.FC = () => {
             <PartsManager
               parts={parts}
               models={models}
+              categories={categories}
               searchQuery={searchQuery}
               isLoading={isLoadingData}
               onAddPart={() => {
@@ -1089,6 +1090,7 @@ export const AdminDashboard: React.FC = () => {
         onSave={handleSavePart}
         partToEdit={partToEdit}
         models={models}
+        categories={categories}
       />
 
       <SchematicDrawer

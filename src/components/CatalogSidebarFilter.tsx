@@ -19,7 +19,8 @@ import {
   Globe,
   Clock
 } from 'lucide-react';
-import type { ActiveMotorcycle, SuzukiPart, AvailabilityStatus, SuzukiModel } from '../types';
+import * as LucideIcons from 'lucide-react';
+import type { ActiveMotorcycle, SuzukiPart, AvailabilityStatus, SuzukiModel, Category } from '../types';
 import { AVAILABILITY_META } from '../types';
 import { getMotorcyclePng } from '../data/motorcycleImages';
 import { formatCurrency, formatThousands } from '../utils/formatCurrency';
@@ -28,6 +29,7 @@ import motoLoadImg from '../assets/moto-load.webp';
 const motoLoadUrl = typeof motoLoadImg === 'string' ? motoLoadImg : (motoLoadImg?.src || '/src/assets/moto-load.webp');
 
 interface CatalogSidebarFilterProps {
+  categories: Category[];
   selectedCategory: string;
   setSelectedCategory: (cat: string) => void;
   onlyCompatible: boolean;
@@ -52,6 +54,7 @@ interface CatalogSidebarFilterProps {
 }
 
 export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
+  categories,
   selectedCategory,
   setSelectedCategory,
   onlyCompatible,
@@ -222,16 +225,6 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
     setMaxPriceFilter(clamped);
   };
 
-  // Category counts
-  const categories = [
-    { id: 'all', label: 'Todos los Repuestos', icon: Layers },
-    { id: 'filtros', label: 'Filtros & Mantenimiento', icon: Tag },
-    { id: 'motor', label: 'Motor & Inyección', icon: Box },
-    { id: 'frenos', label: 'Frenos & ABS', icon: ShieldCheck },
-    { id: 'transmision', label: 'Transmisión & Arrastre', icon: SlidersHorizontal },
-    { id: 'electrico', label: 'Sistema Eléctrico', icon: Sparkles }
-  ];
-
   const getRelevantModelParts = () => {
     return allParts.filter(part => {
       // Filter by active motorcycle in garage if compatibility toggle is active
@@ -249,10 +242,36 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
     });
   };
 
+  const getCategoryAndSubcategorySlugs = (catId: string): string[] => {
+    if (catId === 'all') return [];
+    const foundCat = categories.find(c => c.slug === catId);
+    if (!foundCat) return [catId];
+    const slugs = [foundCat.slug];
+    if (foundCat.subcategories) {
+      foundCat.subcategories.forEach(sub => {
+        slugs.push(sub.slug);
+      });
+    }
+    return slugs;
+  };
+
   const getCategoryCount = (catId: string) => {
     const relevantParts = getRelevantModelParts();
     if (catId === 'all') return relevantParts.length;
-    return relevantParts.filter(p => p.category === catId).length;
+    const slugs = getCategoryAndSubcategorySlugs(catId);
+    return relevantParts.filter(p => slugs.includes(p.category)).length;
+  };
+
+  const getSelectedCategoryName = (): string => {
+    if (selectedCategory === 'all') return 'Todos';
+    for (const cat of categories) {
+      if (cat.slug === selectedCategory) return cat.name;
+      if (cat.subcategories) {
+        const sub = cat.subcategories.find(s => s.slug === selectedCategory);
+        if (sub) return sub.name;
+      }
+    }
+    return selectedCategory;
   };
 
   const activeFilterCount =
@@ -397,35 +416,91 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
         </button>
 
         {expandedSections.category && (
-          <div id="filter-section-category" className="mt-3 space-y-1">
+          <div id="filter-section-category" className="mt-3 space-y-1.5">
+            {/* Todos los repuestos */}
+            <button
+              type="button"
+              onClick={() => setSelectedCategory('all')}
+              className={`w-full flex items-center justify-between px-3 py-2 min-h-[36px] rounded-xl text-xs font-bold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] ${
+                selectedCategory === 'all'
+                  ? 'bg-[#E60012] text-white shadow-xs'
+                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              <span className="flex items-center gap-2 truncate">
+                <Layers className={`w-3.5 h-3.5 shrink-0 ${selectedCategory === 'all' ? 'text-white' : 'text-slate-500'}`} aria-hidden="true" />
+                <span className="truncate">Todos los Repuestos</span>
+              </span>
+              <span
+                className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                  selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                }`}
+              >
+                {getCategoryCount('all')}
+              </span>
+            </button>
+
+            {/* Categorías dinámicas */}
             {categories.map((cat) => {
-              const count = getCategoryCount(cat.id);
-              const isSelected = selectedCategory === cat.id;
-              const IconComp = cat.icon;
+              const count = getCategoryCount(cat.slug);
+              const isSelected = selectedCategory === cat.slug;
+              const IconComp = (LucideIcons as any)[cat.iconName || 'Wrench'] || LucideIcons.Wrench;
 
               return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 min-h-[40px] rounded-xl text-xs font-semibold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] ${
-                    isSelected
-                      ? 'bg-[#E60012] text-white font-bold shadow-xs'
-                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <span className="flex items-center gap-2 truncate">
-                    <IconComp className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : 'text-slate-500'}`} aria-hidden="true" />
-                    <span className="truncate">{cat.label}</span>
-                  </span>
-                  <span
-                    className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                      isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                <div key={cat.id} className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory(cat.slug)}
+                    className={`w-full flex items-center justify-between px-3 py-2 min-h-[36px] rounded-xl text-xs font-bold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] ${
+                      isSelected
+                        ? 'bg-[#E60012] text-white shadow-xs'
+                        : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
-                    {count}
-                  </span>
-                </button>
+                    <span className="flex items-center gap-2 truncate">
+                      <IconComp className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : 'text-slate-500'}`} aria-hidden="true" />
+                      <span className="truncate">{cat.name}</span>
+                    </span>
+                    <span
+                      className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                        isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+
+                  {/* Subcategorías anidadas */}
+                  {cat.subcategories && cat.subcategories.length > 0 && (
+                    <div className="pl-6 space-y-1 border-l border-slate-100 ml-4">
+                      {cat.subcategories.map((sub) => {
+                        const subCount = getCategoryCount(sub.slug);
+                        const isSubSelected = selectedCategory === sub.slug;
+                        return (
+                          <button
+                            key={sub.id}
+                            type="button"
+                            onClick={() => setSelectedCategory(sub.slug)}
+                            className={`w-full flex items-center justify-between px-2.5 py-1.5 min-h-[28px] rounded-lg text-[11px] font-medium transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] ${
+                              isSubSelected
+                                ? 'bg-red-50 text-[#E60012] font-bold border-l-2 border-[#E60012] rounded-l-none'
+                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                            }`}
+                          >
+                            <span className="truncate">{sub.name}</span>
+                            <span
+                              className={`ml-2 px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold ${
+                                isSubSelected ? 'bg-red-100 text-[#E60012]' : 'bg-slate-100 text-slate-500'
+                              }`}
+                            >
+                              {subCount}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -690,7 +765,7 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
             <span className="text-[10px] font-extrabold uppercase text-slate-600 shrink-0">Activos:</span>
             {selectedCategory !== 'all' && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-50 border border-red-200 text-red-800 font-bold text-[11px] rounded-lg shrink-0">
-                Cat: {categories.find(c => c.id === selectedCategory)?.label}
+                Cat: {getSelectedCategoryName()}
                 <button type="button" aria-label="Remover filtro de categoría" onClick={() => setSelectedCategory('all')} className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-red-100 cursor-pointer">
                   <X className="w-3 h-3" />
                 </button>

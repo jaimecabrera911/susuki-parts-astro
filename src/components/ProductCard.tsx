@@ -201,7 +201,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 onOpenDetail(part);
               }
             }}
-            className="font-bold text-slate-900 text-sm sm:text-base leading-snug line-clamp-2 hover:text-[#E60012] cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] rounded"
+            className="font-bold text-slate-900 text-base sm:text-lg leading-snug line-clamp-2 hover:text-[#E60012] cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] rounded"
           >
             {part.name}
           </h3>

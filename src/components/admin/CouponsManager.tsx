@@ -121,7 +121,7 @@ export const CouponsManager: React.FC = () => {
   const filteredCoupons = coupons.filter(c => c.code.toLowerCase().includes(searchQuery.toLowerCase().trim()));
 
   return (
-    <div id="coupons-manager" className="space-y-6 max-w-6xl">
+    <div id="coupons-manager" className="space-y-6 w-full">
       {/* Header */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">

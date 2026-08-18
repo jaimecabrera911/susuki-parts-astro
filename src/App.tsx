@@ -35,6 +35,7 @@ import type {
   SuzukiModel,
   ExplodedDiagram,
   Order,
+  Category,
 } from "./types";
 import {
   getAvailabilityStatus,
@@ -63,12 +64,14 @@ import {
   fetchModels,
   fetchParts,
   fetchSchematics,
+  fetchCategories,
 } from "./services/api";
 
 export default function App() {
   const [models, setModels] = useState<SuzukiModel[]>([]);
   const [parts, setParts] = useState<SuzukiPart[]>([]);
   const [schematics, setSchematics] = useState<ExplodedDiagram[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
@@ -85,12 +88,14 @@ export default function App() {
 
   const loadStorefrontData = async (isInitial = false) => {
     try {
-      const [liveModels, liveParts, liveSchematics] = await Promise.all([
+      const [liveModels, liveParts, liveSchematics, liveCategories] = await Promise.all([
         fetchModels().catch(() => []),
         fetchParts().catch(() => []),
         fetchSchematics().catch(() => []),
+        fetchCategories().catch(() => []),
       ]);
       if (liveModels && liveModels.length > 0) setModels(liveModels);
+      if (liveCategories && liveCategories.length > 0) setCategories(liveCategories);
       if (liveParts && liveParts.length > 0) {
         setParts(
           liveParts.map((p: any) => ({
@@ -637,8 +642,14 @@ export default function App() {
       }
 
       // Category filter
-      if (selectedCategory !== "all" && part.category !== selectedCategory) {
-        return false;
+      if (selectedCategory !== "all") {
+        const foundCat = categories.find((c) => c.slug === selectedCategory);
+        const allowedSlugs = foundCat
+          ? [foundCat.slug, ...(foundCat.subcategories?.map((sub) => sub.slug) || [])]
+          : [selectedCategory];
+        if (!allowedSlugs.includes(part.category)) {
+          return false;
+        }
       }
 
       // Price range filter
@@ -829,6 +840,7 @@ export default function App() {
             <div className="flex flex-col lg:flex-row gap-8 items-start">
               {/* Left Dynamic Sidebar Filter */}
               <CatalogSidebarFilter
+                categories={categories}
                 selectedCategory={selectedCategory}
                 setSelectedCategory={setSelectedCategory}
                 onlyCompatible={onlyCompatible}
