@@ -12,7 +12,6 @@ import {
   Info,
   ChevronDown,
   ChevronUp,
-  Package,
   HelpCircle,
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
@@ -413,6 +412,25 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 leading-tight">
                   {part.name}
                 </h1>
+                <div className="mt-2.5">
+                  {part.stock > 0 ? (
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-black uppercase tracking-wide border ${
+                        part.stock <= 5
+                          ? "bg-amber-50 text-amber-700 border-amber-200"
+                          : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      }`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                      Stock: {part.stock} {part.stock === 1 ? "unidad" : "unidades"}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-black uppercase tracking-wide border bg-red-50 text-red-700 border-red-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                      Agotado
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-3 mt-3">
                   <div className="text-2xl sm:text-3xl font-mono font-black text-[#E60012]">
                     {formatCurrency(part.price)}
@@ -518,27 +536,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
             {/* Bottom Actions Bar — reorganizado con stock en card lateral */}
             <div className="pt-6 border-t border-slate-200 space-y-4">
-              {/* Stock Card */}
-              <div className="flex items-center gap-3 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200/80 max-w-md">
-                <div className="shrink-0 w-11 h-11 rounded-lg bg-emerald-100 border border-emerald-200 flex items-center justify-center">
-                  <Package
-                    className="w-5 h-5 text-emerald-700"
-                    aria-hidden="true"
-                  />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">
-                    Stock Disponible
-                  </div>
-                  <div className="text-base font-mono font-black text-emerald-900 leading-tight">
-                    {part.stock} {part.stock === 1 ? "unidad" : "unidades"}{" "}
-                    <span className="text-[11px] font-bold text-emerald-700/80">
-                      en bodega
-                    </span>
-                  </div>
-                </div>
-              </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <a
                   href={getProductWhatsAppUrl(part, activeMotorcycle)}

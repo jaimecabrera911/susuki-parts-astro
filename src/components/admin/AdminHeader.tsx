@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Plus, RefreshCw, ShieldCheck, Wrench, LogOut, ChevronDown, Store, User } from "lucide-react";
+import { Search, Plus, RefreshCw, ShieldCheck, Wrench, LogOut, ChevronDown, Store, User, Menu } from "lucide-react";
 import { UserAvatar } from "../UserAvatar";
 import { getStoredUser, clearStoredSession } from "../../utils/auth";
 import type { UserProfile } from "../../types";
@@ -13,6 +13,7 @@ interface AdminHeaderProps {
   primaryActionLabel?: string;
   onRefresh?: () => void;
   user?: UserProfile | null;
+  onOpenMobileMenu?: () => void;
 }
 
 export const AdminHeader: React.FC<AdminHeaderProps> = ({
@@ -24,6 +25,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   primaryActionLabel = "Nuevo Registro",
   onRefresh,
   user: propUser,
+  onOpenMobileMenu,
 }) => {
   const [sessionUser, setSessionUser] = useState<UserProfile | null>(propUser || null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -58,22 +60,34 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   const displayEmail = activeUser?.email || "";
 
   return (
-    <header id="admin-header" className="bg-white border-b border-slate-200 px-8 py-5 flex items-center justify-between sticky top-0 z-20 shadow-xs">
-      <div>
-        <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-500 font-mono mb-1">
-          <span>ADMINISTRACIÓN</span>
-          <span>/</span>
-          <span className="text-[#E60012] font-black">{title}</span>
+    <header id="admin-header" className="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-4 lg:py-5 flex items-center justify-between sticky top-0 z-20 shadow-xs gap-3">
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Mobile hamburger */}
+        <button
+          type="button"
+          onClick={onOpenMobileMenu}
+          aria-label="Abrir menú de módulos"
+          className="lg:hidden w-10 h-10 shrink-0 flex items-center justify-center text-slate-700 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-500 font-mono mb-1">
+            <span>ADMINISTRACIÓN</span>
+            <span>/</span>
+            <span className="text-[#E60012] font-black truncate">{title}</span>
+          </div>
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-black text-slate-900 tracking-tight font-display truncate">
+            {title}
+          </h1>
+          <p className="text-xs text-slate-500 font-sans mt-0.5 hidden sm:block">{subtitle}</p>
         </div>
-        <h1 className="text-2xl font-black text-slate-900 tracking-tight font-display">
-          {title}
-        </h1>
-        <p className="text-xs text-slate-500 font-sans mt-0.5">{subtitle}</p>
       </div>
 
-      <div className="flex items-center gap-4">
-        {/* Search Bar */}
-        <div className="relative w-72">
+      <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+        {/* Search Bar - desktop only (mobile uses drawer search) */}
+        <div className="hidden md:block relative w-72">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -97,17 +111,17 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           <button
             onClick={onRefresh}
             title="Recargar datos"
-            className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="hidden sm:flex p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
         )}
 
-        {/* Primary Action Button (Suzuki Red CTA per DESIGN.md) */}
+        {/* Primary Action Button (Suzuki Red CTA per DESIGN.md) - desktop only (mobile uses drawer) */}
         {onPrimaryAction && (
           <button
             onClick={onPrimaryAction}
-            className="px-4 py-2.5 rounded-xl bg-[#E60012] hover:bg-[#b5000b] text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-all duration-150 flex items-center gap-2 active:scale-[0.98] cursor-pointer"
+            className="hidden md:flex px-4 py-2.5 rounded-xl bg-[#E60012] hover:bg-[#b5000b] text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-all duration-150 items-center gap-2 active:scale-[0.98] cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>{primaryActionLabel}</span>
@@ -115,7 +129,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
         )}
 
         {/* Admin Avatar Badge - Dropdown for Session & Logout */}
-        <div className="relative pl-3 border-l border-slate-200" ref={dropdownRef}>
+        <div className="relative pl-2 sm:pl-3 border-l border-slate-200" ref={dropdownRef}>
           <button
             type="button"
             onClick={() => setDropdownOpen(!dropdownOpen)}

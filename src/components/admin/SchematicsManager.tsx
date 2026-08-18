@@ -1,7 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Layers, Plus, Edit, Trash2, Copy, Tag, Crosshair, Image as ImageIcon, Eye } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 import type { ExplodedDiagram, SuzukiModel, SuzukiPart } from '../../types';
+import { AdminPagination } from './AdminPagination';
+import { AdminFilterBar, FilterResetButton } from './AdminFilterBar';
+import { AdminSearchInput } from './AdminSearchInput';
 
 interface SchematicsManagerProps {
   schematics: ExplodedDiagram[];
@@ -30,6 +33,18 @@ export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
 }) => {
   const [selectedSectionFilter, setSelectedSectionFilter] = useState<string>('all');
   const [selectedModelFilter, setSelectedModelFilter] = useState<string>('all');
+
+  // Local search (independent from the global header search)
+  const [localSearch, setLocalSearch] = useState('');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Reset to first page whenever filters or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, localSearch, selectedSectionFilter, selectedModelFilter]);
 
   const availableSections = useMemo(() => {
     const defaults = [
@@ -68,13 +83,15 @@ export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
     return 'Todos los modelos';
   };
 
+  const activeQuery = (searchQuery || localSearch).trim().toLowerCase();
+
   const filteredSchematics = schematics.filter(s => {
     const targetText = getModelTargetText(s).toLowerCase();
     const matchesSearch =
-      s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      targetText.includes(searchQuery.toLowerCase());
+      s.title.toLowerCase().includes(activeQuery) ||
+      s.id.toLowerCase().includes(activeQuery) ||
+      s.category.toLowerCase().includes(activeQuery) ||
+      targetText.includes(activeQuery);
 
     const matchesSection = selectedSectionFilter === 'all' || s.section === selectedSectionFilter;
     const appIds = Array.isArray(s.applicableModelIds)
@@ -85,45 +102,52 @@ export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
     return matchesSearch && matchesSection && matchesModel;
   });
 
+  // Pagination calculation
+  const totalPages = Math.ceil(filteredSchematics.length / pageSize) || 1;
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, filteredSchematics.length);
+  const paginatedSchematics = filteredSchematics.slice(startIndex, endIndex);
+
+  // Dynamic filter options (derived from live data)
+  const sectionOptions = [
+    { value: 'all', label: 'Todas las Secciones' },
+    ...availableSections.map(s => ({ value: s, label: s })),
+  ];
+
+  const modelOptions = [
+    { value: 'all', label: 'Todos los Modelos' },
+    ...models.map(m => ({ value: m.id, label: m.name })),
+  ];
+
+  const handleResetFilters = () => {
+    setSelectedSectionFilter('all');
+    setSelectedModelFilter('all');
+    setLocalSearch('');
+  };
+
   return (
     <div id="schematics-manager" className="space-y-6">
       {/* Action Toolbar */}
       <div className="flex flex-col lg:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-          {/* Section Filter */}
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-mono">Sección:</span>
-            <select
-              value={selectedSectionFilter}
-              onChange={(e) => setSelectedSectionFilter(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#E60012] font-semibold"
-            >
-              <option value="all">Todas las Secciones</option>
-              {availableSections.map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Model Filter */}
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-mono">Modelo Objetivo:</span>
-            <select
-              value={selectedModelFilter}
-              onChange={(e) => setSelectedModelFilter(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#E60012] font-semibold"
-            >
-              <option value="all">Todos los Modelos</option>
-              {models.map(m => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
-            </select>
-          </div>
+          <AdminFilterBar
+            filters={[
+              { key: 'section', label: 'Sección', options: sectionOptions, value: selectedSectionFilter, onChange: setSelectedSectionFilter },
+              { key: 'model', label: 'Modelo Objetivo', options: modelOptions, value: selectedModelFilter, onChange: setSelectedModelFilter },
+            ]}
+          />
+          <FilterResetButton onClick={handleResetFilters} />
+          <AdminSearchInput
+            value={localSearch}
+            onChange={setLocalSearch}
+            placeholder="Buscar por título, ID, sección o modelo..."
+          />
         </div>
 
         <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
           <span className="text-xs text-slate-500 font-mono">
-            Mostrando <strong className="text-slate-900">{filteredSchematics.length}</strong> de <strong className="text-slate-900">{schematics.length}</strong> despieces
+            {filteredSchematics.length} de <strong className="text-slate-900">{schematics.length}</strong> despieces
           </span>
           <button
             onClick={onAddSchematic}
@@ -149,7 +173,7 @@ export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-sm">
-              {filteredSchematics.map((schematic) => (
+              {paginatedSchematics.map((schematic) => (
                 <tr
                   key={schematic.id}
                   className="hover:bg-slate-50/70 transition-colors group"
@@ -265,6 +289,16 @@ export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
             </tbody>
           </table>
         </div>
+
+        <AdminPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={filteredSchematics.length}
+          itemLabel="despieces"
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
     </div>
   );

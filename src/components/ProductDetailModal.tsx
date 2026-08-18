@@ -12,7 +12,6 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  Package,
 } from "lucide-react";
 import { FaMotorcycle } from "react-icons/fa";
 import { FaCartPlus } from "react-icons/fa6";
@@ -414,6 +413,25 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               >
                 {part.name}
               </h2>
+              <div className="mt-2">
+                {part.stock > 0 ? (
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-black uppercase tracking-wide border ${
+                      part.stock <= 5
+                        ? "bg-amber-50 text-amber-700 border-amber-200"
+                        : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                    Stock: {part.stock} {part.stock === 1 ? "unidad" : "unidades"}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-black uppercase tracking-wide border bg-red-50 text-red-700 border-red-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                    Agotado
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <div className="text-xl sm:text-2xl font-mono font-black text-[#E60012] whitespace-nowrap">
                   {formatCurrency(part.price)}
@@ -621,33 +639,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
         {/* Footer Action — reorganizado con stock en card lateral */}
         <div className="mt-8 border-t border-slate-200 pt-5 space-y-4">
-          {/* Stock & Availability Card */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Stock indicator card */}
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200/80">
-              <div className="shrink-0 w-10 h-10 rounded-lg bg-emerald-100 border border-emerald-200 flex items-center justify-center">
-                <Package
-                  className="w-5 h-5 text-emerald-700"
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">
-                  Stock Disponible
-                </div>
-                <div className="text-base font-mono font-black text-emerald-900 leading-tight">
-                  {part.stock} {part.stock === 1 ? "unidad" : "unidades"}{" "}
-                  <span className="text-[11px] font-bold text-emerald-700/80">
-                    en bodega
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Empty placeholder for grid alignment */}
-            <div className="hidden sm:block" />
-          </div>
-
           {/* Action buttons row */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2">
             <a

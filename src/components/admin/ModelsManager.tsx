@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Copy, CheckCircle2, XCircle, Tag, Calendar, Layers, Eye } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 import type { Brand, SuzukiModel, ExplodedDiagram } from '../../types';
+import { AdminPagination } from './AdminPagination';
+import { AdminFilterBar, FilterResetButton } from './AdminFilterBar';
+import { AdminSearchInput } from './AdminSearchInput';
 
 interface ModelsManagerProps {
   models: SuzukiModel[];
@@ -36,15 +39,29 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
+  // Local search (independent from the global header search)
+  const [localSearch, setLocalSearch] = useState('');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Reset to first page whenever filters or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, localSearch, selectedBrandFilter, selectedCategoryFilter, selectedStatusFilter]);
+
   const categories = Array.from(new Set(models.map(m => m.category))).filter(Boolean);
+
+  const activeQuery = (searchQuery || localSearch).trim().toLowerCase();
 
   const filteredModels = models.filter(m => {
     const brandName = brands.find(b => b.id === m.brandId)?.name || 'Suzuki';
     const matchesSearch =
-      m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      brandName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.category.toLowerCase().includes(searchQuery.toLowerCase());
+      m.name.toLowerCase().includes(activeQuery) ||
+      m.id.toLowerCase().includes(activeQuery) ||
+      brandName.toLowerCase().includes(activeQuery) ||
+      m.category.toLowerCase().includes(activeQuery);
 
     const matchesBrand = selectedBrandFilter === 'all' || (m.brandId || 'suzuki') === selectedBrandFilter;
     const matchesCategory = selectedCategoryFilter === 'all' || m.category === selectedCategoryFilter;
@@ -56,59 +73,60 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
     return matchesSearch && matchesBrand && matchesCategory && matchesStatus;
   });
 
+  // Pagination calculation
+  const totalPages = Math.ceil(filteredModels.length / pageSize) || 1;
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, filteredModels.length);
+  const paginatedModels = filteredModels.slice(startIndex, endIndex);
+
+  // Dynamic filter options (derived from live data)
+  const brandOptions = [
+    { value: 'all', label: 'Todas las Marcas' },
+    ...brands.map(b => ({ value: b.id, label: b.name })),
+  ];
+
+  const categoryOptions = [
+    { value: 'all', label: 'Todas las Categorías' },
+    ...categories.map(c => ({ value: c, label: c })),
+  ];
+
+  const statusOptions = [
+    { value: 'all', label: 'Todos los estados' },
+    { value: 'active', label: 'Solo Activos' },
+    { value: 'inactive', label: 'Solo Inactivos' },
+  ];
+
+  const handleResetFilters = () => {
+    setSelectedBrandFilter('all');
+    setSelectedCategoryFilter('all');
+    setSelectedStatusFilter('all');
+    setLocalSearch('');
+  };
+
   return (
     <div id="models-manager" className="space-y-6">
       {/* Action & Filter Toolbar */}
       <div className="flex flex-col lg:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-          {/* Brand Filter */}
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-mono">Marca:</span>
-            <select
-              value={selectedBrandFilter}
-              onChange={(e) => setSelectedBrandFilter(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#E60012] font-semibold"
-            >
-              <option value="all">Todas las Marcas</option>
-              {brands.map(b => (
-                <option key={b.id} value={b.id}>{b.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Category Filter */}
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-mono">Categoría:</span>
-            <select
-              value={selectedCategoryFilter}
-              onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#E60012] font-semibold"
-            >
-              <option value="all">Todas las Categorías</option>
-              {categories.map(c => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status Filter */}
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-mono">Estado:</span>
-            <select
-              value={selectedStatusFilter}
-              onChange={(e) => setSelectedStatusFilter(e.target.value as any)}
-              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#E60012] font-semibold"
-            >
-              <option value="all">Todos los estados</option>
-              <option value="active">Solo Activos</option>
-              <option value="inactive">Solo Inactivos</option>
-            </select>
-          </div>
+          <AdminFilterBar
+            filters={[
+              { key: 'brand', label: 'Marca', options: brandOptions, value: selectedBrandFilter, onChange: setSelectedBrandFilter },
+              { key: 'category', label: 'Categoría', options: categoryOptions, value: selectedCategoryFilter, onChange: setSelectedCategoryFilter },
+              { key: 'status', label: 'Estado', options: statusOptions, value: selectedStatusFilter, onChange: (v) => setSelectedStatusFilter(v as any) },
+            ]}
+          />
+          <FilterResetButton onClick={handleResetFilters} />
+          <AdminSearchInput
+            value={localSearch}
+            onChange={setLocalSearch}
+            placeholder="Buscar por nombre, marca o categoría..."
+          />
         </div>
 
         <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
           <span className="text-xs text-slate-500 font-mono">
-            Mostrando <strong className="text-slate-900">{filteredModels.length}</strong> de <strong className="text-slate-900">{models.length}</strong> modelos
+            {filteredModels.length} de <strong className="text-slate-900">{models.length}</strong> modelos
           </span>
           <button
             onClick={onAddModel}
@@ -136,7 +154,7 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-sm">
-              {filteredModels.map((model) => {
+              {paginatedModels.map((model) => {
                 const brand = brands.find(b => b.id === (model.brandId || 'suzuki'));
                 const minYear = Math.min(...(model.years || [2020]));
                 const maxYear = Math.max(...(model.years || [2024]));
@@ -322,6 +340,16 @@ export const ModelsManager: React.FC<ModelsManagerProps> = ({
             </tbody>
           </table>
         </div>
+
+        <AdminPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={filteredModels.length}
+          itemLabel="modelos"
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
     </div>
   );

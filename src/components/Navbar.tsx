@@ -26,6 +26,8 @@ interface NavbarProps {
   userRole?: 'customer' | 'admin';
   onOpenAuthModal?: () => void;
   onLogout?: () => void;
+  mobileMenuOpen?: boolean;
+  setMobileMenuOpen?: (open: boolean) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -42,11 +44,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   isLoggedIn = true,
   userRole = 'customer',
   onOpenAuthModal,
-  onLogout
+  onLogout,
+  mobileMenuOpen = false,
+  setMobileMenuOpen
 }) => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+
+  const toggleMobileMenu = () => setMobileMenuOpen?.(!mobileMenuOpen);
+  const closeMobileMenu = () => setMobileMenuOpen?.(false);
 
   const { settings } = useSiteSettings();
 
@@ -73,7 +78,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       return;
     }
     setActiveTab(tab);
-    setMobileMenuOpen(false);
+    closeMobileMenu();
     setUserDropdownOpen(false);
   };
 
@@ -97,16 +102,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                 handleTabClick('garage');
               }
             }}
-            className="flex items-center gap-2.5 shrink-0 cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] rounded-xl p-1"
+            className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] rounded-xl p-1"
           >
-            <div className="w-10 h-10 sm:w-11 sm:h-11 overflow-hidden rounded-xl shrink-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 overflow-hidden rounded-xl shrink-0">
               <img src={logoToShow} alt={storeName} className="w-full h-full object-cover pointer-events-none select-none" />
             </div>
-            <div>
+            <div className="hidden min-[380px]:block">
               <div className="flex items-center gap-1">
-                <span className="text-[#E60012] font-black tracking-tight text-lg sm:text-xl leading-none uppercase">{storeName}</span>
+                <span className="text-[#E60012] font-black tracking-tight text-base sm:text-lg md:text-xl leading-none uppercase">{storeName}</span>
               </div>
-              <span className="text-slate-900 font-extrabold text-[10px] sm:text-xs tracking-widest block leading-tight uppercase whitespace-nowrap">{storeTagline}</span>
+              <span className="text-slate-900 font-extrabold text-[9px] sm:text-[10px] md:text-xs tracking-widest block leading-tight uppercase whitespace-nowrap">{storeTagline}</span>
             </div>
           </button>
 
@@ -174,35 +179,24 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Right Action Icons & Buttons (Desktop & Mobile) */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             
-            {/* Mobile Search Toggle Button */}
-            <button
-              type="button"
-              onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-              aria-label="Buscar repuestos"
-              className="md:hidden w-11 h-11 flex items-center justify-center text-slate-700 hover:text-[#E60012] hover:bg-slate-50 rounded-xl transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
-              title="Buscar repuestos"
-            >
-              <Search className="w-5 h-5" aria-hidden="true" />
-            </button>
-
-            {/* AI Assistant Button */}
+            {/* AI Assistant Button - desktop only, available in drawer on mobile */}
             <button
               type="button"
               onClick={onOpenAI}
               aria-label="Abrir asistente técnico de IA Suzuki"
-              className="min-h-[44px] px-3 text-slate-800 hover:text-[#E60012] hover:bg-slate-50 rounded-xl border border-slate-300 transition-colors flex items-center gap-1.5 text-xs font-medium cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+              className="hidden lg:flex min-h-[44px] px-3 text-slate-800 hover:text-[#E60012] hover:bg-slate-50 rounded-xl border border-slate-300 transition-colors items-center gap-1.5 text-xs font-medium cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
               title="Asistente Técnico Suzuki AI"
             >
               <Sparkles className="w-4 h-4 text-[#E60012]" aria-hidden="true" />
-              <span className="hidden sm:inline font-semibold text-xs">Asistente AI</span>
+              <span className="font-semibold text-xs">Asistente AI</span>
             </button>
 
-            {/* Active Garage Badge Button */}
+            {/* Active Garage Badge Button - desktop only */}
             <button
               type="button"
               onClick={onOpenGarageModal}
               aria-label="Abrir gestión de garaje"
-              className={`flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl border text-xs font-bold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] ${
+              className={`hidden lg:flex items-center gap-1.5 px-2 sm:px-3 py-2 min-h-[44px] rounded-xl border text-xs font-bold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] ${
                 activeMotorcycle
                   ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800 shadow-xs'
                   : 'bg-amber-50 text-amber-950 border-amber-300 hover:bg-amber-100'
@@ -215,15 +209,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {activeMotorcycle ? `${activeMotorcycle.modelName}` : 'SELECCIONAR'}
                 </span>
               </div>
-              <span className="xl:hidden text-[10px] font-bold uppercase truncate max-w-[90px] sm:max-w-[120px]">
+              <span className="xl:hidden text-[10px] font-bold uppercase truncate max-w-[70px] sm:max-w-[100px] md:max-w-[120px]">
                 {activeMotorcycle ? activeMotorcycle.modelName : 'MI MOTO'}
               </span>
             </button>
 
-            {/* User Account Dropdown (Desktop & Tablet) */}
+            {/* User Account Dropdown - desktop only, available in drawer on mobile */}
 
             {isLoggedIn ? (
-              <div className="relative" ref={dropdownRef}>
+              <div className="relative hidden lg:block" ref={dropdownRef}>
                 <button
                   type="button"
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
@@ -241,7 +235,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
 
                 {userDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-50 navbar-fade-in">
                     <div className="px-4 py-2 border-b border-slate-100">
                       <p className="text-xs font-bold text-slate-900 truncate">{userName}</p>
                       <p className="text-[10px] text-slate-400 uppercase font-semibold">Cliente Verificado</p>
@@ -307,7 +301,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 type="button"
                 onClick={onOpenAuthModal}
                 aria-label="Iniciar Sesión"
-                className="min-h-[44px] px-3 bg-[#E60012] hover:bg-red-700 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+                className="hidden lg:flex min-h-[44px] px-3 bg-[#E60012] hover:bg-red-700 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition-all items-center gap-1.5 cursor-pointer shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
                 title="Iniciar Sesión"
               >
                 <LogIn className="w-4 h-4" />
@@ -334,62 +328,39 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Mobile Menu Hamburger Toggle */}
             <button
               type="button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={toggleMobileMenu}
               className="lg:hidden w-11 h-11 flex items-center justify-center text-slate-800 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer ml-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
               aria-label={mobileMenuOpen ? "Cerrar Menú" : "Abrir Menú"}
+              aria-expanded={mobileMenuOpen}
             >
               {mobileMenuOpen ? <X className="w-6 h-6" aria-hidden="true" /> : <Menu className="w-6 h-6" aria-hidden="true" />}
             </button>
 
           </div>
         </div>
-
-        {/* Mobile Search Expandable Bar */}
-        {mobileSearchOpen && (
-          <div className="md:hidden pb-3 pt-1 border-t border-slate-200 animate-in fade-in slide-in-from-top-1 duration-150">
-            <div className="relative">
-              <label htmlFor="navbar-mobile-search" className="sr-only">Buscar por Ref. OEM o Nombre</label>
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" aria-hidden="true" />
-              <input
-                id="navbar-mobile-search"
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  if (activeTab !== 'catalog') setActiveTab('catalog');
-                }}
-                placeholder="Buscar por Ref. OEM o Nombre..."
-                autoFocus
-                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
-              />
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Mobile Navigation Drawer / Dropdown */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-white border-b border-slate-200 shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="lg:hidden bg-white border-b border-slate-200 shadow-xl navbar-slide-down">
           <div className="max-w-7xl mx-auto px-4 py-3 space-y-1">
             
-            {/* Quick Mobile Search inside Drawer if search not expanded */}
-            {!mobileSearchOpen && (
-              <div className="mb-3 md:hidden">
-                <div className="relative">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      if (activeTab !== 'catalog') setActiveTab('catalog');
-                    }}
-                    placeholder="Buscar por Ref. OEM o Nombre..."
-                    className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
-                  />
-                </div>
+            {/* Quick Mobile Search inside Drawer */}
+            <div className="mb-3 md:hidden">
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    if (activeTab !== 'catalog') setActiveTab('catalog');
+                  }}
+                  placeholder="Buscar repuestos..."
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
+                />
               </div>
-            )}
+            </div>
 
             <button
               onClick={() => handleTabClick('catalog')}
@@ -468,9 +439,25 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>
 
+                {isLoggedIn && userRole === 'admin' && (
+                  <a
+                    href="/admin"
+                    onClick={() => closeMobileMenu()}
+                    className={`w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-between transition-colors ${
+                      'text-slate-700 hover:bg-sky-50 hover:text-sky-700'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <ShieldCheck className="w-4 h-4 text-sky-600" />
+                      Panel Admin (Marcas/Modelos)
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                  </a>
+                )}
+
                 <button
                   onClick={() => {
-                    setMobileMenuOpen(false);
+                    closeMobileMenu();
                     if (onLogout) onLogout();
                   }}
                   className="w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-between text-red-600 hover:bg-red-50 transition-colors"
@@ -485,7 +472,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={() => {
                   if (onOpenAuthModal) onOpenAuthModal();
-                  setMobileMenuOpen(false);
+                  closeMobileMenu();
                 }}
                 className="w-full text-left px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-between bg-red-50 text-[#E60012] border border-red-100"
               >
@@ -503,7 +490,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={() => {
                   onOpenAI();
-                  setMobileMenuOpen(false);
+                  closeMobileMenu();
                 }}
                 className="w-full text-left px-4 py-3 bg-red-50/60 text-[#E60012] rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-between border border-red-100"
               >
@@ -530,7 +517,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   onClick={() => {
                     onOpenGarageModal();
-                    setMobileMenuOpen(false);
+                    closeMobileMenu();
                   }}
                   className="text-[11px] font-extrabold text-[#E60012] bg-white border border-red-200 px-2.5 py-1 rounded-lg"
                 >

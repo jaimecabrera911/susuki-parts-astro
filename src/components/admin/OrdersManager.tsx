@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Filter, Eye, Edit, Truck, CheckCircle2, Clock, Package, AlertCircle, FileText, ChevronDown } from 'lucide-react';
+import { ShoppingCart, Filter, Eye, Edit, Truck, CheckCircle2, Clock, Package, AlertCircle, FileText, ChevronDown } from 'lucide-react';
 import type { Order, OrderStatus } from '../../types';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDocumentNumber } from '../../utils/formatDocumentNumber';
 import { fetchOrderStatuses } from '../../services/api';
+import { AdminPagination } from './AdminPagination';
+import { FilterResetButton } from './AdminFilterBar';
+import { AdminSearchInput } from './AdminSearchInput';
 
 interface OrdersManagerProps {
   orders: Order[];
@@ -43,6 +46,15 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
   const [localSearch, setLocalSearch] = useState('');
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Reset to first page whenever filters or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, localSearch, selectedStatusFilter]);
+
   useEffect(() => {
     let cancelled = false;
     fetchOrderStatuses()
@@ -76,6 +88,13 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
     return matchesId || matchesCustomer || matchesDoc || matchesCity || matchesTracking;
   });
 
+  // Pagination calculation
+  const totalPages = Math.ceil(filteredOrders.length / pageSize) || 1;
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, filteredOrders.length);
+  const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
   const getStatusBadge = (st: OrderStatus) => {
     const found = statusRows.find(s => s.name === st);
     const label = found?.short || st;
@@ -92,44 +111,44 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
     <div id="orders-manager" className="space-y-6">
       
       {/* Metric Cards Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-mono font-bold text-slate-500 uppercase">Total Pedidos</p>
-            <p className="text-2xl font-black text-slate-900 font-display mt-0.5">{orders.length}</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="p-3 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-mono font-bold text-slate-500 uppercase leading-tight">Total Pedidos</p>
+            <p className="text-lg sm:text-2xl font-black text-slate-900 font-display mt-1 leading-none">{orders.length}</p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-red-50 text-[#E60012] border border-red-200 flex items-center justify-center">
-            <ShoppingCart className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-mono font-bold text-slate-500 uppercase">Pendientes de Pago</p>
-            <p className="text-2xl font-black text-amber-600 font-display mt-0.5">{pendingCount}</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center">
-            <Clock className="w-5 h-5" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-red-50 text-[#E60012] border border-red-200 flex items-center justify-center shrink-0">
+            <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-mono font-bold text-slate-500 uppercase">En Despacho / Tránsito</p>
-            <p className="text-2xl font-black text-[#0A3088] font-display mt-0.5">{inTransitCount}</p>
+        <div className="p-3 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-mono font-bold text-slate-500 uppercase leading-tight">Pendientes de Pago</p>
+            <p className="text-lg sm:text-2xl font-black text-amber-600 font-display mt-1 leading-none">{pendingCount}</p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0A3088] border border-blue-200 flex items-center justify-center">
-            <Truck className="w-5 h-5" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-mono font-bold text-slate-500 uppercase">Facturación Total</p>
-            <p className="text-xl font-black text-emerald-600 font-mono mt-0.5">{formatCurrency(totalRevenue)}</p>
+        <div className="p-3 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-mono font-bold text-slate-500 uppercase leading-tight">En Despacho / Tránsito</p>
+            <p className="text-lg sm:text-2xl font-black text-[#0A3088] font-display mt-1 leading-none">{inTransitCount}</p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center">
-            <CheckCircle2 className="w-5 h-5" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-blue-50 text-[#0A3088] border border-blue-200 flex items-center justify-center shrink-0">
+            <Truck className="w-4 h-4 sm:w-5 sm:h-5" />
+          </div>
+        </div>
+
+        <div className="p-3 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-mono font-bold text-slate-500 uppercase leading-tight">Facturación Total</p>
+            <p className="text-sm sm:text-xl font-black text-emerald-600 font-mono mt-1 leading-none truncate">{formatCurrency(totalRevenue)}</p>
+          </div>
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
       </div>
@@ -153,19 +172,20 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
                 {filter.label}
               </button>
             ))}
+            <FilterResetButton
+              onClick={() => {
+                setSelectedStatusFilter('all');
+                setLocalSearch('');
+              }}
+            />
           </div>
 
           {/* Local Search Input */}
-          <div className="relative min-w-[240px] sm:min-w-[280px]">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={localSearch}
-              onChange={(e) => setLocalSearch(e.target.value)}
-              placeholder="Buscar por ID, cliente, ciudad o guía..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#E60012] font-medium"
-            />
-          </div>
+          <AdminSearchInput
+            value={localSearch}
+            onChange={setLocalSearch}
+            placeholder="Buscar por ID, cliente, ciudad o guía..."
+          />
 
         </div>
       </div>
@@ -186,7 +206,7 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-sm">
-              {filteredOrders.map((ord) => (
+              {paginatedOrders.map((ord) => (
                 <tr key={ord.id} className="hover:bg-slate-50/70 transition-colors group">
                   
                   {/* Order ID & Date */}
@@ -293,6 +313,16 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
             </tbody>
           </table>
         </div>
+
+        <AdminPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={filteredOrders.length}
+          itemLabel="pedidos"
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
     </div>

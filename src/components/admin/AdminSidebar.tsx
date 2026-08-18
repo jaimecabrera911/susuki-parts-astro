@@ -119,7 +119,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   ];
 
   return (
-    <aside id="admin-sidebar" className="w-64 bg-white border-r border-slate-200 text-slate-900 flex flex-col justify-between h-screen sticky top-0 z-30 select-none shadow-xs">
+    <aside id="admin-sidebar" className="hidden lg:flex w-64 bg-white border-r border-slate-200 text-slate-900 flex-col justify-between h-screen sticky top-0 z-30 select-none shadow-xs">
       <div>
         {/* Header Suzuki Genuine Parts Workshop Branding */}
         <div className="p-5 border-b border-slate-200 flex items-center justify-between">

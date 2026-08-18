@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { AdminSidebar, type AdminTab } from "./AdminSidebar";
 import { AdminHeader } from "./AdminHeader";
+import { AdminMobileDock } from "./AdminMobileDock";
+import { AdminMobileMenu } from "./AdminMobileMenu";
 import { AdminMetrics } from "./AdminMetrics";
 import { BrandsManager } from "./BrandsManager";
 import { ModelsManager } from "./ModelsManager";
@@ -123,6 +125,9 @@ export const AdminDashboard: React.FC = () => {
   }, []);
 
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Mobile menu drawer state
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // State — loaded exclusively from Neon DB API on mount
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -789,13 +794,14 @@ export const AdminDashboard: React.FC = () => {
                       ? "Nuevo Usuario"
                       : "Nuevo Despiece"
           }
+          onOpenMobileMenu={() => setMobileMenuOpen(true)}
         />
 
         {/* Content Body */}
-        <main className="flex-1 p-8 overflow-y-auto max-w-7xl mx-auto w-full">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8 overflow-y-auto max-w-7xl mx-auto w-full">
           {/* Toast Notification Banner */}
           {toast && (
-            <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 duration-200">
+            <div className="fixed bottom-24 lg:bottom-6 right-4 sm:right-6 z-50 animate-in slide-in-from-bottom-5 duration-200">
               <div className="px-4 py-3 rounded-2xl bg-slate-900 border border-slate-800 text-white shadow-xl flex items-center gap-3">
                 <CheckCircle2 className="w-5 h-5 text-[#059669] shrink-0" />
                 <span className="text-xs font-bold font-mono">
@@ -1131,6 +1137,46 @@ export const AdminDashboard: React.FC = () => {
         onClose={() => setIsReturnModalOpen(false)}
         returnItem={returnToEdit}
         onSaveReturn={handleSaveReturn}
+      />
+
+      {/* Mobile Bottom Dock (admin) */}
+      <AdminMobileDock
+        activeTab={activeTab}
+        setActiveTab={handleSetActiveTab}
+        onOpenMenu={() => setMobileMenuOpen(true)}
+      />
+
+      {/* Mobile Menu Drawer (all modules) */}
+      <AdminMobileMenu
+        isOpen={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        activeTab={activeTab}
+        setActiveTab={handleSetActiveTab}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onPrimaryAction={
+          activeTab === "brands" ||
+          activeTab === "models" ||
+          activeTab === "categories" ||
+          activeTab === "parts" ||
+          activeTab === "schematics" ||
+          activeTab === "users"
+            ? handlePrimaryAction
+            : undefined
+        }
+        primaryActionLabel={
+          activeTab === "brands"
+            ? "Nueva Marca"
+            : activeTab === "models"
+              ? "Nuevo Modelo"
+              : activeTab === "categories"
+                ? "Nueva Categoría"
+                : activeTab === "parts"
+                  ? "Nuevo Repuesto"
+                  : activeTab === "users"
+                    ? "Nuevo Usuario"
+                    : "Nuevo Despiece"
+        }
       />
       </div>
     </SiteSettingsProvider>

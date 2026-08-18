@@ -24,6 +24,7 @@ import { ProductCatalogSkeletonGrid } from "./components/SkeletonLoaders";
 import { WhatsAppWidget } from "./components/WhatsAppWidget";
 import { Footer } from "./components/Footer";
 import { ContactPage } from "./components/ContactPage";
+import { MobileDock } from "./components/MobileDock";
 import { SiteSettingsProvider } from "./components/SiteSettingsProvider";
 import type {
   ActiveMotorcycle,
@@ -495,6 +496,7 @@ export default function App() {
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [isAIOpen, setIsAIOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedPartDetail, setSelectedPartDetail] =
     useState<SuzukiPart | null>(null);
@@ -693,10 +695,12 @@ export default function App() {
         userRole={userProfile.role}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
+        mobileMenuOpen={mobileMenuOpen}
+        setMobileMenuOpen={setMobileMenuOpen}
       />
 
       {/* Main View Switcher */}
-      <main className="flex-1">
+      <main className="flex-1 pb-20 lg:pb-0">
         {/* Tab 1: Garage & Quick Home View */}
         {activeTab === "garage" && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
@@ -1091,12 +1095,12 @@ export default function App() {
         activeMotorcycle={activeMotorcycle}
       />
 
-      {/* Floating Cart Button */}
+      {/* Floating Cart Button - desktop only (mobile uses dock) */}
       <button
         type="button"
         onClick={() => setIsCartOpen(true)}
         aria-label={`Abrir carrito (${cartItems.length} repuestos)`}
-        className="fixed right-5 top-1/2 -translate-y-1/2 z-40 w-14 h-14 flex items-center justify-center bg-[#E60012] hover:bg-[#b5000b] text-white rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#E60012]/40"
+        className="hidden lg:flex fixed right-5 top-1/2 -translate-y-1/2 z-40 w-14 h-14 items-center justify-center bg-[#E60012] hover:bg-[#b5000b] text-white rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#E60012]/40"
       >
         <FaCartShopping className="w-6 h-6" aria-hidden="true" />
         {cartItems.length > 0 && (
@@ -1110,6 +1114,15 @@ export default function App() {
       <WhatsAppWidget
         activeMotorcycle={activeMotorcycle}
         onOpenGarageModal={() => setIsGarageModalOpen(true)}
+      />
+
+      {/* Mobile Bottom Dock (mobile & tablet) */}
+      <MobileDock
+        activeTab={activeTab}
+        setActiveTab={navigateToTab}
+        cartCount={cartItems.length}
+        onOpenCart={() => setIsCartOpen(true)}
+        onOpenMenu={() => setMobileMenuOpen((prev) => !prev)}
       />
 
       {/* Footer strictly formatted as user design */}

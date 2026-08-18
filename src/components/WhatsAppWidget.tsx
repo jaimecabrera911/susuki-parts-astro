@@ -64,7 +64,7 @@ export const WhatsAppWidget: React.FC<WhatsAppWidgetProps> = ({
   };
 
   return (
-    <div id="whatsapp-widget" className="fixed bottom-5 right-5 z-40 flex flex-col items-end">
+    <div id="whatsapp-widget" className="fixed bottom-20 lg:bottom-5 right-5 z-40 flex flex-col items-end">
       {/* Popover Card */}
       {isOpen && (
         <div

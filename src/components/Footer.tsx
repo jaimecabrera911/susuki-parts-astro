@@ -219,22 +219,6 @@ export const Footer: React.FC<FooterProps> = ({ onOpenTutorial, onOpenContact })
             </div>
           )}
 
-          <div className="flex items-end justify-center gap-[3px]" aria-hidden="true">
-            {rulerTicks.map((pos) => {
-              const isCenter = pos === 0;
-              const isMajor = Math.abs(pos) % 5 === 0;
-              const height = isCenter ? 16 : isMajor ? 11 : 6;
-              return (
-                <span
-                  key={pos}
-                  className={`w-px rounded-full ${
-                    isCenter ? 'bg-[#E60012]' : 'bg-slate-700'
-                  }`}
-                  style={{ height }}
-                />
-              );
-            })}
-          </div>
         </div>
       </div>
     </footer>

@@ -48,54 +48,54 @@ export const UsersManager: React.FC<UsersManagerProps> = ({
     <div id="users-manager" className="space-y-6">
       
       {/* Metric Cards Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-mono font-bold text-slate-500 uppercase">Usuarios Registrados</p>
-            <p className="text-2xl font-black text-slate-900 font-display mt-0.5">{totalUsers}</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="p-3 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-mono font-bold text-slate-500 uppercase leading-tight">Usuarios Registrados</p>
+            <p className="text-lg sm:text-2xl font-black text-slate-900 font-display mt-1 leading-none">{totalUsers}</p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-red-50 text-[#E60012] border border-red-200 flex items-center justify-center">
-            <Users className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-mono font-bold text-slate-500 uppercase">Clientes Activos</p>
-            <p className="text-2xl font-black text-emerald-600 font-display mt-0.5">{customersCount}</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center">
-            <UserCheck className="w-5 h-5" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-red-50 text-[#E60012] border border-red-200 flex items-center justify-center shrink-0">
+            <Users className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-mono font-bold text-slate-500 uppercase">Administradores</p>
-            <p className="text-2xl font-black text-[#0A3088] font-display mt-0.5">{adminsCount}</p>
+        <div className="p-3 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-mono font-bold text-slate-500 uppercase leading-tight">Clientes Activos</p>
+            <p className="text-lg sm:text-2xl font-black text-emerald-600 font-display mt-1 leading-none">{customersCount}</p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0A3088] border border-blue-200 flex items-center justify-center">
-            <Shield className="w-5 h-5" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shrink-0">
+            <UserCheck className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-mono font-bold text-slate-500 uppercase">Cuentas Habilitadas</p>
-            <p className="text-2xl font-black text-purple-600 font-display mt-0.5">{activeUsersCount}</p>
+        <div className="p-3 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-mono font-bold text-slate-500 uppercase leading-tight">Administradores</p>
+            <p className="text-lg sm:text-2xl font-black text-[#0A3088] font-display mt-1 leading-none">{adminsCount}</p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center">
-            <CheckCircle2 className="w-5 h-5" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-blue-50 text-[#0A3088] border border-blue-200 flex items-center justify-center shrink-0">
+            <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
+          </div>
+        </div>
+
+        <div className="p-3 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-mono font-bold text-slate-500 uppercase leading-tight">Cuentas Habilitadas</p>
+            <p className="text-lg sm:text-2xl font-black text-purple-600 font-display mt-1 leading-none">{activeUsersCount}</p>
+          </div>
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
       </div>
 
       {/* Filter Tabs & Search Header */}
       <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
           
           {/* Role Filters Pill Bar */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 lg:pb-0">
             <button
               onClick={() => setRoleFilter('all')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono transition-all ${
@@ -129,8 +129,8 @@ export const UsersManager: React.FC<UsersManagerProps> = ({
           </div>
 
           {/* Right Actions: Local Search & Add User */}
-          <div className="flex items-center gap-2">
-            <div className="relative min-w-[220px]">
+          <div className="flex items-center gap-2 w-full lg:w-auto">
+            <div className="relative flex-1 min-w-0">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"

@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RotateCcw, Search, Filter, ShieldCheck, Truck, CreditCard, DollarSign, Package, AlertCircle, Edit, Trash2, CheckCircle2, Clock, XCircle, FileText } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDocumentNumber } from '../../utils/formatDocumentNumber';
+import { AdminPagination } from './AdminPagination';
+import { FilterResetButton } from './AdminFilterBar';
+import { AdminSearchInput } from './AdminSearchInput';
 
 interface ReturnsManagerProps {
   returnsList: any[];
@@ -22,8 +25,21 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
 }) => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
+  // Local search (independent from the global header search)
+  const [localSearch, setLocalSearch] = useState('');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Reset to first page whenever filters or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, localSearch, statusFilter]);
+
+  const activeQuery = (searchQuery || localSearch).trim().toLowerCase();
+
   const filtered = returnsList.filter((r) => {
-    const activeQuery = searchQuery.trim().toLowerCase();
     const matchesSearch =
       !activeQuery ||
       r.id.toLowerCase().includes(activeQuery) ||
@@ -36,6 +52,13 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
 
     return matchesSearch && matchesStatus;
   });
+
+  // Pagination calculation
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, filtered.length);
+  const paginated = filtered.slice(startIndex, endIndex);
 
   const pendingCount = returnsList.filter(r => r.status === 'Pendiente').length;
   const refundedCount = returnsList.filter(r => r.status === 'Reembolsada').length;
@@ -81,34 +104,34 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
   return (
     <div id="returns-manager" className="space-y-6">
       {/* Metrics Banner */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center font-bold shrink-0">
-            <Clock className="w-6 h-6" />
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+        <div className="bg-white p-2.5 sm:p-4 lg:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col items-center justify-center gap-1.5 text-center">
+          <div className="w-7 h-7 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl lg:rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center font-bold shrink-0">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
           </div>
-          <div>
-            <span className="text-slate-500 font-bold text-xs uppercase tracking-wider block">SOLICITUDES PENDIENTES</span>
-            <p className="text-2xl font-black text-slate-900 font-mono mt-0.5">{pendingCount}</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center font-bold shrink-0">
-            <CheckCircle2 className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-slate-500 font-bold text-xs uppercase tracking-wider block">REEMBOLSOS COMPLETADOS</span>
-            <p className="text-2xl font-black text-slate-900 font-mono mt-0.5">{refundedCount}</p>
+          <div className="min-w-0 w-full">
+            <span className="text-slate-500 font-bold text-[8px] sm:text-xs uppercase tracking-wider block leading-tight">SOLICITUDES PENDIENTES</span>
+            <p className="text-lg sm:text-2xl font-black text-slate-900 font-mono mt-0.5 leading-none">{pendingCount}</p>
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 border border-sky-200 flex items-center justify-center font-bold shrink-0">
-            <DollarSign className="w-6 h-6" />
+        <div className="bg-white p-2.5 sm:p-4 lg:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col items-center justify-center gap-1.5 text-center">
+          <div className="w-7 h-7 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl lg:rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center font-bold shrink-0">
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
           </div>
-          <div>
-            <span className="text-slate-500 font-bold text-xs uppercase tracking-wider block">TOTAL PROCESADO ($ COP)</span>
-            <p className="text-2xl font-black text-slate-900 font-mono mt-0.5">
+          <div className="min-w-0 w-full">
+            <span className="text-slate-500 font-bold text-[8px] sm:text-xs uppercase tracking-wider block leading-tight">REEMBOLSOS COMPLETADOS</span>
+            <p className="text-lg sm:text-2xl font-black text-slate-900 font-mono mt-0.5 leading-none">{refundedCount}</p>
+          </div>
+        </div>
+
+        <div className="bg-white p-2.5 sm:p-4 lg:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col items-center justify-center gap-1.5 text-center">
+          <div className="w-7 h-7 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl lg:rounded-2xl bg-sky-50 text-sky-600 border border-sky-200 flex items-center justify-center font-bold shrink-0">
+            <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+          </div>
+          <div className="min-w-0 w-full">
+            <span className="text-slate-500 font-bold text-[8px] sm:text-xs uppercase tracking-wider block leading-tight">TOTAL PROCESADO ($ COP)</span>
+            <p className="text-sm sm:text-lg lg:text-2xl font-black text-slate-900 font-mono mt-0.5 leading-none truncate">
               {formatCurrency(totalRefunded)}
             </p>
           </div>
@@ -169,7 +192,14 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
           >
             Rechazadas
           </button>
+          <FilterResetButton onClick={() => { setStatusFilter('all'); setLocalSearch(''); }} />
         </div>
+
+        <AdminSearchInput
+          value={localSearch}
+          onChange={setLocalSearch}
+          placeholder="Buscar por RMA, Nro pedido, cliente o correo..."
+        />
       </div>
 
       {/* Table Section */}
@@ -205,7 +235,7 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
                   </td>
                 </tr>
               ) : (
-                filtered.map((r) => {
+                paginated.map((r) => {
                   const orderSt = r.orderStatus || r.order?.status || 'Pendiente de Pago';
 
                   return (
@@ -300,6 +330,16 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
             </tbody>
           </table>
         </div>
+
+        <AdminPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={filtered.length}
+          itemLabel="devoluciones"
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
     </div>
   );

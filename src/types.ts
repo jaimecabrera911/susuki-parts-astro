@@ -66,11 +66,14 @@ export const AVAILABILITY_META: Record<AvailabilityStatus, { label: string; shor
   on_order:      { label: 'Bajo Pedido',         shortLabel: 'Bajo Pedido',    sortOrder: 2, bgClass: 'bg-amber-50',    textClass: 'text-amber-700',    borderClass: 'border-amber-200' }
 };
 
-/** Resuelve el estado de disponibilidad con fallback para datos antiguos. */
+/** Resuelve el estado de disponibilidad con fallback para datos antiguos.
+ *  Un repuesto con availability 'in_stock' pero stock 0 no puede considerarse
+ *  disponible: se degrada a 'on_order' para no mostrar datos inconsistentes.
+ *  Los estados explícitos 'international' y 'on_order' se respetan tal cual. */
 export const getAvailabilityStatus = (
   part: Pick<SuzukiPart, 'availability' | 'stock'>
 ): AvailabilityStatus => {
-  if (part.availability) return part.availability;
+  if (part.availability && part.availability !== 'in_stock') return part.availability;
   return part.stock > 0 ? 'in_stock' : 'on_order';
 };
 

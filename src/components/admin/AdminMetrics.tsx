@@ -50,29 +50,29 @@ export const AdminMetrics: React.FC<AdminMetricsProps> = ({ brands, models }) =>
   ];
 
   return (
-    <div id="admin-metrics" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+    <div id="admin-metrics" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 mb-6 lg:mb-8">
       {stats.map((stat, idx) => {
         const Icon = stat.icon;
         return (
           <div
             key={idx}
-            className={`p-5 rounded-2xl bg-white border ${stat.border} shadow-xs flex items-center justify-between transition-all duration-150 hover:shadow-lg hover:shadow-slate-950/5 hover:-translate-y-0.5`}
+            className={`p-3 sm:p-4 lg:p-5 rounded-2xl bg-white border ${stat.border} shadow-xs flex items-center justify-between gap-2 transition-all duration-150 hover:shadow-lg hover:shadow-slate-950/5 hover:-translate-y-0.5`}
           >
-            <div>
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-mono">
+            <div className="min-w-0">
+              <p className="text-[9px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider font-mono leading-tight">
                 {stat.title}
               </p>
-              <div className="flex items-baseline gap-2 mt-1.5">
-                <span className="text-3xl font-black text-slate-900 tracking-tight font-mono">
+              <div className="flex items-baseline gap-1.5 mt-1">
+                <span className="text-lg sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight font-mono leading-none">
                   {stat.value}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-1 font-medium font-sans">
+              <p className="text-[10px] sm:text-xs text-slate-500 mt-1 font-medium font-sans leading-tight">
                 {stat.subtext}
               </p>
             </div>
-            <div className={`w-11 h-11 rounded-xl ${stat.badgeBg} flex items-center justify-center border shrink-0`}>
-              <Icon className="w-5 h-5" />
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 lg:w-11 lg:h-11 rounded-lg lg:rounded-xl ${stat.badgeBg} flex items-center justify-center border shrink-0`}>
+              <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
         );
