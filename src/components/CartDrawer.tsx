@@ -7,6 +7,7 @@ import {
   Minus,
   MessageSquare,
   Eye,
+  Store,
 } from "lucide-react";
 import { FaBasketShopping, FaCartShopping } from "react-icons/fa6";
 import { AiTwotoneSafetyCertificate } from "react-icons/ai";
@@ -25,6 +26,7 @@ interface CartDrawerProps {
   onUpdateQuantity: (partId: string, delta: number) => void;
   onRemoveItem: (partId: string) => void;
   onProceedCheckout: () => void;
+  onContinueShopping: () => void;
   onViewPartDetail?: (part: SuzukiPart) => void;
   activeMotorcycle: ActiveMotorcycle | null;
 }
@@ -36,6 +38,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onUpdateQuantity,
   onRemoveItem,
   onProceedCheckout,
+  onContinueShopping,
   onViewPartDetail,
   activeMotorcycle,
 }) => {
@@ -110,6 +113,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   Selecciona repuestos garantizados desde el catálogo o los
                   diagramas.
                 </p>
+                <button
+                  type="button"
+                  onClick={onContinueShopping}
+                  className="mt-4 px-5 py-2.5 min-h-[44px] bg-[#E60012] hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-colors shadow-md flex items-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+                >
+                  <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                  <span>Seguir Comprando</span>
+                </button>
               </div>
             ) : (
               cartItems.map((item) => {
@@ -303,6 +314,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </div>
 
               <div className="space-y-2 pt-1">
+                <button
+                  type="button"
+                  onClick={onContinueShopping}
+                  className="w-full py-3 min-h-[44px] bg-[#0A3088] hover:bg-[#081f5c] text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A3088]"
+                >
+                  <Store className="w-4 h-4" aria-hidden="true" />
+                  <span>Seguir Comprando</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={onProceedCheckout}

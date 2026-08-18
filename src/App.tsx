@@ -1091,6 +1091,10 @@ export default function App() {
           setIsCartOpen(false);
           navigateToTab("checkout");
         }}
+        onContinueShopping={() => {
+          setIsCartOpen(false);
+          navigateToTab("catalog");
+        }}
         onViewPartDetail={(part) => setSelectedPartDetail(part)}
         activeMotorcycle={activeMotorcycle}
       />
