@@ -29,6 +29,7 @@ import type {
 import { SearchableModelSelect } from "../SearchableModelSelect";
 import { UPLOAD_IMAGE } from "../../services/api";
 import { useSiteSettings } from "../SiteSettingsProvider";
+import { formatThousands } from "../../utils/formatCurrency";
 
 interface PartDrawerProps {
   isOpen: boolean;
@@ -70,6 +71,8 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
   const [taxable, setTaxable] = useState<boolean>(true);
   const [priceIncludesTax, setPriceIncludesTax] = useState<boolean>(false);
   const [stock, setStock] = useState<number>(10);
+  const [priceInput, setPriceInput] = useState<string>(formatThousands(50000));
+  const [stockInput, setStockInput] = useState<string>(formatThousands(10));
   const [availability, setAvailability] =
     useState<AvailabilityStatus>("in_stock");
   const [gallery, setGallery] = useState<string[]>([]);
@@ -224,6 +227,32 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
     }
     setError("");
   }, [partToEdit, isOpen, configuredDefaultSpecs.length]);
+
+  useEffect(() => {
+    setPriceInput(formatThousands(price));
+  }, [price]);
+
+  useEffect(() => {
+    setStockInput(formatThousands(stock));
+  }, [stock]);
+
+  const commitPrice = () => {
+    const digits = priceInput.replace(/\D/g, "");
+    if (digits === "") {
+      setPriceInput(formatThousands(price));
+      return;
+    }
+    setPrice(Math.max(0, Number(digits)));
+  };
+
+  const commitStock = () => {
+    const digits = stockInput.replace(/\D/g, "");
+    if (digits === "") {
+      setStockInput(formatThousands(stock));
+      return;
+    }
+    setStock(Math.max(0, Number(digits)));
+  };
 
   if (!isOpen) return null;
 
@@ -575,11 +604,14 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                 Precio (COP) *
               </label>
               <input
-                type="number"
-                min="0"
-                step="500"
-                value={price}
-                onChange={(e) => setPrice(Number(e.target.value))}
+                type="text"
+                inputMode="numeric"
+                maxLength={12}
+                value={priceInput}
+                onChange={(e) => setPriceInput(e.target.value.replace(/\D/g, ""))}
+                onFocus={(e) => setPriceInput(e.target.value.replace(/\D/g, ""))}
+                onBlur={commitPrice}
+                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 font-mono font-bold"
               />
             </div>
@@ -589,10 +621,14 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                 Stock Físico *
               </label>
               <input
-                type="number"
-                min="0"
-                value={stock}
-                onChange={(e) => setStock(Number(e.target.value))}
+                type="text"
+                inputMode="numeric"
+                maxLength={12}
+                value={stockInput}
+                onChange={(e) => setStockInput(e.target.value.replace(/\D/g, ""))}
+                onFocus={(e) => setStockInput(e.target.value.replace(/\D/g, ""))}
+                onBlur={commitStock}
+                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 font-mono font-bold"
               />
             </div>
@@ -676,12 +712,12 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
             </div>
 
             {/* Live Calculation Preview Card */}
-            <div className="bg-slate-900 text-white p-3.5 rounded-xl text-xs font-mono grid grid-cols-3 gap-2 border border-slate-800">
+            <div className="bg-slate-100 border border-slate-200 p-3.5 rounded-xl text-xs font-mono grid grid-cols-3 gap-2">
               <div>
-                <span className="text-[9px] text-slate-400 uppercase font-bold block">
+                <span className="text-[9px] text-slate-500 uppercase font-bold block">
                   BASE GRAVABLE:
                 </span>
-                <span className="font-bold text-white">
+                <span className="font-bold text-slate-900">
                   $
                   {taxable
                     ? (priceIncludesTax
@@ -692,10 +728,10 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                 </span>
               </div>
               <div>
-                <span className="text-[9px] text-slate-400 uppercase font-bold block">
+                <span className="text-[9px] text-slate-500 uppercase font-bold block">
                   IVA 19%:
                 </span>
-                <span className="font-bold text-emerald-400">
+                <span className="font-bold text-emerald-600">
                   {taxable
                     ? priceIncludesTax
                       ? `$${(price - Math.round(price / 1.19)).toLocaleString("es-CO")}`
@@ -704,10 +740,10 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                 </span>
               </div>
               <div>
-                <span className="text-[9px] text-slate-400 uppercase font-bold block">
+                <span className="text-[9px] text-slate-500 uppercase font-bold block">
                   TOTAL CLIENTE:
                 </span>
-                <span className="font-black text-amber-400">
+                <span className="font-black text-amber-600">
                   $
                   {taxable
                     ? priceIncludesTax

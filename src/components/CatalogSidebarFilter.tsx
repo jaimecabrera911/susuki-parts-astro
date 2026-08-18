@@ -22,7 +22,7 @@ import {
 import type { ActiveMotorcycle, SuzukiPart, AvailabilityStatus, SuzukiModel } from '../types';
 import { AVAILABILITY_META } from '../types';
 import { getMotorcyclePng } from '../data/motorcycleImages';
-import { formatCurrency } from '../utils/formatCurrency';
+import { formatCurrency, formatThousands } from '../utils/formatCurrency';
 import motoLoadImg from '../assets/moto-load.webp';
 
 const motoLoadUrl = typeof motoLoadImg === 'string' ? motoLoadImg : (motoLoadImg?.src || '/src/assets/moto-load.webp');
@@ -104,16 +104,6 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
   const highestPriceInParts = allParts.length > 0 ? Math.max(...allParts.map(p => p.price)) : 5000000;
   const maxDatabasePrice = Math.max(highestPriceInParts, 5000000);
   const minDatabasePrice = 0;
-
-  // Histogram bins for price distribution
-  const histogramBins = 8;
-  const binSize = (maxDatabasePrice - minDatabasePrice) / histogramBins;
-  const histogram = Array.from({ length: histogramBins }, (_, i) => {
-    const binStart = minDatabasePrice + i * binSize;
-    const binEnd = binStart + binSize;
-    return allParts.filter(p => p.price >= binStart && p.price < binEnd).length;
-  });
-  const maxBin = Math.max(...histogram, 1);
 
   // Custom dual-range slider state & helpers
   const trackRef = useRef<HTMLDivElement>(null);
@@ -198,6 +188,40 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
     };
   }, [getPriceFromPosition]);
 
+  // Editable min/max price inputs (clamped to the valid range)
+  const [minPriceInput, setMinPriceInput] = useState<string>(formatThousands(minPriceFilter));
+  const [maxPriceInput, setMaxPriceInput] = useState<string>(formatThousands(maxPriceFilter));
+
+  useEffect(() => {
+    setMinPriceInput(formatThousands(minPriceFilter));
+  }, [minPriceFilter]);
+
+  useEffect(() => {
+    setMaxPriceInput(formatThousands(maxPriceFilter));
+  }, [maxPriceFilter]);
+
+  const commitMinPrice = () => {
+    const digits = minPriceInput.replace(/\D/g, '');
+    if (digits === '') {
+      setMinPriceInput(formatThousands(minPriceFilter));
+      return;
+    }
+    const num = Number(digits);
+    const clamped = Math.min(Math.max(num, minDatabasePrice), maxPriceFilter - 10000);
+    setMinPriceFilter(clamped);
+  };
+
+  const commitMaxPrice = () => {
+    const digits = maxPriceInput.replace(/\D/g, '');
+    if (digits === '') {
+      setMaxPriceInput(formatThousands(maxPriceFilter));
+      return;
+    }
+    const num = Number(digits);
+    const clamped = Math.max(Math.min(num, maxDatabasePrice), minPriceFilter + 10000);
+    setMaxPriceFilter(clamped);
+  };
+
   // Category counts
   const categories = [
     { id: 'all', label: 'Todos los Repuestos', icon: Layers },
@@ -249,7 +273,7 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
     : null;
   const activeMotoImage = activeModelMeta?.image || (activeMotorcycle ? getMotorcyclePng(activeMotorcycle.modelId) : '');
 
-  const FilterContent = () => (
+  const filterContent = (
     <div className="space-y-6">
       
       {/* 1. Vehicle Context — Active Garage Card */}
@@ -430,38 +454,53 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
 
         {expandedSections.price && (
           <div id="filter-section-price" className="mt-3 space-y-3.5">
-            {/* Current Range Display */}
-            <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
-              <div className="text-center flex-1 min-w-0">
-                <div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Mínimo</div>
-                <div className="font-mono text-xs font-black text-slate-900 truncate">{formatCurrency(minPriceFilter)}</div>
-              </div>
-              <div className="w-px h-7 bg-slate-300" />
-              <div className="text-center flex-1 min-w-0">
-                <div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Máximo</div>
-                <div className="font-mono text-xs font-black text-[#E60012] truncate">{formatCurrency(maxPriceFilter)}</div>
-              </div>
-            </div>
-
-            {/* Histogram */}
-            <div className="flex items-end gap-0.5 h-10 px-0.5">
-              {histogram.map((count, i) => {
-                const binStart = minDatabasePrice + i * binSize;
-                const binEnd = binStart + binSize;
-                const inRange = binEnd >= minPriceFilter && binStart <= maxPriceFilter;
-                const heightPct = (count / maxBin) * 100;
-                return (
-                  <div
-                    key={i}
-                    className={`flex-1 rounded-t transition-colors ${
-                      inRange ? 'bg-[#E60012]/70' : 'bg-slate-200'
-                    }`}
-                    style={{ height: `${heightPct}%` }}
-                    title={`${formatCurrency(binStart)} - ${formatCurrency(binEnd)}: ${count} repuestos`}
-                    aria-hidden="true"
+            {/* Current Range — editable inputs */}
+            <div className="flex items-stretch justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <label htmlFor="sidebar-min-price" className="block text-[9px] font-extrabold uppercase tracking-wider text-slate-500 mb-1 text-center">
+                  Mínimo
+                </label>
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 select-none">$</span>
+                  <input
+                    id="sidebar-min-price"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={12}
+                    value={minPriceInput}
+                    onChange={(e) => setMinPriceInput(e.target.value.replace(/\D/g, ''))}
+                    onFocus={(e) => setMinPriceInput(e.target.value.replace(/\D/g, ''))}
+                    onBlur={commitMinPrice}
+                    onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                    aria-label="Precio mínimo"
+                    className="w-full bg-white border border-slate-200 rounded-lg pl-6 pr-2 py-2 font-mono text-xs font-black text-slate-900 focus:outline-none focus:border-[#E60012] focus:ring-2 focus:ring-[#E60012]/20 transition-all text-center"
                   />
-                );
-              })}
+                </div>
+              </div>
+
+              <div className="w-px bg-slate-300 my-5" />
+
+              <div className="flex-1 min-w-0">
+                <label htmlFor="sidebar-max-price" className="block text-[9px] font-extrabold uppercase tracking-wider text-slate-500 mb-1 text-center">
+                  Máximo
+                </label>
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 select-none">$</span>
+                  <input
+                    id="sidebar-max-price"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={12}
+                    value={maxPriceInput}
+                    onChange={(e) => setMaxPriceInput(e.target.value.replace(/\D/g, ''))}
+                    onFocus={(e) => setMaxPriceInput(e.target.value.replace(/\D/g, ''))}
+                    onBlur={commitMaxPrice}
+                    onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                    aria-label="Precio máximo"
+                    className="w-full bg-white border border-slate-200 rounded-lg pl-6 pr-2 py-2 font-mono text-xs font-black text-[#E60012] focus:outline-none focus:border-[#E60012] focus:ring-2 focus:ring-[#E60012]/20 transition-all text-center"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Dual Range Slider — Custom implementation for fluid dragging */}
@@ -712,7 +751,7 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
             </div>
           </div>
 
-          <FilterContent />
+          {filterContent}
 
         </div>
       </aside>
@@ -748,7 +787,7 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
               </div>
 
               <div className="p-5 flex-1 overflow-y-auto">
-                <FilterContent />
+{filterContent}
               </div>
 
               <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center gap-3 shrink-0">

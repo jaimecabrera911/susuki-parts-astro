@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Truck, Calendar, DollarSign, Clock, ShieldCheck, Check } from 'lucide-react';
 import type { ShippingMethod, ShippingZone, ZoneRate } from '../../types';
 import { fetchCarrierNames, fetchDefaultCarrierName } from '../../services/api';
+import { formatThousands } from '../../utils/formatCurrency';
 
 interface ShippingModalProps {
   isOpen: boolean;
@@ -42,6 +43,10 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
 
   const [carrierOptions, setCarrierOptions] = useState<string[]>([]);
   const [zoneRatesMap, setZoneRatesMap] = useState<Record<string, number>>({});
+  const [priceInput, setPriceInput] = useState<string>('0');
+  const [estimatedDaysInput, setEstimatedDaysInput] = useState<string>('3');
+  const [thresholdInput, setThresholdInput] = useState<string>('');
+  const [zoneRateInputs, setZoneRateInputs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -100,7 +105,64 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
     }
   }, [initialMethod, isOpen]);
 
+  useEffect(() => {
+    setPriceInput(formatThousands(formData.price || 0));
+  }, [formData.price]);
+
+  useEffect(() => {
+    setEstimatedDaysInput(String(formData.estimatedDays ?? 3));
+  }, [formData.estimatedDays]);
+
+  useEffect(() => {
+    setThresholdInput(
+      formData.freeShippingThreshold !== undefined && formData.freeShippingThreshold !== ''
+        ? formatThousands(Number(formData.freeShippingThreshold) || 0)
+        : ''
+    );
+  }, [formData.freeShippingThreshold]);
+
   if (!isOpen) return null;
+
+  const commitPrice = () => {
+    const digits = priceInput.replace(/\D/g, '');
+    if (digits === '') {
+      setPriceInput(formatThousands(formData.price || 0));
+      return;
+    }
+    setFormData({ ...formData, price: Number(digits) });
+  };
+
+  const commitEstimatedDays = () => {
+    const digits = estimatedDaysInput.replace(/\D/g, '');
+    if (digits === '') {
+      setEstimatedDaysInput(String(formData.estimatedDays ?? 3));
+      return;
+    }
+    const clamped = Math.min(30, Math.max(0, Number(digits)));
+    setFormData({ ...formData, estimatedDays: clamped });
+  };
+
+  const commitThreshold = () => {
+    const digits = thresholdInput.replace(/\D/g, '');
+    if (digits === '') {
+      setThresholdInput('');
+      setFormData({ ...formData, freeShippingThreshold: '' });
+      return;
+    }
+    setFormData({ ...formData, freeShippingThreshold: String(Number(digits)) });
+  };
+
+  const commitZoneRate = (zoneId: string) => {
+    const digits = (zoneRateInputs[zoneId] ?? '').replace(/\D/g, '');
+    const base = zoneRatesMap[zoneId] ?? formData.price;
+    if (digits === '') {
+      setZoneRateInputs(prev => ({ ...prev, [zoneId]: formatThousands(base) }));
+      return;
+    }
+    const val = Number(digits);
+    setZoneRatesMap(prev => ({ ...prev, [zoneId]: val }));
+    setZoneRateInputs(prev => ({ ...prev, [zoneId]: formatThousands(val) }));
+  };
 
   const handleToggleDay = (dayId: string) => {
     setFormData(prev => {
@@ -110,13 +172,6 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
         : [...prev.dispatchDays, dayId].sort();
       return { ...prev, dispatchDays: nextDays };
     });
-  };
-
-  const handleZoneRateChange = (zoneId: string, val: number) => {
-    setZoneRatesMap(prev => ({
-      ...prev,
-      [zoneId]: val
-    }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -222,13 +277,16 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
               <div className="relative">
                 <span className="absolute left-3.5 top-2.5 text-slate-400 font-mono font-bold text-xs">$</span>
                 <input
-                  type="number"
-                  min="0"
-                  step="500"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={12}
                   required
-                  placeholder="15000"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+                  placeholder="15.000"
+                  value={priceInput}
+                  onChange={(e) => setPriceInput(e.target.value.replace(/\D/g, ''))}
+                  onFocus={(e) => setPriceInput(e.target.value.replace(/\D/g, ''))}
+                  onBlur={commitPrice}
+                  onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                   className="w-full pl-8 pr-3.5 py-2.5 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 font-mono font-bold focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
                 />
               </div>
@@ -240,13 +298,16 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
               </label>
               <div className="relative">
                 <input
-                  type="number"
-                  min="0"
-                  max="30"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={2}
                   required
                   placeholder="3"
-                  value={formData.estimatedDays}
-                  onChange={(e) => setFormData({ ...formData, estimatedDays: Number(e.target.value) })}
+                  value={estimatedDaysInput}
+                  onChange={(e) => setEstimatedDaysInput(e.target.value.replace(/\D/g, ''))}
+                  onFocus={(e) => setEstimatedDaysInput(e.target.value.replace(/\D/g, ''))}
+                  onBlur={commitEstimatedDays}
+                  onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                   className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 font-mono font-bold focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
                 />
                 <span className="absolute right-3.5 top-2.5 text-[10px] font-mono text-slate-500 font-bold uppercase">días hábiles</span>
@@ -282,11 +343,14 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
                       <div className="w-36 shrink-0 relative">
                         <span className="absolute left-2.5 top-1.5 text-slate-400 font-mono text-xs">$</span>
                         <input
-                          type="number"
-                          min="0"
-                          step="500"
-                          value={currentRate}
-                          onChange={(e) => handleZoneRateChange(zone.id, Number(e.target.value))}
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={12}
+                          value={zoneRateInputs[zone.id] ?? formatThousands(currentRate)}
+                          onChange={(e) => setZoneRateInputs(prev => ({ ...prev, [zone.id]: e.target.value.replace(/\D/g, '') }))}
+                          onFocus={(e) => setZoneRateInputs(prev => ({ ...prev, [zone.id]: e.target.value.replace(/\D/g, '') }))}
+                          onBlur={() => commitZoneRate(zone.id)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                           className="w-full pl-6 pr-2 py-1 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg text-slate-900 text-right focus:border-red-500 outline-hidden"
                         />
                       </div>
@@ -350,12 +414,15 @@ export const ShippingModal: React.FC<ShippingModalProps> = ({
               Monto Mínimo para Envío GRATIS (COP $)
             </label>
             <input
-              type="number"
-              min="0"
-              step="1000"
-              placeholder="Ej. 250000 (Opcional)"
-              value={formData.freeShippingThreshold}
-              onChange={(e) => setFormData({ ...formData, freeShippingThreshold: e.target.value })}
+              type="text"
+              inputMode="numeric"
+              maxLength={12}
+              placeholder="Ej. 250.000 (Opcional)"
+              value={thresholdInput}
+              onChange={(e) => setThresholdInput(e.target.value.replace(/\D/g, ''))}
+              onFocus={(e) => setThresholdInput(e.target.value.replace(/\D/g, ''))}
+              onBlur={commitThreshold}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
               className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-300 rounded-xl text-slate-900 font-mono font-bold focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
             />
           </div>
