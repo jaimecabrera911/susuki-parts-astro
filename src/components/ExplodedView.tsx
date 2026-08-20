@@ -220,6 +220,29 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
     });
   };
 
+  const activeModelMeta = activeMotorcycle
+    ? allModels.find(m =>
+        m.id === activeMotorcycle.modelId ||
+        m.id.toLowerCase().replace(/[^a-z0-9]/g, '') === activeMotorcycle.modelId.toLowerCase().replace(/[^a-z0-9]/g, '') ||
+        m.name.toLowerCase().includes(activeMotorcycle.modelName.toLowerCase()) ||
+        activeMotorcycle.modelName.toLowerCase().includes(m.name.toLowerCase())
+      )
+    : null;
+
+  const targetModelMeta = !activeMotorcycle && currentDiagram
+    ? allModels.find(m =>
+        (currentDiagram.applicableModelIds && currentDiagram.applicableModelIds.includes(m.id)) ||
+        (currentDiagram.modelTarget && (m.name.toLowerCase().includes(currentDiagram.modelTarget.toLowerCase()) || currentDiagram.modelTarget.toLowerCase().includes(m.name.toLowerCase())))
+      )
+    : null;
+
+  const detailMotoImage = activeModelMeta?.image ||
+    (activeMotorcycle ? getMotorcyclePng(activeMotorcycle.modelId) : null) ||
+    targetModelMeta?.image ||
+    (targetModelMeta ? getMotorcyclePng(targetModelMeta.id) : null) ||
+    (currentDiagram?.applicableModelIds?.[0] ? getMotorcyclePng(currentDiagram.applicableModelIds[0]) : '') ||
+    '';
+
   // ============ CATALOG MODE ============
   if (viewMode === 'catalog') {
     return (
@@ -422,7 +445,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   return (
     <div id="exploded-view" className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Breadcrumb / Back Bar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 mb-6 shadow-xs flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 mb-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <button
             type="button"
@@ -448,6 +471,65 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
             <Layers className="w-3 h-3" aria-hidden="true" />
             {currentDiagram.category}
           </span>
+        </div>
+      </div>
+
+      {/* Motorcycle Identity Card in Detail Mode (Visible in mobile and desktop) */}
+      <div className="group relative overflow-hidden rounded-2xl bg-[#0a1628] border border-slate-800 shadow-md p-3.5 sm:p-4 mb-6 text-white">
+        <div className="pointer-events-none absolute -right-6 -bottom-6 h-28 w-32 rounded-full bg-[#0A3088]/25 blur-2xl" aria-hidden="true" />
+        <div className="relative z-10 flex items-center justify-between gap-3">
+          {/* Text Info */}
+          <div className="flex-1 min-w-0">
+            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-1">
+              <FaMotorcycle className="w-3 h-3 text-emerald-400" aria-hidden="true" />
+              <span>{activeMotorcycle ? 'Moto Seleccionada' : 'Modelo del Despiece'}</span>
+            </div>
+            <h3 className="font-display text-base sm:text-lg font-black leading-tight tracking-tight text-white truncate">
+              {activeMotorcycle ? (
+                <>
+                  {activeMotorcycle.modelName} <span className="text-[#E60012]">{activeMotorcycle.year}</span>
+                </>
+              ) : (
+                currentDiagram.modelTarget || 'Modelos Suzuki'
+              )}
+            </h3>
+            <p className="text-[10px] font-mono text-slate-300 truncate mt-0.5">
+              {activeMotorcycle ? activeMotorcycle.version : `Sección: ${getDiagramSection(currentDiagram)}`}
+            </p>
+            <button
+              type="button"
+              onClick={onOpenGarageModal}
+              className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[10px] font-extrabold uppercase tracking-wider transition-colors cursor-pointer"
+            >
+              <ArrowRightLeft className="w-3 h-3 text-[#E60012]" aria-hidden="true" />
+              <span>{activeMotorcycle ? 'Cambiar Moto' : 'Configurar Garaje'}</span>
+            </button>
+          </div>
+
+          {/* Motorcycle Image */}
+          <div className="relative w-28 h-20 shrink-0 rounded-xl bg-white overflow-hidden p-1.5 flex items-center justify-center shadow-inner" aria-hidden="true">
+            {isLoading || !detailMotoImage ? (
+              <img
+                src={motoLoadUrl}
+                alt="Cargando..."
+                className="h-full w-full object-contain opacity-40 animate-pulse pointer-events-none"
+              />
+            ) : (
+              <img
+                src={detailMotoImage}
+                alt={activeMotorcycle ? activeMotorcycle.modelName : (currentDiagram.modelTarget || 'Suzuki')}
+                className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = motoLoadUrl;
+                }}
+              />
+            )}
+            {/* Red corner brackets */}
+            <div className="absolute -top-0.5 -left-0.5 w-2.5 h-2.5 border-l-2 border-t-2 border-[#E60012] z-20" />
+            <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 border-r-2 border-t-2 border-[#E60012] z-20" />
+            <div className="absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 border-l-2 border-b-2 border-[#E60012] z-20" />
+            <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 border-r-2 border-b-2 border-[#E60012] z-20" />
+          </div>
         </div>
       </div>
 
@@ -728,8 +810,18 @@ const ActiveGarageCard: React.FC<{
   isLoading?: boolean;
 }> = ({ activeMotorcycle, onOpenGarageModal, models, isLoading = false }) => {
   const availableModels = models || [];
+  const activeModelObj = activeMotorcycle
+    ? availableModels.find(m =>
+        m.id === activeMotorcycle.modelId ||
+        m.id.toLowerCase().replace(/[^a-z0-9]/g, '') === activeMotorcycle.modelId.toLowerCase().replace(/[^a-z0-9]/g, '') ||
+        m.name.toLowerCase().includes(activeMotorcycle.modelName.toLowerCase()) ||
+        activeMotorcycle.modelName.toLowerCase().includes(m.name.toLowerCase())
+      )
+    : null;
+  const activeMotoImage = activeModelObj?.image || (activeMotorcycle ? getMotorcyclePng(activeMotorcycle.modelId) : '');
+
   return (
-    <div className="group relative overflow-hidden rounded-2xl bg-[#0a1628] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.55)]">
+    <div className="group relative overflow-hidden rounded-2xl bg-[#0a1628] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.55)] border border-slate-800">
       {/* Subtle ambient glow */}
       <div className="pointer-events-none absolute -right-8 -bottom-8 h-32 w-40 rounded-full bg-[#0A3088]/25 blur-3xl" aria-hidden="true" />
 
@@ -738,35 +830,22 @@ const ActiveGarageCard: React.FC<{
           <div className="flex flex-col gap-3">
             {/* Motorcycle image — full-width hero with moto-load.webp skeleton */}
             <div className="relative w-full h-36 rounded-md overflow-hidden bg-white" aria-hidden="true">
-              {(() => {
-                const activeModelObj = availableModels.find(m =>
-                  m.id === activeMotorcycle.modelId ||
-                  m.id.toLowerCase().replace(/[^a-z0-9]/g, '') === activeMotorcycle.modelId.toLowerCase().replace(/[^a-z0-9]/g, '') ||
-                  m.name.toLowerCase().includes(activeMotorcycle.modelName.toLowerCase()) ||
-                  activeMotorcycle.modelName.toLowerCase().includes(m.name.toLowerCase())
-                );
-                const activeMotoImage = activeModelObj?.image || getMotorcyclePng(activeMotorcycle.modelId);
-                
-                if (isLoading || !activeMotoImage) {
-                  return (
-                    <img
-                      src={motoLoadUrl}
-                      alt="Cargando..."
-                      className="absolute inset-0 h-full w-full object-contain p-3 opacity-40 animate-pulse pointer-events-none"
-                    />
-                  );
-                }
-                return (
-                  <img
-                    src={activeMotoImage}
-                    alt={activeMotorcycle.modelName}
-                    className="absolute inset-0 h-full w-full object-contain p-2 transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = motoLoadUrl;
-                    }}
-                  />
-                );
-              })()}
+              {isLoading || !activeMotoImage ? (
+                <img
+                  src={motoLoadUrl}
+                  alt="Cargando..."
+                  className="absolute inset-0 h-full w-full object-contain p-3 opacity-40 animate-pulse pointer-events-none"
+                />
+              ) : (
+                <img
+                  src={activeMotoImage}
+                  alt={activeMotorcycle.modelName}
+                  className="absolute inset-0 h-full w-full object-contain p-2 transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = motoLoadUrl;
+                  }}
+                />
+              )}
               {/* Red corner brackets */}
               <div className="absolute -top-0.5 -left-0.5 w-3 h-3 border-l-2 border-t-2 border-[#E60012] z-20" />
               <div className="absolute -top-0.5 -right-0.5 w-3 h-3 border-r-2 border-t-2 border-[#E60012] z-20" />

@@ -767,6 +767,77 @@ export const CatalogSidebarFilter: React.FC<CatalogSidebarFilterProps> = ({
     <div id="catalog-sidebar-filter">
       {/* Mobile Top Header & Filter Trigger */}
       <div className="lg:hidden mb-6 space-y-3">
+        {/* Mobile Active Motorcycle Card with Motorcycle Image */}
+        {activeMotorcycle ? (
+          <div className="group relative overflow-hidden rounded-2xl bg-[#0a1628] border border-slate-800 shadow-md p-3.5 sm:p-4 text-white">
+            <div className="pointer-events-none absolute -right-6 -bottom-6 h-28 w-32 rounded-full bg-[#0A3088]/25 blur-2xl" aria-hidden="true" />
+            <div className="relative z-10 flex items-center justify-between gap-3">
+              {/* Text Info */}
+              <div className="flex-1 min-w-0">
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" aria-hidden="true" />
+                  <span>Moto Seleccionada</span>
+                </div>
+                <h3 className="font-display text-base sm:text-lg font-black leading-tight tracking-tight text-white truncate">
+                  {activeMotorcycle.modelName} <span className="text-[#E60012]">{activeMotorcycle.year}</span>
+                </h3>
+                <p className="text-[10px] font-mono text-slate-300 truncate mt-0.5">
+                  {activeMotorcycle.version}
+                </p>
+                <button
+                  type="button"
+                  onClick={onOpenGarageModal}
+                  className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[10px] font-extrabold uppercase tracking-wider transition-colors cursor-pointer"
+                >
+                  <ArrowRightLeft className="w-3 h-3 text-[#E60012]" aria-hidden="true" />
+                  <span>Cambiar Moto</span>
+                </button>
+              </div>
+
+              {/* Motorcycle Image */}
+              <div className="relative w-28 h-20 shrink-0 rounded-xl bg-white overflow-hidden p-1.5 flex items-center justify-center shadow-inner" aria-hidden="true">
+                {isLoading || !activeMotoImage ? (
+                  <img
+                    src={motoLoadUrl}
+                    alt="Cargando..."
+                    className="h-full w-full object-contain opacity-40 animate-pulse pointer-events-none"
+                  />
+                ) : (
+                  <img
+                    src={activeMotoImage}
+                    alt={activeMotorcycle.modelName}
+                    className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = motoLoadUrl;
+                    }}
+                  />
+                )}
+                {/* Red corner brackets */}
+                <div className="absolute -top-0.5 -left-0.5 w-2.5 h-2.5 border-l-2 border-t-2 border-[#E60012] z-20" />
+                <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 border-r-2 border-t-2 border-[#E60012] z-20" />
+                <div className="absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 border-l-2 border-b-2 border-[#E60012] z-20" />
+                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 border-r-2 border-b-2 border-[#E60012] z-20" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl bg-[#0a1628] border border-slate-800 p-3.5 sm:p-4 text-white flex items-center justify-between gap-3 shadow-md">
+            <div className="min-w-0">
+              <h3 className="text-xs font-black uppercase text-white">¿Cuál es tu Suzuki?</h3>
+              <p className="text-[11px] text-slate-300 mt-0.5 line-clamp-1">
+                Filtra repuestos 100% compatibles con tu moto.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenGarageModal}
+              className="shrink-0 px-3 py-2 bg-[#E60012] hover:bg-red-700 text-white font-extrabold text-[11px] uppercase tracking-wider rounded-xl transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <span>+ Seleccionar</span>
+            </button>
+          </div>
+        )}
+
         <div className="flex items-center gap-3">
           {/* Search Box on Mobile */}
           <div className="relative flex-1">
