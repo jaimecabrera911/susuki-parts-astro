@@ -14,7 +14,7 @@ import { eq, and } from 'drizzle-orm';
 import { DEFAULT_SHIPPING_ZONES, DEFAULT_SHIPPING_METHODS, DEFAULT_COLOMBIAN_CITIES, COLOMBIAN_DEPARTMENTS } from '../data/initialShippingAndCities';
 import { STORE_DEFAULT_LOCATION, STORE_BOOTSTRAP, FOOTER_BOOTSTRAP, getBootstrapShowProductImages } from '../utils/config';
 import { hashPassword } from '../utils/password';
-import type { SiteSettings } from '../types';
+import type { SiteSettings, PaymentSettings, WompiConfig } from '../types';
 
 export function isValidUuid(val: any): boolean {
   return typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
@@ -1013,4 +1013,109 @@ export async function deleteOrderReturn(db: AppDb, id: string) {
   await db.delete(orderReturns).where(eq(orderReturns.id, id));
   return { id };
 }
+
+export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
+  bankTransfer: {
+    enabled: true,
+    accounts: [
+      {
+        id: 'account-bancolombia-default',
+        bankName: 'Bancolombia',
+        accountType: 'Cuenta de Ahorros',
+        accountNumber: '123-456789-01',
+        accountHolder: 'Suzuki Parts Colombia S.A.S.',
+        nit: '900.123.456-7',
+        instructions: 'Usa el número de orden generado como referencia de pago al realizar la transferencia.',
+        active: true,
+        isDefault: true,
+      }
+    ]
+  },
+  wompi: {
+    enabled: false,
+    environment: 'sandbox',
+    publicKey: '',
+    privateKey: '',
+    integritySecret: '',
+    eventsSecret: ''
+  }
+};
+
+export async function getPaymentSettings(db: AppDb): Promise<PaymentSettings> {
+  try {
+    const rows = await db.select().from(siteSettings).where(eq(siteSettings.key, 'store.payments')).limit(1);
+    if (rows.length > 0 && rows[0].value) {
+      const val = rows[0].value as any;
+      return {
+        bankTransfer: {
+          enabled: typeof val.bankTransfer?.enabled === 'boolean' ? val.bankTransfer.enabled : DEFAULT_PAYMENT_SETTINGS.bankTransfer.enabled,
+          accounts: Array.isArray(val.bankTransfer?.accounts) ? val.bankTransfer.accounts : DEFAULT_PAYMENT_SETTINGS.bankTransfer.accounts
+        },
+        wompi: {
+          enabled: typeof val.wompi?.enabled === 'boolean' ? val.wompi.enabled : DEFAULT_PAYMENT_SETTINGS.wompi.enabled,
+          environment: val.wompi?.environment === 'production' ? 'production' : 'sandbox',
+          publicKey: typeof val.wompi?.publicKey === 'string' ? val.wompi.publicKey.trim() : '',
+          privateKey: typeof val.wompi?.privateKey === 'string' ? val.wompi.privateKey.trim() : '',
+          integritySecret: typeof val.wompi?.integritySecret === 'string' ? val.wompi.integritySecret.trim() : '',
+          eventsSecret: typeof val.wompi?.eventsSecret === 'string' ? val.wompi.eventsSecret.trim() : ''
+        }
+      };
+    }
+  } catch (err) {
+    console.error('Error cargando payment_settings de la BD:', err);
+  }
+  return DEFAULT_PAYMENT_SETTINGS;
+}
+
+export async function upsertPaymentSettings(db: AppDb, body: any): Promise<PaymentSettings> {
+  const current = await getPaymentSettings(db);
+
+  const bankTransfer = {
+    enabled: typeof body?.bankTransfer?.enabled === 'boolean' ? body.bankTransfer.enabled : current.bankTransfer.enabled,
+    accounts: Array.isArray(body?.bankTransfer?.accounts)
+      ? body.bankTransfer.accounts.map((acc: any) => ({
+          id: acc.id || crypto.randomUUID(),
+          bankName: String(acc.bankName || '').trim(),
+          accountType: String(acc.accountType || 'Cuenta de Ahorros').trim(),
+          accountNumber: String(acc.accountNumber || '').trim(),
+          accountHolder: String(acc.accountHolder || '').trim(),
+          nit: String(acc.nit || '').trim(),
+          instructions: typeof acc.instructions === 'string' ? acc.instructions.trim() : '',
+          active: typeof acc.active === 'boolean' ? acc.active : true,
+          isDefault: typeof acc.isDefault === 'boolean' ? acc.isDefault : false
+        }))
+      : current.bankTransfer.accounts
+  };
+
+  const wompi: WompiConfig = {
+    enabled: typeof body?.wompi?.enabled === 'boolean' ? body.wompi.enabled : current.wompi.enabled,
+    environment: body?.wompi?.environment === 'production' ? 'production' : 'sandbox',
+    publicKey: typeof body?.wompi?.publicKey === 'string' ? body.wompi.publicKey.trim() : current.wompi.publicKey,
+    privateKey: typeof body?.wompi?.privateKey === 'string' ? body.wompi.privateKey.trim() : current.wompi.privateKey,
+    integritySecret: typeof body?.wompi?.integritySecret === 'string' ? body.wompi.integritySecret.trim() : current.wompi.integritySecret,
+    eventsSecret: typeof body?.wompi?.eventsSecret === 'string' ? body.wompi.eventsSecret.trim() : current.wompi.eventsSecret
+  };
+
+  const value: PaymentSettings = { bankTransfer, wompi };
+
+  await db.insert(siteSettings).values({
+    id: crypto.randomUUID(),
+    key: 'store.payments',
+    value,
+    category: 'billing',
+    description: 'Configuración de medios de pago (Transferencias Bancarias y Pasarela Wompi)',
+    updatedAt: new Date()
+  }).onConflictDoUpdate({
+    target: siteSettings.key,
+    set: {
+      value,
+      category: 'billing',
+      description: 'Configuración de medios de pago (Transferencias Bancarias y Pasarela Wompi)',
+      updatedAt: new Date()
+    }
+  });
+
+  return getPaymentSettings(db);
+}
+
 

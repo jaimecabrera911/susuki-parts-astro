@@ -12,6 +12,7 @@ import { SchematicsManager } from "./SchematicsManager";
 import { OrdersManager } from "./OrdersManager";
 import { UsersManager } from "./UsersManager";
 import { ShippingManager } from "./ShippingManager";
+import { PaymentsManager } from "./PaymentsManager";
 import { SettingsManager } from "./SettingsManager";
 import { CouponsManager } from "./CouponsManager";
 import { ReturnsManager } from "./ReturnsManager";
@@ -87,6 +88,7 @@ const getTabFromUrl = (): AdminTab => {
     "returns",
     "users",
     "shipping",
+    "payments",
     "settings",
     "coupons",
     "metrics",
@@ -990,6 +992,8 @@ export const AdminDashboard: React.FC = () => {
 
           {activeTab === "shipping" && <ShippingManager />}
 
+          {activeTab === "payments" && <PaymentsManager />}
+
           {activeTab === "settings" && <SettingsManager onShowToast={showToast} />}
 
           {activeTab === "coupons" && <CouponsManager />}
@@ -1004,6 +1008,7 @@ export const AdminDashboard: React.FC = () => {
             activeTab !== "returns" &&
             activeTab !== "users" &&
             activeTab !== "shipping" &&
+            activeTab !== "payments" &&
             activeTab !== "settings" &&
             activeTab !== "coupons" && (
               <div className="p-12 rounded-2xl bg-white border border-slate-200 text-center max-w-xl mx-auto my-12 shadow-xs">

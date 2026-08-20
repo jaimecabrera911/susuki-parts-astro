@@ -181,7 +181,7 @@ export interface UserProfile {
   notes?: string;
 }
 
-export type PaymentMethod = 'transferencia';
+export type PaymentMethod = 'transferencia' | 'wompi' | 'tarjeta' | 'pse' | 'nequi' | string;
 
 // DB-driven: statuses live in the `order_statuses` table (catalog).
 export type OrderStatus = string;
@@ -394,5 +394,35 @@ export interface OrderMessage {
   isPrivate?: boolean; // If true, visible only to admins (notas internas de bodega)
   timestamp: string;
 }
+
+export interface BankAccount {
+  id: string;
+  bankName: string;
+  accountType: string;
+  accountNumber: string;
+  accountHolder: string;
+  nit: string;
+  instructions?: string;
+  active: boolean;
+  isDefault?: boolean;
+}
+
+export interface WompiConfig {
+  enabled: boolean;
+  environment: 'sandbox' | 'production';
+  publicKey: string;
+  privateKey: string;
+  integritySecret: string;
+  eventsSecret?: string;
+}
+
+export interface PaymentSettings {
+  bankTransfer: {
+    enabled: boolean;
+    accounts: BankAccount[];
+  };
+  wompi: WompiConfig;
+}
+
 
 

@@ -13,13 +13,13 @@ import {
 } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 
-import { Tag, RotateCcw, Settings } from 'lucide-react';
+import { Tag, RotateCcw, Settings, CreditCard } from 'lucide-react';
 import { getStoreLogo, getStoreName, getStoreTagline } from '../../utils/config';
 import logoImg from '../../assets/logo.png';
 
 const logoUrl = typeof logoImg === 'string' ? logoImg : (logoImg?.src || '/src/assets/logo.png');
 
-export type AdminTab = 'brands' | 'models' | 'categories' | 'parts' | 'schematics' | 'orders' | 'returns' | 'users' | 'shipping' | 'settings' | 'coupons' | 'metrics';
+export type AdminTab = 'brands' | 'models' | 'categories' | 'parts' | 'schematics' | 'orders' | 'returns' | 'users' | 'shipping' | 'payments' | 'settings' | 'coupons' | 'metrics';
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -100,6 +100,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       id: 'shipping' as AdminTab,
       label: 'MÉTODOS DE ENVÍO',
       icon: Truck,
+    },
+    {
+      id: 'payments' as AdminTab,
+      label: 'MEDIOS DE PAGO',
+      icon: CreditCard,
     },
     {
       id: 'settings' as AdminTab,

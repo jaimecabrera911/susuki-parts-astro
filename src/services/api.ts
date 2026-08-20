@@ -421,6 +421,27 @@ export async function UPLOAD_IMAGE(file: File, folder = 'store') {
   return json.data as { url: string; key: string };
 }
 
+export async function fetchPaymentSettings() {
+  const res = await fetch('/api/payments', {
+    headers: getAuthHeaders()
+  });
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Error cargando configuración de medios de pago');
+  return json.data;
+}
+
+export async function savePaymentSettingsApi(settings: any) {
+  const res = await fetch('/api/payments', {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(settings)
+  });
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Error guardando medios de pago');
+  return json.data;
+}
+
+
 
 
 

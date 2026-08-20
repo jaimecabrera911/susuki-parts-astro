@@ -30,12 +30,13 @@ import { formatOrderDate } from "../utils/formatDate";
 import { formatDocumentNumber } from "../utils/formatDocumentNumber";
 import { shouldShowProductImages } from "../utils/config";
 import { ProductImageEmptyState } from "./ProductImageEmptyState";
-import { BANK_DETAILS } from "../data/bankDetails";
+import type { PaymentSettings, BankAccount } from "../types";
 import {
   fetchDefaultCarrierName,
   fetchReturns,
   saveReturnApi,
   sendOrderMessageApi,
+  fetchPaymentSettings,
 } from "../services/api";
 import { parseReturnNotes, formatMessageTime } from "../utils/returnNotes";
 import { parseOrderNotes, formatOrderMessageTime } from "../utils/orderNotes";
@@ -53,6 +54,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 }) => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [defaultCarrier, setDefaultCarrier] = useState<string>("");
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [activeReturn, setActiveReturn] = useState<any | null>(null);
   const [customerMessage, setCustomerMessage] = useState("");
@@ -103,6 +105,13 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
         if (!cancelled) setDefaultCarrier(name);
       })
       .catch(() => {});
+
+    fetchPaymentSettings()
+      .then((data) => {
+        if (!cancelled && data) setPaymentSettings(data);
+      })
+      .catch(() => {});
+
     return () => {
       cancelled = true;
     };
@@ -327,81 +336,102 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Bank Transfer Payment Card (Light Theme) */}
-          <div className="bg-slate-50 border border-slate-200 text-slate-900 rounded-2xl p-5 shadow-xs">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-200 pb-3 mb-3 gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-300 text-amber-900 flex items-center justify-center font-black text-sm shrink-0">
-                  <Building2 className="w-4 h-4 text-amber-700" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black font-display text-slate-900">
-                    Datos Bancarios para Transferencia
-                  </h3>
-                  <p className="text-[11px] text-slate-500 font-sans">
-                    {BANK_DETAILS.instructions}
-                  </p>
-                </div>
+          {/* Bank Transfer Payment Card or Online Payment Banner */}
+          {order.paymentMethod === "wompi" ? (
+            <div className="bg-emerald-50 text-slate-900 rounded-2xl p-4 shadow-2xs border border-emerald-200 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">
+                <CheckCircle2 className="w-4 h-4" />
               </div>
-              <div className="text-left sm:text-right shrink-0">
-                <span className="text-[9px] text-slate-500 uppercase font-bold block font-mono">
-                  TOTAL A PAGAR
-                </span>
-                <span className="text-lg font-mono font-black text-emerald-700">
-                  {formatCurrency(order.totalPrice)}
-                </span>
+              <div>
+                <h3 className="text-xs font-black font-display text-slate-900">
+                  Método de Pago: Pasarela Online Wompi
+                </h3>
+                <p className="text-[11px] text-slate-600 font-sans">
+                  Pago procesado de forma electrónica mediante Wompi Bancolombia.
+                </p>
               </div>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
-                <span className="text-[9px] text-slate-500 uppercase font-bold block font-mono">
-                  TITULAR DE LA CUENTA
-                </span>
-                <span className="font-extrabold text-slate-900 text-xs block mt-0.5">
-                  {BANK_DETAILS.accountHolder}
-                </span>
-                <span className="text-slate-600 block text-[10px] font-mono mt-0.5">
-                  NIT: {BANK_DETAILS.nit}
-                </span>
-              </div>
-              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
-                <span className="text-[9px] text-slate-500 uppercase font-bold block font-mono">
-                  BANCO & TIPO DE CUENTA
-                </span>
-                <span className="font-black text-slate-900 text-xs block mt-0.5">
-                  {BANK_DETAILS.bankName}
-                </span>
-                <span className="text-slate-600 block text-[10px] mt-0.5">
-                  {BANK_DETAILS.accountType}
-                </span>
-              </div>
-              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
-                <span className="text-[9px] text-slate-500 uppercase font-bold block font-mono">
-                  Nº CUENTA BANCOLOMBIA
-                </span>
-                <div className="flex items-center justify-between mt-0.5">
-                  <span className="font-mono font-black text-amber-700 text-xs sm:text-sm">
-                    {BANK_DETAILS.accountNumber}
+          ) : (
+            <div className="bg-slate-50 border border-slate-200 text-slate-900 rounded-2xl p-5 shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-200 pb-3 gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-300 text-amber-900 flex items-center justify-center font-black text-sm shrink-0">
+                    <Building2 className="w-4 h-4 text-amber-700" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black font-display text-slate-900">
+                      Datos Bancarios para Transferencia
+                    </h3>
+                    <p className="text-[11px] text-slate-500 font-sans">
+                      Transfiere el valor exacto usando tu número de orden como referencia
+                    </p>
+                  </div>
+                </div>
+                <div className="text-left sm:text-right shrink-0">
+                  <span className="text-[9px] text-slate-500 uppercase font-bold block font-mono">
+                    TOTAL A PAGAR
                   </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleCopy(BANK_DETAILS.accountNumber, "accModal")
-                    }
-                    className="text-slate-400 hover:text-slate-800 p-0.5 cursor-pointer transition-colors"
-                    title="Copiar Número de Cuenta"
-                  >
-                    {copiedField === "accModal" ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" />
-                    )}
-                  </button>
+                  <span className="text-lg font-mono font-black text-emerald-700">
+                    {formatCurrency(order.totalPrice)}
+                  </span>
                 </div>
               </div>
+
+              {/* Dynamic accounts list */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                {((paymentSettings?.bankTransfer?.accounts || []).filter((a: BankAccount) => a.active).length > 0
+                  ? (paymentSettings?.bankTransfer?.accounts || []).filter((a: BankAccount) => a.active)
+                  : [
+                      {
+                        id: "default-acc-modal",
+                        bankName: "Bancolombia",
+                        accountType: "Cuenta de Ahorros",
+                        accountNumber: "123-456789-01",
+                        accountHolder: "Suzuki Parts Colombia S.A.S.",
+                        nit: "900.123.456-7",
+                        instructions: "",
+                        active: true,
+                      },
+                    ]
+                ).map((acc: BankAccount) => (
+                  <div
+                    key={acc.id}
+                    className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-1"
+                  >
+                    <div className="flex items-center justify-between font-mono">
+                      <span className="font-bold text-slate-900">
+                        {acc.bankName} ({acc.accountType})
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs font-mono">
+                      <span className="text-slate-500">No. Cuenta:</span>
+                      <div className="flex items-center gap-1">
+                        <strong className="text-amber-800 font-black">
+                          {acc.accountNumber}
+                        </strong>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(acc.accountNumber, `acc-${acc.id}`)}
+                          className="text-slate-400 hover:text-slate-800 p-0.5 transition-colors"
+                          title="Copiar Número de Cuenta"
+                        >
+                          {copiedField === `acc-${acc.id}` ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-600">
+                      <span>Titular: <strong>{acc.accountHolder}</strong></span>
+                      {acc.nit && <span>NIT/CC: {acc.nit}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Detailed Items List (Repuestos Incluidos) */}
           <div className="space-y-3">
