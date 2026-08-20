@@ -285,6 +285,8 @@ export interface SiteSettings {
   showProductImages: boolean;
   /** Elemento mostrado como principal en el detalle de producto. Default: 'despiece'. */
   detailPrimary: 'despiece' | 'images';
+  /** Mostrar despiece con hotspot en la tarjeta de producto del catálogo. Default: false. */
+  showPartSchematicOnCard?: boolean;
   taxName: string;
   taxRate: number;
   taxActive: boolean;

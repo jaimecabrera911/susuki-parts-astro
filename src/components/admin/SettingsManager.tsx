@@ -75,6 +75,7 @@ const EMPTY_SETTINGS: SiteSettings = {
   defaultCity: "",
   showProductImages: false,
   detailPrimary: 'despiece',
+  showPartSchematicOnCard: false,
   taxName: "",
   taxRate: 0,
   taxActive: false,
@@ -626,7 +627,7 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               {/* Mostrar Imágenes de Producto */}
               <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col justify-between gap-4">
                 <div>
@@ -678,6 +679,30 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
                     <option value="despiece">Despiece técnico</option>
                     <option value="images">Imágenes del producto</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Mostrar Despiece con Hotspot en Card de Producto */}
+              <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col justify-between gap-4">
+                <div>
+                  <div className="flex items-center justify-between gap-3 mb-1.5">
+                    <span className="text-xs font-extrabold text-slate-900 font-display flex items-center gap-1.5">
+                      <Layers className="w-4 h-4 text-[#E60012]" />
+                      Despiece con Hotspot en Card
+                    </span>
+                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={settings.showPartSchematicOnCard || false}
+                        onChange={(e) => set("showPartSchematicOnCard", e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#E60012]"></div>
+                    </label>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-sans leading-relaxed">
+                    Si está activado, la tarjeta del producto en el catálogo muestra el despiece con el hotspot (punto técnico) de la pieza destacada.
+                  </p>
                 </div>
               </div>
             </div>

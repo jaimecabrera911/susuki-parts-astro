@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   AlertTriangle,
   HelpCircle,
@@ -10,6 +10,7 @@ import {
   Copy,
   Check,
   Heart,
+  Layers,
 } from "lucide-react";
 import { AiTwotoneSafetyCertificate } from "react-icons/ai";
 import { TbAlertHexagonFilled } from "react-icons/tb";
@@ -18,6 +19,7 @@ import type {
   SuzukiPart,
   ActiveMotorcycle,
   AvailabilityStatus,
+  ExplodedDiagram,
 } from "../types";
 import {
   getAvailabilityStatus,
@@ -27,6 +29,7 @@ import {
 import { formatCurrency } from "../utils/formatCurrency";
 import { getProductWhatsAppUrl } from "../utils/whatsapp";
 import { shouldShowProductImages } from "../utils/config";
+import { useSiteSettings } from "./SiteSettingsProvider";
 import { ProductImageEmptyState } from "./ProductImageEmptyState";
 import { IoChatbubbleEllipses } from "react-icons/io5";
 
@@ -38,6 +41,24 @@ interface ProductCardProps {
   onOpenGarageModal: () => void;
   isFavorite?: boolean;
   onToggleFavorite?: (partId: string) => void;
+  schematics?: ExplodedDiagram[];
+}
+
+let globalSchematicsCache: ExplodedDiagram[] | null = null;
+let globalSchematicsPromise: Promise<ExplodedDiagram[]> | null = null;
+
+function fetchGlobalSchematics(): Promise<ExplodedDiagram[]> {
+  if (globalSchematicsCache) return Promise.resolve(globalSchematicsCache);
+  if (!globalSchematicsPromise) {
+    globalSchematicsPromise = fetch("/api/schematics")
+      .then((r) => r.json())
+      .then((res) => {
+        globalSchematicsCache = res?.data || [];
+        return globalSchematicsCache!;
+      })
+      .catch(() => []);
+  }
+  return globalSchematicsPromise;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -48,7 +69,70 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onOpenGarageModal,
   isFavorite = false,
   onToggleFavorite,
+  schematics,
 }) => {
+  const { settings } = useSiteSettings();
+  const showPartSchematicOnCard = settings.showPartSchematicOnCard === true;
+
+  const [internalSchematics, setInternalSchematics] = useState<ExplodedDiagram[]>(
+    () => schematics || globalSchematicsCache || []
+  );
+
+  useEffect(() => {
+    if (schematics && schematics.length > 0) {
+      setInternalSchematics(schematics);
+      globalSchematicsCache = schematics;
+    } else if (showPartSchematicOnCard && (!internalSchematics || internalSchematics.length === 0)) {
+      fetchGlobalSchematics().then((data) => {
+        if (data && data.length > 0) {
+          setInternalSchematics(data);
+        }
+      });
+    }
+  }, [schematics, showPartSchematicOnCard]);
+
+  const allDiagrams = schematics && schematics.length > 0 ? schematics : internalSchematics;
+
+  // Find schematic info strictly by explicit hotspot match or explicit part.schematicId
+  const diagramInfo = useMemo(() => {
+    if (!showPartSchematicOnCard) return null;
+
+    // 1. Direct Hotspot Match in schematics array
+    const hotspotMatch = allDiagrams.find(
+      (d) =>
+        d.hotspots &&
+        Array.isArray(d.hotspots) &&
+        d.hotspots.some((h) => h.partId === part.id)
+    );
+
+    if (hotspotMatch) {
+      const spot = hotspotMatch.hotspots.find((h) => h.partId === part.id);
+      return {
+        id: hotspotMatch.id,
+        title: hotspotMatch.title,
+        section: hotspotMatch.section,
+        hotspot: spot ? { itemNumber: spot.itemNumber, x: spot.x, y: spot.y } : null,
+        image: hotspotMatch.diagramImage || "",
+      };
+    }
+
+    // 2. Explicit part.schematicId Match
+    if (part.schematicId) {
+      const diagram = allDiagrams.find((d) => d.id === part.schematicId);
+      if (diagram) {
+        return {
+          id: diagram.id,
+          title: diagram.title,
+          section: diagram.section,
+          hotspot: part.diagramHotspot ?? null,
+          image: diagram.diagramImage || "",
+        };
+      }
+    }
+
+    return null;
+  }, [part, allDiagrams, showPartSchematicOnCard]);
+
   // Evaluate compatibility status against active motorcycle
   let isCompatible = false;
 
@@ -145,7 +229,70 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       }`}
     >
       <div>
-        {showProductImages ? (
+        {diagramInfo ? (
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label={`Ver detalles técnicos y despiece de ${part.name}`}
+            onClick={() => onOpenDetail(part)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onOpenDetail(part);
+              }
+            }}
+            className="relative aspect-4/3 bg-white border-b border-slate-200/80 overflow-hidden cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] group/diagram p-2 flex items-center justify-center"
+          >
+            {/* Schematic image */}
+            <img
+              src={diagramInfo.image}
+              alt={`Despiece de ${part.name}`}
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-contain pointer-events-none select-none transition-transform duration-500 ease-out group-hover:scale-105"
+            />
+
+            {/* Hotspot pin */}
+            {diagramInfo.hotspot && (
+              <div
+                className="absolute z-10 pointer-events-none flex items-center justify-center"
+                style={{
+                  left: `${diagramInfo.hotspot.x}%`,
+                  top: `${diagramInfo.hotspot.y}%`,
+                  transform: "translate(-50%, -50%)",
+                }}
+                aria-label={`Pieza #${diagramInfo.hotspot.itemNumber}`}
+              >
+                {/* Outer pulse ring */}
+                <div className="absolute w-6 h-6 rounded-full bg-red-600/40 animate-ping pointer-events-none" />
+
+                {/* Glowing halo */}
+                <div className="absolute w-5 h-5 rounded-full bg-[#E60012]/30 border border-[#E60012]/60 shadow-[0_0_10px_rgba(230,0,18,0.8)] pointer-events-none" />
+
+                {/* Core badge */}
+                <div className="relative w-4.5 h-4.5 rounded-full bg-[#E60012] border-2 border-white shadow-md flex items-center justify-center font-mono font-black text-[9px] text-white select-none">
+                  {diagramInfo.hotspot.itemNumber}
+                </div>
+              </div>
+            )}
+
+            {/* Badges on top */}
+            <div className="absolute top-2.5 left-2.5 z-10">
+              {compatibilityBadge}
+            </div>
+
+            <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1.5">
+              <div className="bg-white/95 text-slate-800 font-bold text-[10px] uppercase px-2.5 py-1 rounded-md backdrop-blur-md border border-slate-200/80 shadow-xs">
+                {part.category}
+              </div>
+            </div>
+
+            {/* Bottom schematic tag badge */}
+            <div className="absolute bottom-2 left-2 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-900/90 text-white font-mono text-[9px] font-bold shadow-xs backdrop-blur-xs border border-white/10">
+              <Layers className="w-2.5 h-2.5 text-[#E60012]" aria-hidden="true" />
+              <span>Despiece #{diagramInfo.hotspot?.itemNumber || "OEM"}</span>
+            </div>
+          </div>
+        ) : showProductImages ? (
           <div
             role="button"
             tabIndex={0}
@@ -239,27 +386,28 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
       {/* Footer Price & Anti-Error Add to Cart */}
       <div className="p-4 sm:p-5 pt-3 border-t border-slate-100 mt-2 space-y-3">
-        {/* Row 1: Price and Stock status */}
-        <div className="flex items-end justify-between gap-2">
-          <div>
-            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
-              Precio
-            </span>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-base sm:text-lg font-mono font-black text-slate-900 tracking-tight block">
-                {formatCurrency(part.price)}
-              </span>
+        {/* Row 1: Price and Badges */}
+        <div className="space-y-1">
+          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
+            Precio
+          </span>
+          <div className="text-base sm:text-lg font-mono font-black text-slate-900 tracking-tight whitespace-nowrap">
+            {formatCurrency(part.price)}
+          </div>
+
+          <div className="flex items-center justify-between gap-2 pt-0.5">
+            <div>
               {part.taxable !== false ? (
                 part.priceIncludesTax ? (
                   <span
-                    className="text-[9px] font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded"
+                    className="text-[9px] font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded shrink-0"
                     title="El precio mostrado ya incluye el 19% IVA"
                   >
                     IVA Inc.
                   </span>
                 ) : (
                   <span
-                    className="text-[9px] font-mono font-bold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded"
+                    className="text-[9px] font-mono font-bold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded shrink-0"
                     title="El precio no incluye IVA (se liquida al checkout)"
                   >
                     + 19% IVA
@@ -267,31 +415,32 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 )
               ) : (
                 <span
-                  className="text-[9px] font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded"
+                  className="text-[9px] font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded shrink-0"
                   title="Repuesto exento de IVA"
                 >
                   Exento
                 </span>
               )}
             </div>
+
+            {availabilityStatus === "in_stock" && (
+              <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 rounded-lg shrink-0">
+                En Stock ({part.stock})
+              </span>
+            )}
+            {availabilityStatus === "international" && (
+              <span className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-lg shrink-0 flex items-center gap-1">
+                <Globe className="w-3 h-3" />
+                7-15 días
+              </span>
+            )}
+            {availabilityStatus === "on_order" && (
+              <span className="text-[10px] font-mono font-bold text-amber-700 bg-amber-50 border border-amber-200/80 px-2.5 py-0.5 rounded-lg shrink-0 flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                15-30 días
+              </span>
+            )}
           </div>
-          {availabilityStatus === "in_stock" && (
-            <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-lg shrink-0">
-              En Stock ({part.stock})
-            </span>
-          )}
-          {availabilityStatus === "international" && (
-            <span className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">
-              <Globe className="w-3 h-3" />
-              7-15 días
-            </span>
-          )}
-          {availabilityStatus === "on_order" && (
-            <span className="text-[10px] font-mono font-bold text-amber-700 bg-amber-50 border border-amber-200/80 px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              15-30 días
-            </span>
-          )}
         </div>
 
         {/* Row 2: Action Buttons */}

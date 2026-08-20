@@ -16,6 +16,9 @@ export default defineConfig({
   integrations: [react()],
   vite: {
     plugins: [tailwindcss()],
+    optimizeDeps: {
+      include: ['react-data-table-component'],
+    },
   },
 });
 

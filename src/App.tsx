@@ -782,6 +782,7 @@ export default function App() {
                       onOpenGarageModal={() => setIsGarageModalOpen(true)}
                       isFavorite={userProfile.favoritePartIds.includes(part.id)}
                       onToggleFavorite={handleToggleFavorite}
+                      schematics={schematics}
                     />
                   ))}
               </div>
@@ -903,6 +904,7 @@ export default function App() {
                           part.id,
                         )}
                         onToggleFavorite={handleToggleFavorite}
+                        schematics={schematics}
                       />
                     ))}
                   </div>
@@ -1033,6 +1035,7 @@ export default function App() {
             onOpenGarageModal={() => setIsGarageModalOpen(true)}
             onToggleFavorite={handleToggleFavorite}
             onNavigateToCatalog={() => navigateToTab("catalog")}
+            schematics={schematics}
           />
         )}
 

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Heart, Search, ArrowRight, Trash2, ShieldCheck } from 'lucide-react';
 import { ProductCard } from './ProductCard';
-import type { SuzukiPart, ActiveMotorcycle } from '../types';
+import type { SuzukiPart, ActiveMotorcycle, ExplodedDiagram } from '../types';
 
 interface FavoritesPageProps {
   favoriteParts: SuzukiPart[];
@@ -11,6 +11,7 @@ interface FavoritesPageProps {
   onOpenGarageModal: () => void;
   onToggleFavorite: (partId: string) => void;
   onNavigateToCatalog: () => void;
+  schematics?: ExplodedDiagram[];
 }
 
 export const FavoritesPage: React.FC<FavoritesPageProps> = ({
@@ -20,7 +21,8 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
   onAddToCart,
   onOpenGarageModal,
   onToggleFavorite,
-  onNavigateToCatalog
+  onNavigateToCatalog,
+  schematics
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -135,6 +137,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
               onOpenGarageModal={onOpenGarageModal}
               isFavorite={true}
               onToggleFavorite={onToggleFavorite}
+              schematics={schematics}
             />
           ))}
         </div>

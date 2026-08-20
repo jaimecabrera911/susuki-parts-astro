@@ -74,6 +74,7 @@ export const emptySiteSettings = (): SiteSettings => ({
   defaultCity: '',
   showProductImages: false,
   detailPrimary: 'despiece',
+  showPartSchematicOnCard: false,
   taxName: '',
   taxRate: 0,
   taxActive: false,
@@ -112,6 +113,9 @@ export function getSiteSettingsSnapshot(): SiteSettings {
 
 export const shouldShowProductImages = (): boolean =>
   getSiteSettingsSnapshot().showProductImages === true;
+
+export const shouldShowPartSchematicOnCard = (): boolean =>
+  getSiteSettingsSnapshot().showPartSchematicOnCard === true;
 
 /**
  * Elemento mostrado como principal en el detalle de producto

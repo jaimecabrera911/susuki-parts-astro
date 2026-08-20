@@ -894,6 +894,7 @@ export async function getSiteSettings(db: AppDb): Promise<SiteSettings> {
     storeAddress: info.storeAddress || STORE_BOOTSTRAP.storeAddress,
     showProductImages: typeof info.showProductImages === 'boolean' ? info.showProductImages : getBootstrapShowProductImages(),
     detailPrimary: product.detailPrimary === 'images' ? 'images' : 'despiece',
+    showPartSchematicOnCard: typeof product.showPartSchematicOnCard === 'boolean' ? product.showPartSchematicOnCard : false,
     defaultCountry: location.defaultCountry || STORE_BOOTSTRAP.location.country,
     defaultDepartment: location.defaultDepartment || STORE_BOOTSTRAP.location.department,
     defaultCity: location.defaultCity || STORE_BOOTSTRAP.location.city,
@@ -969,6 +970,7 @@ export async function upsertSiteSettings(db: AppDb, body: any) {
 
   const product = {
     detailPrimary: body.detailPrimary === 'images' ? 'images' : 'despiece',
+    showPartSchematicOnCard: typeof body.showPartSchematicOnCard === 'boolean' ? body.showPartSchematicOnCard : (existing.showPartSchematicOnCard ?? false),
   };
 
   const modules = [
