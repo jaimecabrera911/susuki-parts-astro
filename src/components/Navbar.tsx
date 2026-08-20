@@ -40,7 +40,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenGarageModal,
   onOpenCart,
   onOpenAI,
-  userName = 'Juan Pérez',
+  userName = '',
   isLoggedIn = true,
   userRole = 'customer',
   onOpenAuthModal,
@@ -56,7 +56,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { settings } = useSiteSettings();
 
   const storeLogo = settings.storeLogo || getStoreLogo();
-  const storeName = settings.storeName || getStoreName() || 'SUZUKI PARTS';
+  const storeName = settings.storeName || getStoreName();
   const storeTagline = settings.storeTagline || getStoreTagline();
   const logoToShow = storeLogo || logoUrl;
 

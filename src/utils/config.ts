@@ -27,10 +27,10 @@ export const STORE_BOOTSTRAP = {
 };
 
 export const FOOTER_BOOTSTRAP: FooterConfig = {
-  tagline: 'REPUESTOS COLOMBIA',
+  tagline: STORE_BOOTSTRAP.storeTagline,
   description:
     'Sistema oficial de consulta y suministro de repuestos con garantía de ajuste técnico OEM.',
-  copyright: '© 2026 SUZUKI REPUESTOS COLOMBIA | INDUSTRIAL PRECISION',
+  copyright: `© ${new Date().getFullYear()} ${STORE_BOOTSTRAP.storeName} | ${STORE_BOOTSTRAP.storeTagline}`,
   legalLinks: [
     { label: 'Technical Specifications', href: '#tutorial' },
     { label: 'OEM Verification Process', href: '#oem-verification' },

@@ -378,58 +378,52 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               </div>
 
               {/* Dynamic accounts list */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                {((paymentSettings?.bankTransfer?.accounts || []).filter((a: BankAccount) => a.active).length > 0
-                  ? (paymentSettings?.bankTransfer?.accounts || []).filter((a: BankAccount) => a.active)
-                  : [
-                      {
-                        id: "default-acc-modal",
-                        bankName: "Bancolombia",
-                        accountType: "Cuenta de Ahorros",
-                        accountNumber: "123-456789-01",
-                        accountHolder: "Suzuki Parts Colombia S.A.S.",
-                        nit: "900.123.456-7",
-                        instructions: "",
-                        active: true,
-                      },
-                    ]
-                ).map((acc: BankAccount) => (
-                  <div
-                    key={acc.id}
-                    className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-1"
-                  >
-                    <div className="flex items-center justify-between font-mono">
-                      <span className="font-bold text-slate-900">
-                        {acc.bankName} ({acc.accountType})
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs font-mono">
-                      <span className="text-slate-500">No. Cuenta:</span>
-                      <div className="flex items-center gap-1">
-                        <strong className="text-amber-800 font-black">
-                          {acc.accountNumber}
-                        </strong>
-                        <button
-                          type="button"
-                          onClick={() => handleCopy(acc.accountNumber, `acc-${acc.id}`)}
-                          className="text-slate-400 hover:text-slate-800 p-0.5 transition-colors"
-                          title="Copiar Número de Cuenta"
-                        >
-                          {copiedField === `acc-${acc.id}` ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                        </button>
+              {((paymentSettings?.bankTransfer?.accounts || []).filter((a: BankAccount) => a.active).length > 0) ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  {(paymentSettings?.bankTransfer?.accounts || [])
+                    .filter((a: BankAccount) => a.active)
+                    .map((acc: BankAccount) => (
+                      <div
+                        key={acc.id}
+                        className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-1"
+                      >
+                        <div className="flex items-center justify-between font-mono">
+                          <span className="font-bold text-slate-900">
+                            {acc.bankName} ({acc.accountType})
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs font-mono">
+                          <span className="text-slate-500">No. Cuenta:</span>
+                          <div className="flex items-center gap-1">
+                            <strong className="text-amber-800 font-black">
+                              {acc.accountNumber}
+                            </strong>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(acc.accountNumber, `acc-${acc.id}`)}
+                              className="text-slate-400 hover:text-slate-800 p-0.5 transition-colors"
+                              title="Copiar Número de Cuenta"
+                            >
+                              {copiedField === `acc-${acc.id}` ? (
+                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] font-mono text-slate-600">
+                          <span>Titular: <strong>{acc.accountHolder}</strong></span>
+                          {acc.nit && <span>NIT/CC: {acc.nit}</span>}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-600">
-                      <span>Titular: <strong>{acc.accountHolder}</strong></span>
-                      {acc.nit && <span>NIT/CC: {acc.nit}</span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    ))}
+                </div>
+              ) : (
+                <div className="bg-white p-3 rounded-xl border border-slate-200 text-xs text-slate-600">
+                  <p>Contacta al equipo de soporte de la tienda para confirmar los datos bancarios y reportar tu pago.</p>
+                </div>
+              )}
             </div>
           )}
 

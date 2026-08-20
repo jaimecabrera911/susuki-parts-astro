@@ -838,78 +838,77 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 </div>
 
                 {/* Dynamic Bank Accounts Render */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                  {((paymentSettings?.bankTransfer?.accounts || []).filter((a) => a.active).length > 0
-                    ? (paymentSettings?.bankTransfer?.accounts || []).filter((a) => a.active)
-                    : [
-                        {
-                          id: "default-acc",
-                          bankName: "Bancolombia",
-                          accountType: "Cuenta de Ahorros",
-                          accountNumber: "123-456789-01",
-                          accountHolder: "Suzuki Parts Colombia S.A.S.",
-                          nit: "900.123.456-7",
-                          instructions: "Usa el número de orden como referencia de pago.",
-                          active: true,
-                        },
-                      ]
-                  ).map((acc) => (
-                    <div
-                      key={acc.id}
-                      className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-2 text-xs"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="px-2 py-0.5 rounded bg-slate-900 text-white font-black text-[10px] uppercase font-mono tracking-wider">
-                          {acc.bankName}
-                        </span>
-                        <span className="text-slate-500 font-mono text-[10px] font-bold">
-                          {acc.accountType}
-                        </span>
-                      </div>
-
-                      <div className="space-y-1 font-mono pt-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-500">No. Cuenta:</span>
-                          <div className="flex items-center gap-1">
-                            <strong className="text-amber-800 font-black text-sm">
-                              {acc.accountNumber}
-                            </strong>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(acc.accountNumber, `acc-${acc.id}`)}
-                              className="text-slate-400 hover:text-slate-800 p-0.5 transition-colors"
-                              title="Copiar número"
-                            >
-                              {copiedField === `acc-${acc.id}` ? (
-                                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                              ) : (
-                                <Copy className="w-3.5 h-3.5" />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-500">Titular:</span>
-                          <span className="font-bold text-slate-800">{acc.accountHolder}</span>
-                        </div>
-
-                        {acc.nit && (
+                {((paymentSettings?.bankTransfer?.accounts || []).filter((a) => a.active).length > 0) ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {(paymentSettings?.bankTransfer?.accounts || [])
+                      .filter((a) => a.active)
+                      .map((acc) => (
+                        <div
+                          key={acc.id}
+                          className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-2 text-xs"
+                        >
                           <div className="flex items-center justify-between">
-                            <span className="text-slate-500">NIT / CC:</span>
-                            <span className="text-slate-700">{acc.nit}</span>
+                            <span className="px-2 py-0.5 rounded bg-slate-900 text-white font-black text-[10px] uppercase font-mono tracking-wider">
+                              {acc.bankName}
+                            </span>
+                            <span className="text-slate-500 font-mono text-[10px] font-bold">
+                              {acc.accountType}
+                            </span>
                           </div>
-                        )}
-                      </div>
 
-                      {acc.instructions && (
-                        <p className="text-[10px] text-slate-500 italic pt-1 border-t border-slate-100">
-                          {acc.instructions}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                          <div className="space-y-1 font-mono pt-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-500">No. Cuenta:</span>
+                              <div className="flex items-center gap-1">
+                                <strong className="text-amber-800 font-black text-sm">
+                                  {acc.accountNumber}
+                                </strong>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopy(acc.accountNumber, `acc-${acc.id}`)}
+                                  className="text-slate-400 hover:text-slate-800 p-0.5 transition-colors"
+                                  title="Copiar número"
+                                >
+                                  {copiedField === `acc-${acc.id}` ? (
+                                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                  ) : (
+                                    <Copy className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-500">Titular:</span>
+                              <span className="font-bold text-slate-800">{acc.accountHolder}</span>
+                            </div>
+
+                            {acc.nit && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-500">NIT / CC:</span>
+                                <span className="text-slate-700">{acc.nit}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {acc.instructions && (
+                            <p className="text-[10px] text-slate-500 italic pt-1 border-t border-slate-100">
+                              {acc.instructions}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                ) : (
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
+                    <p className="font-semibold text-slate-800">
+                      Coordinación directa de transferencia
+                    </p>
+                    <p>
+                      Envía tu comprobante o solicita los datos de transferencia directamente a través del botón de WhatsApp a continuación.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1340,41 +1339,37 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                       </div>
 
                       {/* Render active bank accounts from DB */}
-                      <div className="mt-3 space-y-2">
-                        {((paymentSettings?.bankTransfer?.accounts || []).filter((a) => a.active).length > 0
-                          ? (paymentSettings?.bankTransfer?.accounts || []).filter((a) => a.active)
-                          : [
-                              {
-                                id: "default-bancolombia",
-                                bankName: "Bancolombia",
-                                accountType: "Cuenta de Ahorros",
-                                accountNumber: "123-456789-01",
-                                accountHolder: "Suzuki Parts Colombia S.A.S.",
-                                nit: "900.123.456-7",
-                                instructions: "Usa el número de orden como referencia de pago.",
-                                active: true,
-                              },
-                            ]
-                        ).map((acc) => (
-                          <div
-                            key={acc.id}
-                            className="p-3 bg-white/90 rounded-xl border border-amber-200 text-xs space-y-1"
-                          >
-                            <div className="flex items-center justify-between font-mono">
-                              <span className="font-black text-slate-900">
-                                {acc.bankName} ({acc.accountType})
-                              </span>
-                              <strong className="text-amber-800 font-extrabold text-sm">
-                                {acc.accountNumber}
-                              </strong>
-                            </div>
-                            <div className="flex items-center justify-between text-[11px] font-mono text-slate-600">
-                              <span>Titular: <strong>{acc.accountHolder}</strong></span>
-                              {acc.nit && <span>NIT/CC: {acc.nit}</span>}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      {((paymentSettings?.bankTransfer?.accounts || []).filter((a) => a.active).length > 0) ? (
+                        <div className="mt-3 space-y-2">
+                          {(paymentSettings?.bankTransfer?.accounts || [])
+                            .filter((a) => a.active)
+                            .map((acc) => (
+                              <div
+                                key={acc.id}
+                                className="p-3 bg-white/90 rounded-xl border border-amber-200 text-xs space-y-1"
+                              >
+                                <div className="flex items-center justify-between font-mono">
+                                  <span className="font-black text-slate-900">
+                                    {acc.bankName} ({acc.accountType})
+                                  </span>
+                                  <strong className="text-amber-800 font-extrabold text-sm">
+                                    {acc.accountNumber}
+                                  </strong>
+                                </div>
+                                <div className="flex items-center justify-between text-[11px] font-mono text-slate-600">
+                                  <span>Titular: <strong>{acc.accountHolder}</strong></span>
+                                  {acc.nit && <span>NIT/CC: {acc.nit}</span>}
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      ) : (
+                        <div className="mt-3 p-3 bg-white/90 rounded-xl border border-amber-200 text-xs text-slate-600">
+                          <p>
+                            Al confirmar tu orden, te contactaremos o podrás escribirnos directamente por WhatsApp para coordinar la transferencia.
+                          </p>
+                        </div>
+                      )}
 
                       <p className="text-[11px] text-slate-600 mt-2.5 leading-relaxed">
                         Al confirmar el pedido recibirás el número de orden. Tu pedido quedará registrado en{" "}

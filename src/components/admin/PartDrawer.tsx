@@ -205,12 +205,13 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       setAvailability("in_stock");
       setGallery([]);
       setDescription("");
-      const initialSpecs = configuredDefaultSpecs.length > 0
-        ? configuredDefaultSpecs.map((d) => ({
-            label: d.label,
-            value: d.defaultValue || "",
-          }))
-        : [];
+      const initialSpecs =
+        configuredDefaultSpecs.length > 0
+          ? configuredDefaultSpecs.map((d) => ({
+              label: d.label,
+              value: d.defaultValue || "",
+            }))
+          : [];
       setSpecs(initialSpecs);
       setCompatibility([]);
     }
@@ -261,10 +262,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
     const l = (labelToAdd ?? specLabel).trim();
     const v = (valueToAdd ?? specValue).trim();
     if (l || v) {
-      setSpecs([
-        ...specs,
-        { label: l, value: v },
-      ]);
+      setSpecs([...specs, { label: l, value: v }]);
       if (!labelToAdd) {
         setSpecLabel("");
         setSpecValue("");
@@ -356,14 +354,10 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
 
     const oemNumbers = [
       primaryOem.trim().toUpperCase(),
-      ...secondaryOems
-        .map((s) => s.trim().toUpperCase())
-        .filter(Boolean),
+      ...secondaryOems.map((s) => s.trim().toUpperCase()).filter(Boolean),
     ];
 
-    const partId = partToEdit
-      ? partToEdit.id
-      : crypto.randomUUID();
+    const partId = partToEdit ? partToEdit.id : crypto.randomUUID();
 
     // Clean up specs with empty label or value
     const cleanedSpecs = specs
@@ -388,7 +382,11 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
               const blob = await res.blob();
               const extMatch = dataUrl.match(/^data:image\/(\w+);/);
               const ext = extMatch ? extMatch[1].replace("jpeg", "jpg") : "png";
-              return new File([blob], `part-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`, { type: blob.type });
+              return new File(
+                [blob],
+                `part-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`,
+                { type: blob.type },
+              );
             })();
             const result = await UPLOAD_IMAGE(file, "parts");
             return result.url;
@@ -425,7 +423,10 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
   };
 
   return (
-    <div id="part-drawer" className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 md:p-6 overflow-y-auto">
+    <div
+      id="part-drawer"
+      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 md:p-6 overflow-y-auto"
+    >
       <div className="w-full max-w-[95vw] md:max-w-4xl lg:max-w-5xl bg-white border border-slate-200 rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="px-6 md:px-8 py-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/70 shrink-0">
@@ -438,9 +439,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                 {partToEdit ? "Editar Repuesto OEM" : "Nuevo Repuesto OEM"}
               </h2>
               <p className="text-xs text-slate-500 font-mono">
-                {partToEdit
-                  ? `ID: ${partToEdit.id}`
-                  : "Catálogo de Repuestos"}
+                {partToEdit ? `ID: ${partToEdit.id}` : "Catálogo de Repuestos"}
               </p>
             </div>
           </div>
@@ -491,11 +490,18 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
               >
                 {categories.map((c) => (
                   <React.Fragment key={c.id}>
-                    <option value={c.slug} className="font-extrabold text-slate-900">
+                    <option
+                      value={c.slug}
+                      className="font-extrabold text-slate-900"
+                    >
                       {c.name}
                     </option>
                     {c.subcategories?.map((sub) => (
-                      <option key={sub.id} value={sub.slug} className="text-slate-600">
+                      <option
+                        key={sub.id}
+                        value={sub.slug}
+                        className="text-slate-600"
+                      >
                         {"\u00A0\u00A0\u00A0\u00A0— " + sub.name}
                       </option>
                     ))}
@@ -604,10 +610,16 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                 inputMode="numeric"
                 maxLength={12}
                 value={priceInput}
-                onChange={(e) => setPriceInput(e.target.value.replace(/\D/g, ""))}
-                onFocus={(e) => setPriceInput(e.target.value.replace(/\D/g, ""))}
+                onChange={(e) =>
+                  setPriceInput(e.target.value.replace(/\D/g, ""))
+                }
+                onFocus={(e) =>
+                  setPriceInput(e.target.value.replace(/\D/g, ""))
+                }
                 onBlur={commitPrice}
-                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                }}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 font-mono font-bold"
               />
             </div>
@@ -621,10 +633,16 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                 inputMode="numeric"
                 maxLength={12}
                 value={stockInput}
-                onChange={(e) => setStockInput(e.target.value.replace(/\D/g, ""))}
-                onFocus={(e) => setStockInput(e.target.value.replace(/\D/g, ""))}
+                onChange={(e) =>
+                  setStockInput(e.target.value.replace(/\D/g, ""))
+                }
+                onFocus={(e) =>
+                  setStockInput(e.target.value.replace(/\D/g, ""))
+                }
                 onBlur={commitStock}
-                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                }}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 font-mono font-bold"
               />
             </div>
@@ -874,7 +892,9 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                   </p>
                 </div>
                 <span className="px-3 py-1.5 rounded-xl bg-[#E60012] text-white text-[11px] font-bold uppercase tracking-wider shadow-xs hover:bg-[#b5000b] transition-colors">
-                  {gallery.length === 0 ? "Adjuntar Imágenes" : "Agregar Imágenes"}
+                  {gallery.length === 0
+                    ? "Adjuntar Imágenes"
+                    : "Agregar Imágenes"}
                 </span>
               </div>
             )}
@@ -902,12 +922,14 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                   Especificaciones Técnicas
                 </span>
                 <p className="text-[11px] text-slate-500 font-sans mt-0.5">
-                  Precargadas desde configuración. Puedes editar valores, ordenar o agregar personalizadas solo para este repuesto.
+                  Precargadas desde configuración. Puedes editar valores,
+                  ordenar o agregar personalizadas solo para este repuesto.
                 </p>
               </div>
               <div className="flex items-center gap-2 self-start sm:self-auto">
                 <span className="text-[11px] font-mono text-slate-500 font-bold bg-white px-2 py-0.5 rounded-lg border border-slate-200">
-                  {specs.length} {specs.length === 1 ? "propiedad" : "propiedades"}
+                  {specs.length}{" "}
+                  {specs.length === 1 ? "propiedad" : "propiedades"}
                 </span>
                 {configuredDefaultSpecs.length > 0 && (
                   <button
@@ -924,26 +946,33 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
             </div>
 
             {/* Chips sugeridos rápidos de configuración que aún no están en este repuesto */}
-            {configuredDefaultSpecs.length > 0 && (
+            {configuredDefaultSpecs.length > 0 &&
               (() => {
                 const missingDefaults = configuredDefaultSpecs.filter(
-                  (def) => !specs.some((s) => s.label.toLowerCase() === def.label.toLowerCase())
+                  (def) =>
+                    !specs.some(
+                      (s) => s.label.toLowerCase() === def.label.toLowerCase(),
+                    ),
                 );
                 if (missingDefaults.length === 0) return null;
                 return (
                   <div className="p-2.5 bg-white rounded-xl border border-slate-200 space-y-1.5">
                     <div className="flex items-center gap-1 text-[11px] font-bold text-slate-600 font-sans">
                       <Sparkles className="w-3 h-3 text-amber-500" />
-                      <span>Sugeridas de Configuración (pendientes por agregar):</span>
+                      <span>
+                        Sugeridas de Configuración (pendientes por agregar):
+                      </span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {missingDefaults.map((def) => (
                         <button
                           key={def.label}
                           type="button"
-                          onClick={() => handleAddSpec(def.label, def.defaultValue || "")}
+                          onClick={() =>
+                            handleAddSpec(def.label, def.defaultValue || "")
+                          }
                           className="px-2 py-0.5 text-[10px] font-mono font-bold bg-slate-50 text-slate-700 border border-slate-200 hover:border-red-500 hover:text-[#E60012] hover:bg-red-50/50 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-                          title={`Agregar ${def.label} con valor sugerido "${def.defaultValue || 'Vacío'}"`}
+                          title={`Agregar ${def.label} con valor sugerido "${def.defaultValue || "Vacío"}"`}
                         >
                           <Plus className="w-2.5 h-2.5" />
                           <span>{def.label}</span>
@@ -952,8 +981,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                     </div>
                   </div>
                 );
-              })()
-            )}
+              })()}
 
             {/* Formulario para agregar una especificación personalizada a este repuesto */}
             <div className="flex gap-2">
@@ -992,7 +1020,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
               ) : (
                 specs.map((sp, idx) => {
                   const isDefaultTemplate = configuredDefaultSpecs.some(
-                    (d) => d.label.toLowerCase() === sp.label.toLowerCase()
+                    (d) => d.label.toLowerCase() === sp.label.toLowerCase(),
                   );
 
                   return (
@@ -1033,7 +1061,10 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-mono font-bold focus:bg-white focus:outline-none focus:border-[#E60012]"
                         />
                         {isDefaultTemplate && (
-                          <span className="absolute right-1.5 top-2 w-1.5 h-1.5 rounded-full bg-emerald-500" title="Plantilla por defecto" />
+                          <span
+                            className="absolute right-1.5 top-2 w-1.5 h-1.5 rounded-full bg-emerald-500"
+                            title="Plantilla por defecto"
+                          />
                         )}
                       </div>
 
@@ -1045,7 +1076,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                           onChange={(e) =>
                             handleUpdateSpec(idx, "value", e.target.value)
                           }
-                          placeholder="Valor (ej. Genuine Suzuki Parts - Japan)"
+                          placeholder="Valor (ej. Genuine Parts - Japan)"
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-medium focus:bg-white focus:outline-none focus:border-[#E60012]"
                         />
                       </div>

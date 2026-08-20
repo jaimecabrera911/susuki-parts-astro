@@ -1017,19 +1017,7 @@ export async function deleteOrderReturn(db: AppDb, id: string) {
 export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
   bankTransfer: {
     enabled: true,
-    accounts: [
-      {
-        id: 'account-bancolombia-default',
-        bankName: 'Bancolombia',
-        accountType: 'Cuenta de Ahorros',
-        accountNumber: '123-456789-01',
-        accountHolder: 'Suzuki Parts Colombia S.A.S.',
-        nit: '900.123.456-7',
-        instructions: 'Usa el número de orden generado como referencia de pago al realizar la transferencia.',
-        active: true,
-        isDefault: true,
-      }
-    ]
+    accounts: []
   },
   wompi: {
     enabled: false,

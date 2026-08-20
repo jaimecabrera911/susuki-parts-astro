@@ -1,11 +1,12 @@
 import type { APIRoute } from 'astro';
 import { db } from '../../db/client';
+import { getStoreName } from '../../utils/config';
 
 export const GET: APIRoute = async () => {
   try {
     return new Response(JSON.stringify({
       status: "ok",
-      app: "Suzuki Parts Expert Astro",
+      app: getStoreName(),
       database: "Neon PostgreSQL",
       connected: !!db
     }), {

@@ -35,8 +35,8 @@ const RULER_COUNT = 41;
 export const Footer: React.FC<FooterProps> = ({ onOpenTutorial, onOpenContact }) => {
   const { settings } = useSiteSettings();
 
-  const storeName = settings.storeName || getStoreName() || 'Suzuki Parts Expert';
-  const storeTagline = settings.storeTagline || getStoreTagline() || 'REPUESTOS COLOMBIA';
+  const storeName = settings.storeName || getStoreName();
+  const storeTagline = settings.storeTagline || getStoreTagline();
   const storeLogo = settings.storeLogo || getStoreLogo();
   const logoToShow = storeLogo || defaultLogoUrl;
 

@@ -26,20 +26,7 @@ import { fetchPaymentSettings, savePaymentSettingsApi } from "../../services/api
 const DEFAULT_SETTINGS: PaymentSettings = {
   bankTransfer: {
     enabled: true,
-    accounts: [
-      {
-        id: "acc-bancolombia-default",
-        bankName: "Bancolombia",
-        accountType: "Cuenta de Ahorros",
-        accountNumber: "123-456789-01",
-        accountHolder: "Suzuki Parts Colombia S.A.S.",
-        nit: "900.123.456-7",
-        instructions:
-          "Usa el número de orden generado como referencia al realizar la transferencia.",
-        active: true,
-        isDefault: true,
-      },
-    ],
+    accounts: [],
   },
   wompi: {
     enabled: false,
@@ -1135,7 +1122,7 @@ export const PaymentsManager: React.FC = () => {
                   onChange={(e) =>
                     setAccountFormData({ ...accountFormData, accountHolder: e.target.value })
                   }
-                  placeholder="Ej. Suzuki Parts Colombia S.A.S."
+                  placeholder="Ej. Nombre del Titular o Razón Social"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012]"
                 />
               </div>
