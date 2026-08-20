@@ -11,13 +11,14 @@ import {
 } from "lucide-react";
 import { FaBasketShopping, FaCartShopping } from "react-icons/fa6";
 import { AiTwotoneSafetyCertificate } from "react-icons/ai";
-import type { CartItem, ActiveMotorcycle, SuzukiPart } from "../types";
+import type { CartItem, ActiveMotorcycle, SuzukiPart, ShippingMethod } from "../types";
 import { getPrimaryOem } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { getCartWhatsAppUrl } from "../utils/whatsapp";
 import { shouldShowProductImages } from "../utils/config";
 import { ProductImageEmptyState } from "./ProductImageEmptyState";
 import { IoChatbubbleEllipses } from "react-icons/io5";
+import { fetchShippingMethods } from "../services/api";
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -42,6 +43,26 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onViewPartDetail,
   activeMotorcycle,
 }) => {
+  const [freeThreshold, setFreeThreshold] = React.useState<number | null>(null);
+
+  // Load active shipping methods to get real configured free shipping threshold
+  React.useEffect(() => {
+    if (!isOpen) return;
+    fetchShippingMethods()
+      .then((methods) => {
+        const active = methods?.filter(
+          (m: ShippingMethod) => m.active && typeof m.freeShippingThreshold === "number" && m.freeShippingThreshold > 0,
+        );
+        if (active && active.length > 0) {
+          const minThreshold = Math.min(...active.map((m: ShippingMethod) => m.freeShippingThreshold!));
+          setFreeThreshold(minThreshold);
+        } else {
+          setFreeThreshold(null);
+        }
+      })
+      .catch(() => setFreeThreshold(null));
+  }, [isOpen]);
+
   // Handle Escape key and body scroll lock
   React.useEffect(() => {
     if (!isOpen) return;
@@ -262,9 +283,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           {/* Footer Checkout */}
           {cartItems.length > 0 && (
             <div className="p-5 border-t border-slate-200 bg-white space-y-3 shrink-0">
-              {/* Free Shipping Progress Indicator */}
-              {(() => {
-                const FREE_THRESHOLD = 250000;
+              {/* Free Shipping Progress Indicator (only if configured in DB shipping methods) */}
+              {freeThreshold != null && freeThreshold > 0 && (() => {
+                const FREE_THRESHOLD = freeThreshold;
                 const progressPct = Math.min(
                   100,
                   Math.round((total / FREE_THRESHOLD) * 100),
