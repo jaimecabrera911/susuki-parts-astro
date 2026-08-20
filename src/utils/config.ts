@@ -175,3 +175,16 @@ export const getReturnMaxDays = (): number | null => {
   const snap = getSiteSettingsSnapshot();
   return typeof snap.returnMaxDays === 'number' ? snap.returnMaxDays : null;
 };
+
+/**
+ * Configuración de visualización y zoom del despiece técnico en las tarjetas de producto (ProductCard).
+ */
+export const PRODUCT_CARD_SCHEMATIC_CONFIG = {
+  /** Nivel de zoom base enfocado en el punto (ej. 2 = 200%) */
+  zoomScale: 1.75,
+  /** Nivel de zoom dinámico al pasar el cursor (hover) (ej. 2.15 = 215%) */
+  hoverZoomScale: 3.5,
+  /** Escala relativa del tamaño del punto indicador (hotspot pin) en la tarjeta */
+  pinScale: 0.45,
+};
+

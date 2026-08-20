@@ -34,38 +34,45 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
   );
 
   // Drag to pan state for zoom
-  const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({
-    x: 0,
-    y: 0,
-    scrollLeft: 0,
-    scrollTop: 0,
-  });
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const dragStartRef = useRef({ startX: 0, startY: 0, initialPanX: 0, initialPanY: 0 });
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (zoomLevel <= 1 || !containerRef.current) return;
-    setIsDragging(true);
-    setDragStart({
-      x: e.clientX,
-      y: e.clientY,
-      scrollLeft: containerRef.current.scrollLeft,
-      scrollTop: containerRef.current.scrollTop,
-    });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || !containerRef.current) return;
+    if (zoomLevel <= 1) return;
     e.preventDefault();
-    const dx = e.clientX - dragStart.x;
-    const dy = e.clientY - dragStart.y;
-    containerRef.current.scrollLeft = dragStart.scrollLeft - dx;
-    containerRef.current.scrollTop = dragStart.scrollTop - dy;
+    setIsDragging(true);
+    dragStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initialPanX: pan.x,
+      initialPanY: pan.y,
+    };
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - dragStartRef.current.startX;
+      const dy = e.clientY - dragStartRef.current.startY;
+      setPan({
+        x: dragStartRef.current.initialPanX + dx,
+        y: dragStartRef.current.initialPanY + dy,
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging]);
 
   useEffect(() => {
     async function loadSchematics() {
@@ -143,6 +150,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
   useEffect(() => {
     setActiveIndex(0);
     setZoomLevel(1);
+    setPan({ x: 0, y: 0 });
     setActiveTab(detailPrimary === "despiece" ? "despiece" : "images");
   }, [part.id, detailPrimary]);
 
@@ -152,19 +160,24 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
     }
   };
 
-  const handleClick = () => {
-    if (zoomLevel <= 1) openSchematics();
+  const handleZoomChange = (newZoom: number) => {
+    const clamped = Math.max(1, Math.min(2.5, Number(newZoom.toFixed(2))));
+    setZoomLevel(clamped);
+    if (clamped === 1) {
+      setPan({ x: 0, y: 0 });
+    }
+  };
+
+  const handleResetZoom = () => {
+    setZoomLevel(1);
+    setPan({ x: 0, y: 0 });
   };
 
   const renderZoomToolbar = () => (
     <div className="flex items-center gap-1 bg-slate-100 border border-slate-200 p-0.5 rounded-lg shadow-2xs">
       <button
         type="button"
-        onClick={() =>
-          setZoomLevel((prev) =>
-            Math.max(1, Number((prev - 0.25).toFixed(2))),
-          )
-        }
+        onClick={() => handleZoomChange(zoomLevel - 0.25)}
         disabled={zoomLevel <= 1}
         className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
         title="Alejar zoom (-)"
@@ -178,11 +191,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
 
       <button
         type="button"
-        onClick={() =>
-          setZoomLevel((prev) =>
-            Math.min(2.5, Number((prev + 0.25).toFixed(2))),
-          )
-        }
+        onClick={() => handleZoomChange(zoomLevel + 0.25)}
         disabled={zoomLevel >= 2.5}
         className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-40 transition-all cursor-pointer"
         title="Acercar zoom (+)"
@@ -193,7 +202,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
       {zoomLevel > 1 && (
         <button
           type="button"
-          onClick={() => setZoomLevel(1)}
+          onClick={handleResetZoom}
           className="p-1 rounded text-[#E60012] hover:bg-red-50 transition-all cursor-pointer"
           title="Restablecer zoom (100%)"
         >
@@ -243,25 +252,24 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
         {/* Clickable diagram image with fixed area */}
         <div className="relative bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden min-h-[260px] sm:min-h-[320px] max-h-[360px] group shadow-xs transition-all hover:border-[#E60012] hover:shadow-md flex items-center justify-center p-3 bg-white">
           <div
-            ref={containerRef}
             onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            className={`w-full h-[260px] sm:h-[320px] custom-scrollbar bg-white select-none relative flex items-center justify-center ${
+            className={`w-full h-[260px] sm:h-[320px] bg-white select-none relative flex items-center justify-center overflow-hidden ${
               zoomLevel > 1
                 ? isDragging
-                  ? "overflow-auto cursor-grabbing"
-                  : "overflow-auto cursor-grab"
-                : "overflow-hidden cursor-pointer"
+                  ? "cursor-grabbing"
+                  : "cursor-grab"
+                : "cursor-pointer"
             }`}
-            onClick={handleClick}
+            onClick={() => {
+              if (zoomLevel <= 1) openSchematics();
+            }}
           >
             <div
-              className="relative max-w-full max-h-full flex items-center justify-center transition-transform duration-200"
+              className="relative max-w-full max-h-full flex items-center justify-center select-none"
               style={{
-                transform: `scale(${zoomLevel})`,
+                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel})`,
                 transformOrigin: "center center",
+                transition: isDragging ? "none" : "transform 0.2s ease-out",
               }}
             >
               <div className="relative inline-flex items-center justify-center max-w-full max-h-full">
@@ -284,7 +292,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
                     style={{
                       left: `${diagramInfo.hotspot.x}%`,
                       top: `${diagramInfo.hotspot.y}%`,
-                      transform: `translate(-50%, -50%) scale(${1 / zoomLevel})`,
+                      transform: `translate(-50%, -50%) scale(${1 / Math.sqrt(zoomLevel)})`,
                     }}
                     aria-label={`Pieza #${diagramInfo.hotspot.itemNumber}`}
                   >
@@ -334,17 +342,13 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
         {/* Main area — stable aspect */}
         <div className="relative bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden aspect-4/3 sm:aspect-16/10 shadow-xs group">
           <div
-            ref={containerRef}
             onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            className={`w-full h-full p-4 flex items-center justify-center custom-scrollbar ${
+            className={`w-full h-full p-4 flex items-center justify-center select-none overflow-hidden ${
               zoomLevel > 1
                 ? isDragging
-                  ? "overflow-auto cursor-grabbing"
-                  : "overflow-auto cursor-grab"
-                : "overflow-hidden"
+                  ? "cursor-grabbing"
+                  : "cursor-grab"
+                : "cursor-default"
             }`}
           >
             <img
@@ -352,10 +356,11 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
               src={galleryImages[safeIndex]}
               alt={part.name}
               referrerPolicy="no-referrer"
-              className="max-w-full max-h-full object-contain transition-transform duration-200 origin-center select-none pointer-events-none"
+              className="max-w-full max-h-full object-contain origin-center select-none pointer-events-none"
               style={{
-                transform: `scale(${zoomLevel})`,
+                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel})`,
                 transformOrigin: "center center",
+                transition: isDragging ? "none" : "transform 0.2s ease-out",
               }}
             />
           </div>
@@ -371,6 +376,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
                 onClick={() => {
                   setActiveIndex(idx);
                   setZoomLevel(1);
+                  setPan({ x: 0, y: 0 });
                 }}
                 className={`relative w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-xl border-2 overflow-hidden bg-white transition-all cursor-pointer ${
                   idx === safeIndex

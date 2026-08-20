@@ -28,7 +28,10 @@ import {
 } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { getProductWhatsAppUrl } from "../utils/whatsapp";
-import { shouldShowProductImages } from "../utils/config";
+import {
+  shouldShowProductImages,
+  PRODUCT_CARD_SCHEMATIC_CONFIG,
+} from "../utils/config";
 import { useSiteSettings } from "./SiteSettingsProvider";
 import { ProductImageEmptyState } from "./ProductImageEmptyState";
 import { IoChatbubbleEllipses } from "react-icons/io5";
@@ -218,6 +221,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     </button>
   );
 
+  const [aspectRatio, setAspectRatio] = useState<number | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = e.currentTarget;
+    if (naturalWidth && naturalHeight) {
+      setAspectRatio(naturalWidth / naturalHeight);
+    }
+  };
+
   return (
     <div
       className={`bg-white rounded-2xl border transition-all duration-300 overflow-hidden flex flex-col justify-between group hover:-translate-y-0.5 ${
@@ -235,45 +248,63 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             tabIndex={0}
             aria-label={`Ver detalles técnicos y despiece de ${part.name}`}
             onClick={() => onOpenDetail(part)}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 onOpenDetail(part);
               }
             }}
-            className="relative aspect-4/3 bg-white border-b border-slate-200/80 overflow-hidden cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] group/diagram p-2 flex items-center justify-center"
+            className="relative aspect-4/3 w-full bg-white border-b border-slate-200/80 overflow-hidden cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] group/diagram"
           >
-            {/* Schematic image */}
-            <img
-              src={diagramInfo.image}
-              alt={`Despiece de ${part.name}`}
-              referrerPolicy="no-referrer"
-              className="w-full h-full object-contain pointer-events-none select-none transition-transform duration-500 ease-out group-hover:scale-105"
-            />
-
-            {/* Hotspot pin */}
-            {diagramInfo.hotspot && (
+            {/* Definite viewport container for exact image bounding */}
+            <div className="absolute inset-0 p-3 flex items-center justify-center min-w-0 min-h-0 overflow-hidden">
               <div
-                className="absolute z-10 pointer-events-none flex items-center justify-center"
+                className="relative max-w-full max-h-full flex items-center justify-center transition-transform duration-500 ease-out"
                 style={{
-                  left: `${diagramInfo.hotspot.x}%`,
-                  top: `${diagramInfo.hotspot.y}%`,
-                  transform: "translate(-50%, -50%)",
+                  ...(aspectRatio ? { aspectRatio: `${aspectRatio}` } : { maxWidth: "100%", maxHeight: "100%" }),
+                  transformOrigin: diagramInfo.hotspot
+                    ? `${diagramInfo.hotspot.x}% ${diagramInfo.hotspot.y}%`
+                    : "center center",
+                  transform: diagramInfo.hotspot
+                    ? `scale(${isHovered ? PRODUCT_CARD_SCHEMATIC_CONFIG.hoverZoomScale : PRODUCT_CARD_SCHEMATIC_CONFIG.zoomScale})`
+                    : "scale(1)",
                 }}
-                aria-label={`Pieza #${diagramInfo.hotspot.itemNumber}`}
               >
-                {/* Outer pulse ring */}
-                <div className="absolute w-6 h-6 rounded-full bg-red-600/40 animate-ping pointer-events-none" />
+                <img
+                  src={diagramInfo.image}
+                  alt={`Despiece de ${part.name}`}
+                  referrerPolicy="no-referrer"
+                  onLoad={handleImageLoad}
+                  className="w-full h-full object-contain pointer-events-none select-none block"
+                />
 
-                {/* Glowing halo */}
-                <div className="absolute w-5 h-5 rounded-full bg-[#E60012]/30 border border-[#E60012]/60 shadow-[0_0_10px_rgba(230,0,18,0.8)] pointer-events-none" />
+                {/* Hotspot pin with configurable scale for zoomed card preview */}
+                {diagramInfo.hotspot && (
+                  <div
+                    className="absolute z-10 pointer-events-none flex items-center justify-center"
+                    style={{
+                      left: `${diagramInfo.hotspot.x}%`,
+                      top: `${diagramInfo.hotspot.y}%`,
+                      transform: `translate(-50%, -50%) scale(${PRODUCT_CARD_SCHEMATIC_CONFIG.pinScale})`,
+                    }}
+                    aria-label={`Pieza #${diagramInfo.hotspot.itemNumber}`}
+                  >
+                    {/* Outer pulse ring */}
+                    <div className="absolute w-5 h-5 rounded-full bg-red-600/35 animate-ping pointer-events-none" />
 
-                {/* Core badge */}
-                <div className="relative w-4.5 h-4.5 rounded-full bg-[#E60012] border-2 border-white shadow-md flex items-center justify-center font-mono font-black text-[9px] text-white select-none">
-                  {diagramInfo.hotspot.itemNumber}
-                </div>
+                    {/* Glowing halo */}
+                    <div className="absolute w-4.5 h-4.5 rounded-full bg-[#E60012]/25 border border-[#E60012]/50 shadow-[0_0_6px_rgba(230,0,18,0.8)] pointer-events-none" />
+
+                    {/* Core badge */}
+                    <div className="relative w-4 h-4 rounded-full bg-[#E60012] border-[1.5px] border-white shadow-xs flex items-center justify-center font-mono font-black text-[9px] text-white select-none">
+                      {diagramInfo.hotspot.itemNumber}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Badges on top */}
             <div className="absolute top-2.5 left-2.5 z-10">
