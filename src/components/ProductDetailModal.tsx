@@ -637,15 +637,15 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           )}
         </div>
 
-        {/* Footer Action — reorganizado con stock en card lateral */}
+        {/* Footer Action — centrado */}
         <div className="mt-8 border-t border-slate-200 pt-5 space-y-4">
           {/* Action buttons row */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 pt-2">
             <a
               href={getProductWhatsAppUrl(part, activeMotorcycle)}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2.5 min-h-[44px] bg-[#25D366] hover:bg-emerald-600 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+              className="px-6 py-2.5 min-h-[44px] bg-[#25D366] hover:bg-emerald-600 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
             >
               <IoChatbubbleEllipses className="w-5 h-5 shrink-0" />
               <span>Consultar WhatsApp</span>
@@ -658,19 +658,19 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 className="px-6 py-2.5 min-h-[44px] bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs uppercase rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
               >
                 <FaMotorcycle className="w-5 h-5 shrink-0" />
-                Seleccionar Moto
+                <span>Seleccionar Moto</span>
               </button>
             ) : !isCompatible ? (
-              <div className="flex flex-col items-end gap-1">
+              <div className="flex flex-col items-center gap-1">
                 <button
                   type="button"
                   disabled
                   aria-disabled="true"
-                  className="px-6 py-2.5 min-h-[44px] bg-red-100 text-red-900 border border-red-300 font-black text-xs uppercase rounded-xl cursor-not-allowed shadow-none"
+                  className="px-6 py-2.5 min-h-[44px] bg-red-100 text-red-900 border border-red-300 font-black text-xs uppercase rounded-xl cursor-not-allowed shadow-none flex items-center justify-center text-center"
                 >
                   Compra Bloqueada (Incompatible)
                 </button>
-                <span className="text-[10px] text-red-700 font-medium">
+                <span className="text-[10px] text-red-700 font-medium text-center">
                   Selecciona tu moto compatible en el Garaje para habilitar la
                   compra.
                 </span>
@@ -682,7 +682,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   onAddToCart(part);
                   onClose();
                 }}
-                className="px-6 py-2.5 min-h-[44px] bg-[#E60012] hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-colors flex items-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+                className="px-6 py-2.5 min-h-[44px] bg-[#E60012] hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
               >
                 <FaCartPlus className="w-4 h-4" aria-hidden="true" />
                 <span>Añadir al Carrito</span>

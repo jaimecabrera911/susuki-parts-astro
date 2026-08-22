@@ -91,12 +91,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       aria-modal="true"
       aria-labelledby="cart-drawer-title"
       onClick={onClose}
-      className="fixed inset-0 z-50 overflow-hidden bg-slate-950/60 backdrop-blur-xs flex justify-end"
+      className="fixed inset-0 z-[70] overflow-hidden bg-slate-950/60 backdrop-blur-xs flex justify-end"
     >
       <div className="w-full pl-0 sm:pl-10 h-full flex justify-end">
         <div
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-full sm:max-w-md bg-white shadow-2xl flex flex-col justify-between border-l border-slate-200 h-full"
+          className="w-full max-w-full sm:max-w-md bg-white shadow-2xl flex flex-col justify-between border-l border-slate-200 h-full max-h-[100dvh]"
         >
           {/* Header */}
           <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-900 text-white shrink-0">
@@ -120,7 +120,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           </div>
 
           {/* Items List */}
-          <div className="flex-1 p-5 overflow-y-auto space-y-4">
+          <div className="flex-1 min-h-0 p-5 overflow-y-auto space-y-4 custom-scrollbar">
             {cartItems.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
                 <FaCartShopping
@@ -282,7 +282,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
           {/* Footer Checkout */}
           {cartItems.length > 0 && (
-            <div className="p-5 border-t border-slate-200 bg-white space-y-3 shrink-0">
+            <div className="p-4 sm:p-5 pb-6 sm:pb-5 border-t border-slate-200 bg-white space-y-3 shrink-0">
               {/* Free Shipping Progress Indicator (only if configured in DB shipping methods) */}
               {freeThreshold != null && freeThreshold > 0 && (() => {
                 const FREE_THRESHOLD = freeThreshold;
