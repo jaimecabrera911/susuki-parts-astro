@@ -5,7 +5,7 @@ import { getPrimaryOem, getAvailabilityStatus, AVAILABILITY_META } from '../type
 import {
   Layers, ArrowLeft, Filter, Search, CheckCircle2, AlertTriangle,
   Eye, Info, ChevronRight, X, ArrowRightLeft,
-  ZoomIn, ZoomOut, RotateCcw
+  ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2
 } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 import { FaCartPlus } from 'react-icons/fa6';
@@ -84,15 +84,29 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   const [activeSection, setActiveSection] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [zoomLevel, setZoomLevel] = useState<number>(1);
-  const [pinSize, setPinSize] = useState<'normal' | 'compact' | 'micro'>('compact');
+  const [pinSize, setPinSize] = useState<'large' | 'normal' | 'compact'>('compact');
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [fullscreenZoom, setFullscreenZoom] = useState<number>(1);
 
   // Drag to pan state for schematic viewport
   const containerRef = useRef<HTMLDivElement>(null);
+  const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
 
+  // Escape key to close fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen]);
+
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (zoomLevel <= 1 || !containerRef.current) return;
+    if (!containerRef.current) return;
     setIsDragging(true);
     setDragStart({
       x: e.clientX,
@@ -113,6 +127,59 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
 
   const handleMouseUp = () => {
     setIsDragging(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!containerRef.current || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    setIsDragging(true);
+    setDragStart({
+      x: touch.clientX,
+      y: touch.clientY,
+      scrollLeft: containerRef.current.scrollLeft,
+      scrollTop: containerRef.current.scrollTop
+    });
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || !containerRef.current || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - dragStart.x;
+    const dy = touch.clientY - dragStart.y;
+    containerRef.current.scrollLeft = dragStart.scrollLeft - dx;
+    containerRef.current.scrollTop = dragStart.scrollTop - dy;
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+  // Fullscreen Pan handlers
+  const [isFullscreenDragging, setIsFullscreenDragging] = useState(false);
+  const [fullscreenDragStart, setFullscreenDragStart] = useState({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
+
+  const handleFullscreenMouseDown = (e: React.MouseEvent) => {
+    if (!fullscreenContainerRef.current) return;
+    setIsFullscreenDragging(true);
+    setFullscreenDragStart({
+      x: e.clientX,
+      y: e.clientY,
+      scrollLeft: fullscreenContainerRef.current.scrollLeft,
+      scrollTop: fullscreenContainerRef.current.scrollTop
+    });
+  };
+
+  const handleFullscreenMouseMove = (e: React.MouseEvent) => {
+    if (!isFullscreenDragging || !fullscreenContainerRef.current) return;
+    e.preventDefault();
+    const dx = e.clientX - fullscreenDragStart.x;
+    const dy = e.clientY - fullscreenDragStart.y;
+    fullscreenContainerRef.current.scrollLeft = fullscreenDragStart.scrollLeft - dx;
+    fullscreenContainerRef.current.scrollTop = fullscreenDragStart.scrollTop - dy;
+  };
+
+  const handleFullscreenMouseUp = () => {
+    setIsFullscreenDragging(false);
   };
 
   // Ref to the selected row — used to scroll into view when arriving from a product page
@@ -194,6 +261,68 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   }, [filteredDiagrams, activeSection, availableSections]);
 
   const currentDiagram = allDiagrams.find(d => d.id === selectedDiagramId) || allDiagrams[0] || null;
+
+  // Track previous zoom and part to distinguish zoom changes vs hotspot selections
+  const prevZoomRef = useRef(zoomLevel);
+  const prevFullscreenZoomRef = useRef(fullscreenZoom);
+
+  // Helper to center the viewport either on the selected hotspot or in the middle of the diagram
+  const centerViewport = (
+    container: HTMLDivElement | null,
+    zoom: number,
+    targetPartId: string | null,
+    diagram: ExplodedDiagram | null,
+    smooth = false
+  ) => {
+    if (!container || zoom <= 1 || !diagram) return;
+    requestAnimationFrame(() => {
+      if (!container) return;
+      const { scrollWidth, scrollHeight, clientWidth, clientHeight } = container;
+      if (scrollWidth <= clientWidth && scrollHeight <= clientHeight) return;
+
+      const selectedSpot = targetPartId
+        ? diagram.hotspots.find(s => s.partId === targetPartId)
+        : null;
+
+      let targetLeft: number;
+      let targetTop: number;
+
+      if (selectedSpot) {
+        // Center directly on the hotspot coordinates
+        targetLeft = (selectedSpot.x / 100) * scrollWidth - clientWidth / 2;
+        targetTop = (selectedSpot.y / 100) * scrollHeight - clientHeight / 2;
+      } else {
+        // Center on the middle of the diagram
+        targetLeft = (scrollWidth - clientWidth) / 2;
+        targetTop = (scrollHeight - clientHeight) / 2;
+      }
+
+      container.scrollTo({
+        left: Math.max(0, targetLeft),
+        top: Math.max(0, targetTop),
+        behavior: smooth ? 'smooth' : 'auto'
+      });
+    });
+  };
+
+  // Center on zoom change or when selecting a hotspot in detail view
+  useEffect(() => {
+    if (viewMode === 'detail' && zoomLevel > 1) {
+      const zoomChanged = prevZoomRef.current !== zoomLevel;
+      // Instant anchor when zooming (+/-) to eliminate jump/wobble; smooth glide only when clicking another part
+      centerViewport(containerRef.current, zoomLevel, selectedPartId, currentDiagram, !zoomChanged);
+    }
+    prevZoomRef.current = zoomLevel;
+  }, [zoomLevel, selectedPartId, viewMode, currentDiagram]);
+
+  // Center on zoom change or when selecting a hotspot in fullscreen view
+  useEffect(() => {
+    if (isFullscreen && fullscreenZoom > 1) {
+      const zoomChanged = prevFullscreenZoomRef.current !== fullscreenZoom;
+      centerViewport(fullscreenContainerRef.current, fullscreenZoom, selectedPartId, currentDiagram, !zoomChanged);
+    }
+    prevFullscreenZoomRef.current = fullscreenZoom;
+  }, [fullscreenZoom, selectedPartId, isFullscreen, currentDiagram]);
 
   // Get parts for the current diagram (in order of item number)
   const diagramParts = useMemo(() => {
@@ -536,13 +665,13 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
       {/* Detail Content: Diagram (left) + Parts Table (right) */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Left: Diagram */}
-        <div className="lg:col-span-2 bg-slate-950 border border-slate-800 rounded-2xl p-4 relative overflow-hidden">
+        <div className="lg:col-span-2 bg-slate-950 border border-slate-800 rounded-2xl p-4 relative overflow-hidden flex flex-col">
           <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{
             backgroundImage: 'linear-gradient(rgba(255,255,255,0.7) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.7) 1px, transparent 1px)',
             backgroundSize: '24px 24px',
           }} aria-hidden="true" />
 
-          <div className="relative z-10">
+          <div className="relative z-10 flex-1 flex flex-col">
             {/* Header Toolbar: Zoom Controls & Pin Size Selector */}
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3 text-white">
               <div className="min-w-0">
@@ -561,16 +690,16 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                   <ZoomOut className="w-4 h-4" />
                 </button>
 
-                <span className="px-2 font-mono text-[11px] font-bold text-slate-200 min-w-[45px] text-center select-none">
-                  {Math.round(zoomLevel * 100)}%
+                <span className="px-1.5 font-mono text-[11px] font-bold text-slate-200 min-w-[42px] text-center select-none">
+                  {zoomLevel === 1 ? 'Ajustar' : `${Math.round(zoomLevel * 100)}%`}
                 </span>
 
                 <button
                   type="button"
-                  onClick={() => setZoomLevel(prev => Math.min(Number((prev + 0.25).toFixed(2)), 2.5))}
-                  disabled={zoomLevel >= 2.5}
+                  onClick={() => setZoomLevel(prev => Math.min(Number((prev + 0.25).toFixed(2)), 3))}
+                  disabled={zoomLevel >= 3}
                   className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-40 transition-all cursor-pointer"
-                  title="Acercar zoom (hasta 250%)"
+                  title="Acercar zoom (hasta 300%)"
                 >
                   <ZoomIn className="w-4 h-4" />
                 </button>
@@ -578,12 +707,18 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                 {zoomLevel > 1 && (
                   <button
                     type="button"
-                    onClick={() => setZoomLevel(1)}
+                    onClick={() => {
+                      setZoomLevel(1);
+                      if (containerRef.current) {
+                        containerRef.current.scrollTop = 0;
+                        containerRef.current.scrollLeft = 0;
+                      }
+                    }}
                     className="p-1.5 rounded-lg text-[#E60012] hover:bg-red-950/40 transition-all text-[10px] font-mono font-bold flex items-center gap-1"
-                    title="Restablecer zoom (100%)"
+                    title="Restablecer vista completa (Ajustar)"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    <span>100%</span>
+                    <span className="hidden sm:inline">Ajustar</span>
                   </button>
                 )}
 
@@ -592,44 +727,74 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    if (pinSize === 'normal') setPinSize('compact');
-                    else if (pinSize === 'compact') setPinSize('micro');
-                    else setPinSize('normal');
+                    if (pinSize === 'compact') setPinSize('normal');
+                    else if (pinSize === 'normal') setPinSize('large');
+                    else setPinSize('compact');
                   }}
                   className="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors"
                   title="Cambiar tamaño de puntos de piezas"
                 >
-                  Puntos: {pinSize.toUpperCase()}
+                  Puntos: {pinSize === 'large' ? 'GRANDE' : pinSize === 'normal' ? 'NORMAL' : 'COMPACTO'}
+                </button>
+
+                <div className="h-4 w-[1px] bg-slate-700 mx-0.5" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFullscreenZoom(1);
+                    setIsFullscreen(true);
+                  }}
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
+                  title="Ver en pantalla completa"
+                  aria-label="Ver en pantalla completa"
+                >
+                  <Maximize2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
             {/* Viewport with Zoom Overflow Scroll & Drag-to-Pan */}
-            <div className="relative bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+            <div className="relative bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs flex-1 min-h-[500px] flex flex-col justify-center">
               <div
                 ref={containerRef}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
-                className={`p-3 max-h-[520px] overflow-auto custom-scrollbar flex select-none ${
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                className={`p-3 h-[520px] sm:h-[580px] lg:h-[620px] overflow-auto custom-scrollbar flex select-none ${
                   zoomLevel > 1
                     ? (isDragging ? 'items-start justify-start cursor-grabbing' : 'items-start justify-start cursor-grab')
-                    : 'items-center justify-center'
+                    : 'items-center justify-center cursor-default'
                 }`}
               >
                 <div
-                  className="relative transition-all duration-200"
-                  style={{
-                    width: zoomLevel > 1 ? `${zoomLevel * 100}%` : '100%',
-                    minWidth: zoomLevel > 1 ? `${zoomLevel * 100}%` : '100%'
-                  }}
+                  className="relative"
+                  style={
+                    zoomLevel > 1
+                      ? {
+                          width: `${zoomLevel * 100}%`,
+                          minWidth: `${zoomLevel * 100}%`
+                        }
+                      : {
+                          maxWidth: '100%',
+                          maxHeight: '100%',
+                          display: 'inline-block'
+                        }
+                  }
                 >
                   <img
                     src={currentDiagram.diagramImage}
                     alt={currentDiagram.title}
                     referrerPolicy="no-referrer"
-                    className="w-full h-auto object-contain pointer-events-none select-none"
+                    className={`${
+                      zoomLevel > 1
+                        ? 'w-full h-auto'
+                        : 'max-h-[480px] sm:max-h-[540px] lg:max-h-[580px] max-w-full w-auto h-auto'
+                    } object-contain block select-none pointer-events-none mx-auto`}
                   />
 
                   {/* Hotspot pins with radar pulse effect */}
@@ -638,9 +803,11 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
 
                     // Dynamic pin sizes for small parts
                     const pinClasses =
-                      pinSize === 'normal' ? 'w-8 h-8 font-mono text-xs font-black' :
-                      pinSize === 'compact' ? 'w-5.5 h-5.5 font-mono text-[10px] font-black' :
-                      'w-3.5 h-3.5 text-[0px] ring-2 ring-white shadow-lg';
+                      pinSize === 'large' ? 'w-10 h-10 font-mono text-sm font-black border-2' :
+                      pinSize === 'normal' ? 'w-8 h-8 font-mono text-xs font-black border-2' :
+                      'w-6 h-6 font-mono text-[11px] font-black border';
+
+                    const zoomScale = zoomLevel > 1 ? 1 + (zoomLevel - 1) * 0.35 : 1;
 
                     return (
                       <button
@@ -654,15 +821,15 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                         style={{
                           left: `${spot.x}%`,
                           top: `${spot.y}%`,
-                          transform: `translate(-50%, -50%) scale(${1 / Math.sqrt(zoomLevel)})`
+                          transform: `translate(-50%, -50%) scale(${zoomScale})`
                         }}
-                        className={`absolute rounded-full flex items-center justify-center transition-all cursor-pointer focus-visible:outline-none ${pinClasses} ${
+                        className={`absolute rounded-full flex items-center justify-center transition-transform duration-150 cursor-pointer focus-visible:outline-none shadow-md ${pinClasses} ${
                           isSelected
-                            ? 'bg-[#E60012] text-white ring-2 ring-white ring-offset-2 ring-offset-red-500/50 z-20 scale-105 shadow-md animate-pulse'
-                            : 'bg-white text-slate-900 ring-2 ring-slate-900 hover:bg-[#E60012] hover:text-white z-10'
+                            ? 'bg-[#E60012] text-white border-white ring-4 ring-[#E60012]/40 z-30 scale-110 shadow-lg animate-pulse'
+                            : 'bg-white text-slate-900 border-slate-900 hover:bg-[#E60012] hover:text-white hover:border-white z-10'
                         }`}
                       >
-                        <span className="relative z-10">{pinSize !== 'micro' && spot.itemNumber}</span>
+                        <span className="relative z-10 leading-none">{spot.itemNumber}</span>
                       </button>
                     );
                   })}
@@ -677,9 +844,9 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
         </div>
 
         {/* Right: Parts Table (no images) */}
-        <div className="lg:col-span-3 bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden flex flex-col">
+        <div className="lg:col-span-3 bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden flex flex-col max-h-[750px]">
           {/* Table Header */}
-          <div className="px-5 py-4 border-b border-slate-200 bg-slate-50">
+          <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 shrink-0">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
@@ -688,7 +855,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                 </h3>
                 <p className="text-[11px] text-slate-500 mt-0.5">
                   {diagramParts.length} {diagramParts.length === 1 ? 'repuesto registrado' : 'repuestos registrados'}
-                  {activeMotorcycle && ' — compatibilidadevaluada con tu moto'}
+                  {activeMotorcycle && ' — compatibilidad evaluada con tu moto'}
                 </p>
               </div>
             </div>
@@ -707,15 +874,15 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
           )}
 
           {/* Parts Table */}
-          <div className="flex-1 overflow-x-auto">
+          <div className="flex-1 overflow-auto custom-scrollbar">
             <table className="w-full text-left">
-              <thead className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-600">
+              <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-600 z-10">
                 <tr>
-                  <th className="px-3 py-2.5 font-extrabold w-12 text-center">#</th>
-                  <th className="px-3 py-2.5 font-extrabold">Repuesto / OEM</th>
-                  <th className="px-3 py-2.5 font-extrabold text-right">Precio</th>
-                  <th className="px-3 py-2.5 font-extrabold text-center">Estado</th>
-                  <th className="px-3 py-2.5 font-extrabold text-right">Acción</th>
+                  <th className="px-3 py-2.5 font-extrabold w-12 text-center bg-slate-50">#</th>
+                  <th className="px-3 py-2.5 font-extrabold bg-slate-50">Repuesto / OEM</th>
+                  <th className="px-3 py-2.5 font-extrabold text-right bg-slate-50">Precio</th>
+                  <th className="px-3 py-2.5 font-extrabold text-center bg-slate-50">Estado</th>
+                  <th className="px-3 py-2.5 font-extrabold text-right bg-slate-50">Acción</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -798,6 +965,233 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Fullscreen Interactive Lightbox Modal */}
+      {isFullscreen && (
+        <div
+          id="exploded-view-fullscreen"
+          className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col text-white animate-in fade-in duration-200"
+        >
+          {/* Top Bar */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/90 shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-red-950/60 border border-red-800/40 text-[#E60012] flex items-center justify-center shrink-0">
+                <Layers className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base font-black truncate">{currentDiagram.title}</h3>
+                <p className="text-[11px] text-slate-400 font-mono">
+                  {currentDiagram.category} • {currentDiagram.modelTarget || 'Modelos Suzuki'}
+                </p>
+              </div>
+            </div>
+
+            {/* Controls */}
+            <div className="flex items-center gap-3">
+              {/* Zoom Controls */}
+              <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setFullscreenZoom(prev => Math.max(Number((prev - 0.25).toFixed(2)), 1))}
+                  disabled={fullscreenZoom <= 1}
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 disabled:opacity-40 transition-all cursor-pointer"
+                  title="Alejar zoom"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </button>
+
+                <span className="px-2 font-mono text-xs font-bold text-slate-200 min-w-[45px] text-center select-none">
+                  {fullscreenZoom === 1 ? 'Ajustar' : `${Math.round(fullscreenZoom * 100)}%`}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setFullscreenZoom(prev => Math.min(Number((prev + 0.25).toFixed(2)), 3.5))}
+                  disabled={fullscreenZoom >= 3.5}
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 disabled:opacity-40 transition-all cursor-pointer"
+                  title="Acercar zoom"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
+
+                {fullscreenZoom > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFullscreenZoom(1);
+                      if (fullscreenContainerRef.current) {
+                        fullscreenContainerRef.current.scrollTop = 0;
+                        fullscreenContainerRef.current.scrollLeft = 0;
+                      }
+                    }}
+                    className="p-1.5 rounded-lg text-[#E60012] hover:bg-red-950/40 transition-all text-xs font-mono font-bold flex items-center gap-1"
+                    title="Restablecer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Ajustar</span>
+                  </button>
+                )}
+
+                <div className="h-4 w-[1px] bg-slate-600 mx-1" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (pinSize === 'compact') setPinSize('normal');
+                    else if (pinSize === 'normal') setPinSize('large');
+                    else setPinSize('compact');
+                  }}
+                  className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors"
+                >
+                  Puntos: {pinSize === 'large' ? 'GRANDE' : pinSize === 'normal' ? 'NORMAL' : 'COMPACTO'}
+                </button>
+              </div>
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setIsFullscreen(false)}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                title="Cerrar pantalla completa (Esc)"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Fullscreen Body */}
+          <div className="flex-1 overflow-hidden relative flex flex-col lg:flex-row">
+            {/* Diagram Viewport */}
+            <div
+              ref={fullscreenContainerRef}
+              onMouseDown={handleFullscreenMouseDown}
+              onMouseMove={handleFullscreenMouseMove}
+              onMouseUp={handleFullscreenMouseUp}
+              onMouseLeave={handleFullscreenMouseUp}
+              className={`flex-1 p-6 overflow-auto custom-scrollbar flex select-none ${
+                fullscreenZoom > 1
+                  ? (isFullscreenDragging ? 'items-start justify-start cursor-grabbing' : 'items-start justify-start cursor-grab')
+                  : 'items-center justify-center'
+              }`}
+            >
+              <div
+                className="relative bg-white rounded-2xl p-4 shadow-2xl"
+                style={
+                  fullscreenZoom > 1
+                    ? {
+                        width: `${fullscreenZoom * 100}%`,
+                        minWidth: `${fullscreenZoom * 100}%`
+                      }
+                    : {
+                        maxWidth: '92%',
+                        maxHeight: '92%',
+                        display: 'inline-block'
+                      }
+                }
+              >
+                <img
+                  src={currentDiagram.diagramImage}
+                  alt={currentDiagram.title}
+                  referrerPolicy="no-referrer"
+                  className={`${
+                    fullscreenZoom > 1
+                      ? 'w-full h-auto'
+                      : 'max-h-[calc(100vh-180px)] max-w-full w-auto h-auto'
+                  } object-contain block select-none pointer-events-none mx-auto`}
+                />
+
+                {/* Hotspot pins */}
+                {currentDiagram.hotspots.map(spot => {
+                  const isSelected = selectedPartId === spot.partId;
+                  const pinClasses =
+                    pinSize === 'large' ? 'w-10 h-10 font-mono text-sm font-black border-2' :
+                    pinSize === 'normal' ? 'w-8 h-8 font-mono text-xs font-black border-2' :
+                    'w-6 h-6 font-mono text-[11px] font-black border';
+
+                  const fullscreenScale = fullscreenZoom > 1 ? 1 + (fullscreenZoom - 1) * 0.35 : 1;
+
+                  return (
+                    <button
+                      key={spot.itemNumber}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedPartId(spot.partId);
+                      }}
+                      aria-label={`Punto #${spot.itemNumber} - ${spot.label}`}
+                      style={{
+                        left: `${spot.x}%`,
+                        top: `${spot.y}%`,
+                        transform: `translate(-50%, -50%) scale(${fullscreenScale})`
+                      }}
+                      className={`absolute rounded-full flex items-center justify-center transition-transform duration-150 cursor-pointer focus-visible:outline-none shadow-md ${pinClasses} ${
+                        isSelected
+                          ? 'bg-[#E60012] text-white border-white ring-4 ring-[#E60012]/40 z-30 scale-110 shadow-xl animate-pulse'
+                          : 'bg-white text-slate-900 border-slate-900 hover:bg-[#E60012] hover:text-white hover:border-white z-10'
+                      }`}
+                    >
+                      <span className="relative z-10 leading-none">{spot.itemNumber}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Selected Part Drawer in Fullscreen (if any) */}
+            {selectedPart && (
+              <div className="w-full lg:w-96 bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-800 p-6 flex flex-col justify-between shrink-0 overflow-y-auto max-h-[40vh] lg:max-h-full">
+                <div>
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#E60012] text-white font-mono font-extrabold text-base shadow-md">
+                      #{diagramParts.find(dp => dp.part.id === selectedPart.id)?.spot.itemNumber ?? 0}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPartId(null)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <h4 className="text-lg font-black text-white leading-snug mb-1">{selectedPart.name}</h4>
+                  <div className="font-mono text-xs text-slate-400 mb-4">
+                    OEM: <span className="text-white font-bold">{getPrimaryOem(selectedPart)}</span>
+                  </div>
+
+                  <div className="text-2xl font-mono font-black text-white mb-4">
+                    {formatCurrency(selectedPart.price)}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 pt-4 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onAddToCart(selectedPart);
+                    }}
+                    className="w-full py-3 bg-[#E60012] hover:bg-red-700 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                  >
+                    <FaCartPlus className="w-4 h-4" />
+                    <span>Añadir al Carrito</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsFullscreen(false);
+                      onOpenPartDetail(selectedPart);
+                    }}
+                    className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold uppercase tracking-wider rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span>Ver Ficha Técnica</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

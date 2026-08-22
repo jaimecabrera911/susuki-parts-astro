@@ -73,6 +73,17 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState("");
 
+  // Hotspot Drag-to-move State
+  const [draggingHotspotIndex, setDraggingHotspotIndex] = useState<number | null>(null);
+  const [isDraggingPendingHotspot, setIsDraggingPendingHotspot] = useState(false);
+  const [hasDraggedHotspot, setHasDraggedHotspot] = useState(false);
+  const dragStartPosRef = useRef<{
+    clientX: number;
+    clientY: number;
+    initialX: number;
+    initialY: number;
+  } | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (file: File) => {
@@ -103,6 +114,9 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
 
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const canvasViewportRef = useRef<HTMLDivElement>(null);
+  const prevZoomRef = useRef(zoomLevel);
+  const prevHasPendingRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -166,12 +180,204 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
     setZoomLevel(1);
     setPendingHotspot(null);
     setEditingHotspotIndex(null);
+    setDraggingHotspotIndex(null);
+    setIsDraggingPendingHotspot(false);
+    setHasDraggedHotspot(false);
     setError("");
   }, [schematicToEdit, isOpen]);
+
+  // Global drag listener for repositioning hotspots on the canvas by holding click with relative delta smoothing
+  useEffect(() => {
+    if (draggingHotspotIndex === null && !isDraggingPendingHotspot) return;
+
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      const targetElement = imageRef.current;
+      if (!targetElement || !dragStartPosRef.current) return;
+
+      const { clientX: startX, clientY: startY, initialX, initialY } = dragStartPosRef.current;
+      const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
+      if (dist > 3) {
+        setHasDraggedHotspot(true);
+      }
+
+      const rect = targetElement.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      const deltaXPercent = ((e.clientX - startX) / rect.width) * 100;
+      const deltaYPercent = ((e.clientY - startY) / rect.height) * 100;
+
+      // Ultra-smooth sub-pixel precision (rounded to 1 decimal place e.g. 45.3%)
+      let x = Math.round((initialX + deltaXPercent) * 10) / 10;
+      let y = Math.round((initialY + deltaYPercent) * 10) / 10;
+
+      x = Math.max(0, Math.min(100, x));
+      y = Math.max(0, Math.min(100, y));
+
+      if (isDraggingPendingHotspot) {
+        setPendingHotspot({ x, y });
+      } else if (draggingHotspotIndex !== null) {
+        setHotspots((prev) =>
+          prev.map((hs, i) => (i === draggingHotspotIndex ? { ...hs, x, y } : hs))
+        );
+      }
+    };
+
+    const handleGlobalTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      const targetElement = imageRef.current;
+      if (!targetElement || !dragStartPosRef.current) return;
+
+      const { clientX: startX, clientY: startY, initialX, initialY } = dragStartPosRef.current;
+      const dist = Math.hypot(touch.clientX - startX, touch.clientY - startY);
+      if (dist > 3) {
+        setHasDraggedHotspot(true);
+      }
+
+      const rect = targetElement.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      const deltaXPercent = ((touch.clientX - startX) / rect.width) * 100;
+      const deltaYPercent = ((touch.clientY - startY) / rect.height) * 100;
+
+      let x = Math.round((initialX + deltaXPercent) * 10) / 10;
+      let y = Math.round((initialY + deltaYPercent) * 10) / 10;
+
+      x = Math.max(0, Math.min(100, x));
+      y = Math.max(0, Math.min(100, y));
+
+      if (isDraggingPendingHotspot) {
+        setPendingHotspot({ x, y });
+      } else if (draggingHotspotIndex !== null) {
+        setHotspots((prev) =>
+          prev.map((hs, i) => (i === draggingHotspotIndex ? { ...hs, x, y } : hs))
+        );
+      }
+    };
+
+    const handleGlobalMouseUp = () => {
+      setDraggingHotspotIndex(null);
+      setIsDraggingPendingHotspot(false);
+      dragStartPosRef.current = null;
+    };
+
+    window.addEventListener("mousemove", handleGlobalMouseMove);
+    window.addEventListener("mouseup", handleGlobalMouseUp);
+    window.addEventListener("touchmove", handleGlobalTouchMove, { passive: false });
+    window.addEventListener("touchend", handleGlobalMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleGlobalMouseMove);
+      window.removeEventListener("mouseup", handleGlobalMouseUp);
+      window.removeEventListener("touchmove", handleGlobalTouchMove);
+      window.removeEventListener("touchend", handleGlobalMouseUp);
+    };
+  }, [draggingHotspotIndex, isDraggingPendingHotspot]);
+
+  // Keyboard micro-adjustments with arrow keys for microscopic precision
+  useEffect(() => {
+    if (activeSubTab !== "canvas") return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+
+      if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
+
+      e.preventDefault();
+      const step = e.shiftKey ? 1.0 : 0.2; // 0.2% fine step, 1.0% with shift
+
+      let dx = 0;
+      let dy = 0;
+      if (e.key === "ArrowLeft") dx = -step;
+      if (e.key === "ArrowRight") dx = step;
+      if (e.key === "ArrowUp") dy = -step;
+      if (e.key === "ArrowDown") dy = step;
+
+      if (editingHotspotIndex !== null && hotspots[editingHotspotIndex]) {
+        setHotspots((prev) =>
+          prev.map((hs, i) => {
+            if (i === editingHotspotIndex) {
+              const x = Math.max(0, Math.min(100, Math.round((hs.x + dx) * 10) / 10));
+              const y = Math.max(0, Math.min(100, Math.round((hs.y + dy) * 10) / 10));
+              return { ...hs, x, y };
+            }
+            return hs;
+          })
+        );
+      } else if (pendingHotspot) {
+        setPendingHotspot((prev) => {
+          if (!prev) return null;
+          const x = Math.max(0, Math.min(100, Math.round((prev.x + dx) * 10) / 10));
+          const y = Math.max(0, Math.min(100, Math.round((prev.y + dy) * 10) / 10));
+          return { x, y };
+        });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeSubTab, editingHotspotIndex, pendingHotspot, hotspots]);
+
+  // Helper to center the canvas viewport either on the selected hotspot or in the middle of the diagram
+  const centerCanvasViewport = (smooth = false) => {
+    const container = canvasViewportRef.current;
+    if (!container || zoomLevel <= 1) return;
+
+    requestAnimationFrame(() => {
+      if (!container) return;
+      const { scrollWidth, scrollHeight, clientWidth, clientHeight } = container;
+      if (scrollWidth <= clientWidth && scrollHeight <= clientHeight) return;
+
+      const targetSpot =
+        editingHotspotIndex !== null
+          ? hotspots[editingHotspotIndex]
+          : pendingHotspot
+            ? pendingHotspot
+            : null;
+
+      let targetLeft: number;
+      let targetTop: number;
+
+      if (targetSpot) {
+        // Center directly on the hotspot coordinates
+        targetLeft = (targetSpot.x / 100) * scrollWidth - clientWidth / 2;
+        targetTop = (targetSpot.y / 100) * scrollHeight - clientHeight / 2;
+      } else {
+        // Center on the middle of the diagram
+        targetLeft = (scrollWidth - clientWidth) / 2;
+        targetTop = (scrollHeight - clientHeight) / 2;
+      }
+
+      container.scrollTo({
+        left: Math.max(0, targetLeft),
+        top: Math.max(0, targetTop),
+        behavior: smooth ? "smooth" : "auto",
+      });
+    });
+  };
+
+  const hasPendingHotspot = Boolean(pendingHotspot);
+
+  // Center on zoom change, selecting an existing hotspot, or initially placing a pending hotspot in the editor
+  useEffect(() => {
+    if (activeSubTab === "canvas" && zoomLevel > 1) {
+      const zoomChanged = prevZoomRef.current !== zoomLevel;
+      const justCreatedPending = hasPendingHotspot && !prevHasPendingRef.current;
+      centerCanvasViewport(!zoomChanged && !justCreatedPending);
+    }
+    prevZoomRef.current = zoomLevel;
+    prevHasPendingRef.current = hasPendingHotspot;
+  }, [zoomLevel, editingHotspotIndex, hasPendingHotspot, activeSubTab]);
 
   if (!isOpen) return null;
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // If the user just dragged a hotspot, do not create a new hotspot on release
+    if (hasDraggedHotspot || draggingHotspotIndex !== null || isDraggingPendingHotspot) {
+      setHasDraggedHotspot(false);
+      return;
+    }
     // Target the rendered image bounds or container
     const targetElement = imageRef.current || imageContainerRef.current;
     if (!targetElement) return;
@@ -181,8 +387,8 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
     const clickY = e.clientY - rect.top;
 
     // Calculate exact percentage coordinates relative to image bounds
-    let x = Math.round((clickX / rect.width) * 100);
-    let y = Math.round((clickY / rect.height) * 100);
+    let x = Math.round(((clickX / rect.width) * 100) * 10) / 10;
+    let y = Math.round(((clickY / rect.height) * 100) * 10) / 10;
 
     // Clamp coordinates strictly between 0% and 100%
     x = Math.max(0, Math.min(100, x));
@@ -618,8 +824,8 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
                   <Crosshair className="w-4 h-4 text-[#0A3088] shrink-0" />
                   <span>
                     {editingHotspotIndex !== null
-                      ? `Modo Edición: Haz clic en la imagen para reubicar el Punto #${itemNumberInput}.`
-                      : "Haz clic en cualquier punto del esquema para vincular un producto (funciona con y sin zoom)."}
+                      ? `Modo Edición: Haz clic o arrastra el Punto #${itemNumberInput} para reubicarlo.`
+                      : "Haz clic para crear un punto o mantén presionado y arrastra cualquier punto para moverlo libremente."}
                   </span>
                 </div>
 
@@ -709,36 +915,52 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
               </div>
 
               {/* Interactive Canvas Viewport (Scrollable with Zoom Container) */}
-              <div className="relative border border-slate-200 rounded-2xl overflow-auto bg-slate-50 shadow-xs max-h-[520px] custom-scrollbar">
+              <div
+                ref={canvasViewportRef}
+                className="relative border border-slate-200 rounded-2xl overflow-auto bg-slate-50 shadow-xs max-h-[520px] custom-scrollbar select-none"
+              >
                 <div
                   ref={imageContainerRef}
-                  style={{
-                    transform: `scale(${zoomLevel})`,
-                    transformOrigin: "top left",
-                    width: zoomLevel > 1 ? `${zoomLevel * 100}%` : "100%",
-                  }}
-                  className="relative w-full min-h-[340px] flex items-center justify-center p-4 bg-white transition-transform duration-200 origin-top-left"
+                  className={`p-4 bg-white flex min-h-[340px] select-none ${
+                    zoomLevel > 1 ? "items-start justify-start" : "items-center justify-center"
+                  }`}
                 >
                   {diagramImage ? (
                     <div
                       onClick={handleCanvasClick}
-                      className="relative inline-block cursor-crosshair select-none"
+                      className="relative cursor-crosshair select-none"
+                      style={
+                        zoomLevel > 1
+                          ? {
+                              width: `${zoomLevel * 100}%`,
+                              minWidth: `${zoomLevel * 100}%`,
+                            }
+                          : {
+                              maxWidth: "100%",
+                              display: "inline-block",
+                            }
+                      }
                     >
                       <img
                         ref={imageRef}
                         src={diagramImage}
                         alt="Diagrama despiece"
-                        className="max-w-full max-h-[480px] object-contain pointer-events-none select-none block"
+                        className={`${
+                          zoomLevel > 1
+                            ? "w-full h-auto"
+                            : "max-w-full max-h-[480px] w-auto h-auto"
+                        } object-contain pointer-events-none select-none block mx-auto`}
                       />
 
                       {/* Render Existing Hotspot Pins inside tight image bounds */}
                       {hotspots.map((hs, idx) => {
                         const isCurrentlyEditing = editingHotspotIndex === idx;
+                        const isCurrentlyDragging = draggingHotspotIndex === idx;
                         const pinSizeClasses =
                           pinSizeMode === "normal"
                             ? "w-8 h-8 font-mono text-xs font-black"
                             : pinSizeMode === "compact"
-                              ? "w-5 h-5 font-mono text-[10px] font-black"
+                              ? "w-6 h-6 font-mono text-[10px] font-black"
                               : "w-3.5 h-3.5 text-[0px] ring-2 ring-white shadow-lg";
 
                         return (
@@ -747,59 +969,100 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
                             style={{
                               left: `${hs.x}%`,
                               top: `${hs.y}%`,
-                              transform: `translate(-50%, -50%) scale(${1 / Math.sqrt(zoomLevel)})`,
+                              transform: `translate(-50%, -50%) scale(${1 + (zoomLevel - 1) * 0.25})`,
                             }}
-                            className="absolute z-10 group"
+                            className={`absolute z-10 group ${
+                              isCurrentlyDragging ? "cursor-grabbing z-40" : "cursor-grab"
+                            }`}
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              setDraggingHotspotIndex(idx);
+                              setHasDraggedHotspot(false);
+                              dragStartPosRef.current = {
+                                clientX: e.clientX,
+                                clientY: e.clientY,
+                                initialX: hs.x,
+                                initialY: hs.y,
+                              };
+                            }}
+                            onTouchStart={(e) => {
+                              if (e.touches.length !== 1) return;
+                              e.stopPropagation();
+                              setDraggingHotspotIndex(idx);
+                              setHasDraggedHotspot(false);
+                              dragStartPosRef.current = {
+                                clientX: e.touches[0].clientX,
+                                clientY: e.touches[0].clientY,
+                                initialX: hs.x,
+                                initialY: hs.y,
+                              };
+                            }}
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleStartEditHotspot(idx);
+                              if (!hasDraggedHotspot) {
+                                handleStartEditHotspot(idx);
+                              }
                             }}
                           >
                             <div
-                              className={`rounded-full text-white border-2 shadow-md flex items-center justify-center transition-transform group-hover:scale-125 cursor-pointer ${
-                                isCurrentlyEditing
-                                  ? "bg-blue-600 border-yellow-300 ring-4 ring-blue-400/50 scale-125 z-30"
-                                  : "bg-[#E60012] border-white"
+                              className={`rounded-full text-white border-2 shadow-md flex items-center justify-center transition-transform select-none ${
+                                isCurrentlyDragging
+                                  ? "bg-amber-500 border-white ring-4 ring-amber-400/70 scale-125 z-40 shadow-2xl"
+                                  : isCurrentlyEditing
+                                    ? "bg-blue-600 border-yellow-300 ring-4 ring-blue-400/50 scale-125 z-30"
+                                    : "bg-[#E60012] border-white group-hover:scale-110"
                               } ${pinSizeClasses}`}
                             >
                               {pinSizeMode !== "micro" && hs.itemNumber}
                             </div>
 
-                            {/* Hover Actions: Editar & Eliminar (Contiguous Hover Bridge - Icon Only) */}
-                            <div className="hidden group-hover:flex absolute left-1/2 -translate-x-1/2 bottom-full pb-2 w-44 z-40 flex-col items-center text-center">
-                              <div className="w-full bg-slate-900 text-white text-[11px] rounded-xl p-2 shadow-2xl flex flex-col items-center text-center">
-                                <span className="font-bold font-mono text-emerald-400">
-                                  Punto #{hs.itemNumber}
-                                </span>
-                                <span className="truncate w-full font-medium text-slate-200 text-[10px]">
-                                  {hs.label}
-                                </span>
-                                <div className="flex items-center justify-center gap-2 mt-1.5 w-full">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleStartEditHotspot(idx);
-                                    }}
-                                    className="p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center justify-center"
-                                    title="Editar este punto"
-                                  >
-                                    <Edit className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleRemoveHotspot(idx);
-                                    }}
-                                    className="p-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors flex items-center justify-center"
-                                    title="Eliminar este punto"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
+                            {/* Live coordinate badge during drag */}
+                            {isCurrentlyDragging && (
+                              <div className="absolute left-1/2 -translate-x-1/2 -top-8 px-2 py-0.5 rounded-md bg-slate-900 text-amber-400 text-[10px] font-mono font-bold whitespace-nowrap shadow-xl border border-amber-400/40 pointer-events-none z-50">
+                                X: {hs.x}% Y: {hs.y}%
+                              </div>
+                            )}
+
+                            {/* Hover Actions: Editar & Eliminar (only when not dragging) */}
+                            {!isCurrentlyDragging && (
+                              <div className="hidden group-hover:flex absolute left-1/2 -translate-x-1/2 bottom-full pb-2 w-44 z-40 flex-col items-center text-center">
+                                <div className="w-full bg-slate-900 text-white text-[11px] rounded-xl p-2 shadow-2xl flex flex-col items-center text-center">
+                                  <span className="font-bold font-mono text-emerald-400">
+                                    Punto #{hs.itemNumber}
+                                  </span>
+                                  <span className="truncate w-full font-medium text-slate-200 text-[10px]">
+                                    {hs.label}
+                                  </span>
+                                  <div className="text-[9px] text-amber-300 font-mono mt-0.5">
+                                    Sostén y arrastra para mover
+                                  </div>
+                                  <div className="flex items-center justify-center gap-2 mt-1.5 w-full">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStartEditHotspot(idx);
+                                      }}
+                                      className="p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center justify-center cursor-pointer"
+                                      title="Editar este punto"
+                                    >
+                                      <Edit className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveHotspot(idx);
+                                      }}
+                                      className="p-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors flex items-center justify-center cursor-pointer"
+                                      title="Eliminar este punto"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
+                            )}
                           </div>
                         );
                       })}
@@ -811,7 +1074,7 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
                             pinSizeMode === "normal"
                               ? "w-8 h-8 font-mono text-xs font-black"
                               : pinSizeMode === "compact"
-                                ? "w-5 h-5 font-mono text-[10px] font-black"
+                                ? "w-6 h-6 font-mono text-[10px] font-black"
                                 : "w-3.5 h-3.5 text-[0px] ring-2 ring-white shadow-lg";
 
                           return (
@@ -819,15 +1082,50 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
                               style={{
                                 left: `${pendingHotspot.x}%`,
                                 top: `${pendingHotspot.y}%`,
-                                transform: `translate(-50%, -50%) scale(${1 / Math.sqrt(zoomLevel)})`,
+                                transform: `translate(-50%, -50%) scale(${1 + (zoomLevel - 1) * 0.25})`,
                               }}
-                              className="absolute z-20 pointer-events-none"
+                              className={`absolute z-20 ${
+                                isDraggingPendingHotspot ? "cursor-grabbing z-40" : "cursor-grab"
+                              }`}
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                setIsDraggingPendingHotspot(true);
+                                setHasDraggedHotspot(false);
+                                dragStartPosRef.current = {
+                                  clientX: e.clientX,
+                                  clientY: e.clientY,
+                                  initialX: pendingHotspot.x,
+                                  initialY: pendingHotspot.y,
+                                };
+                              }}
+                              onTouchStart={(e) => {
+                                if (e.touches.length !== 1) return;
+                                e.stopPropagation();
+                                setIsDraggingPendingHotspot(true);
+                                setHasDraggedHotspot(false);
+                                dragStartPosRef.current = {
+                                  clientX: e.touches[0].clientX,
+                                  clientY: e.touches[0].clientY,
+                                  initialX: pendingHotspot.x,
+                                  initialY: pendingHotspot.y,
+                                };
+                              }}
+                              onClick={(e) => e.stopPropagation()}
                             >
                               <div
-                                className={`rounded-full bg-emerald-500 text-white border-2 border-white ring-4 ring-emerald-400/60 shadow-xl flex items-center justify-center ${pendingPinSizeClasses}`}
+                                className={`rounded-full bg-emerald-500 text-white border-2 border-white ring-4 ring-emerald-400/60 shadow-xl flex items-center justify-center select-none transition-transform ${
+                                  isDraggingPendingHotspot ? "scale-125 shadow-2xl" : "hover:scale-110"
+                                } ${pendingPinSizeClasses}`}
                               >
                                 {pinSizeMode !== "micro" && itemNumberInput}
                               </div>
+
+                              {/* Live coordinate badge during drag */}
+                              {isDraggingPendingHotspot && (
+                                <div className="absolute left-1/2 -translate-x-1/2 -top-8 px-2 py-0.5 rounded-md bg-slate-900 text-emerald-400 text-[10px] font-mono font-bold whitespace-nowrap shadow-xl border border-emerald-400/40 pointer-events-none z-50">
+                                  X: {pendingHotspot.x}% Y: {pendingHotspot.y}%
+                                </div>
+                              )}
                             </div>
                           );
                         })()}
