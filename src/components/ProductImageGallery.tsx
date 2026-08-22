@@ -50,6 +50,17 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
     };
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (zoomLevel <= 1 || e.touches.length !== 1) return;
+    setIsDragging(true);
+    dragStartRef.current = {
+      startX: e.touches[0].clientX,
+      startY: e.touches[0].clientY,
+      initialPanX: pan.x,
+      initialPanY: pan.y,
+    };
+  };
+
   useEffect(() => {
     if (!isDragging) return;
 
@@ -62,15 +73,31 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
       });
     };
 
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - dragStartRef.current.startX;
+      const dy = e.touches[0].clientY - dragStartRef.current.startY;
+      setPan({
+        x: dragStartRef.current.initialPanX + dx,
+        y: dragStartRef.current.initialPanY + dy,
+      });
+    };
+
     const handleMouseUp = () => {
       setIsDragging(false);
     };
 
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
+    window.addEventListener("touchend", handleMouseUp);
+    window.addEventListener("touchcancel", handleMouseUp);
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleMouseUp);
+      window.removeEventListener("touchcancel", handleMouseUp);
     };
   }, [isDragging]);
 
@@ -253,6 +280,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
         <div className="relative bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden min-h-[260px] sm:min-h-[320px] max-h-[360px] group shadow-xs transition-all hover:border-[#E60012] hover:shadow-md flex items-center justify-center p-3 bg-white">
           <div
             onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
             className={`w-full h-[260px] sm:h-[320px] bg-white select-none relative flex items-center justify-center overflow-hidden ${
               zoomLevel > 1
                 ? isDragging
@@ -268,7 +296,9 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
               className="relative max-w-full max-h-full flex items-center justify-center select-none"
               style={{
                 transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel})`,
-                transformOrigin: "center center",
+                transformOrigin: diagramInfo.hotspot
+                  ? `${diagramInfo.hotspot.x}% ${diagramInfo.hotspot.y}%`
+                  : "center center",
                 transition: isDragging ? "none" : "transform 0.2s ease-out",
               }}
             >
@@ -285,18 +315,18 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
                   className="block pointer-events-none select-none"
                 />
 
-                {/* Hotspot pin — perfectly proportionate, concentric and centered */}
+                {/* Hotspot pin — compact, concentric and crisp */}
                 {diagramInfo.hotspot && (
                   <div
                     className="absolute z-10 pointer-events-none flex items-center justify-center"
                     style={{
                       left: `${diagramInfo.hotspot.x}%`,
                       top: `${diagramInfo.hotspot.y}%`,
-                      transform: `translate(-50%, -50%) scale(${1 / Math.sqrt(zoomLevel)})`,
+                      transform: `translate(-50%, -50%) scale(${1 / zoomLevel})`,
                     }}
                     aria-label={`Pieza #${diagramInfo.hotspot.itemNumber}`}
                   >
-                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full font-mono font-black text-[10px] bg-[#E60012] text-white ring-2 ring-white ring-offset-1 ring-offset-red-500/30 shadow-xs animate-pulse">
+                    <span className="inline-flex items-center justify-center min-w-[17px] h-[17px] px-1 rounded-full font-mono font-black text-[9px] leading-none bg-[#E60012] text-white ring-1.5 ring-white shadow-xs">
                       {diagramInfo.hotspot.itemNumber}
                     </span>
                   </div>
@@ -343,6 +373,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
         <div className="relative bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden aspect-4/3 sm:aspect-16/10 shadow-xs group">
           <div
             onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
             className={`w-full h-full p-4 flex items-center justify-center select-none overflow-hidden ${
               zoomLevel > 1
                 ? isDragging
