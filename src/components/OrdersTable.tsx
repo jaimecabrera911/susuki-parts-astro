@@ -10,6 +10,10 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Calendar,
 } from "lucide-react";
 import { OrderDetailModal } from "./OrderDetailModal";
 import { getPrimaryOem } from "../types";
@@ -45,7 +49,14 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
   // Filtering & Search
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<string>("date");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [statusRows, setStatusRows] = useState<{ id: string; name: string; color: string }[]>([]);
+
+  // Date Range Filtering
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [showDateFilter, setShowDateFilter] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,42 +76,120 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
   const statusThemeOf = (status: string) =>
     STATUS_THEMES[statusRows.find(s => s.name === status)?.color || "slate"] || STATUS_THEMES.slate;
 
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortDirection(prev => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortDirection("desc");
+    }
+  };
+
+  const applyPreset = (preset: "today" | "7days" | "thisMonth" | "30days") => {
+    const now = new Date();
+    const toDateStr = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    };
+
+    let start = "";
+    const end = toDateStr(now);
+
+    if (preset === "today") {
+      start = end;
+    } else if (preset === "7days") {
+      const d = new Date();
+      d.setDate(d.getDate() - 7);
+      start = toDateStr(d);
+    } else if (preset === "thisMonth") {
+      const d = new Date(now.getFullYear(), now.getMonth(), 1);
+      start = toDateStr(d);
+    } else if (preset === "30days") {
+      const d = new Date();
+      d.setDate(d.getDate() - 30);
+      start = toDateStr(d);
+    }
+
+    setStartDate(start);
+    setEndDate(end);
+    setCurrentPage(1);
+  };
+
+  const clearDateRange = () => {
+    setStartDate("");
+    setEndDate("");
+    setCurrentPage(1);
+  };
+
   // Filtered orders calculation
   const filteredOrders = useMemo(() => {
+    const q = searchTerm.toLowerCase().trim();
     const filtered = allOrders.filter((order) => {
+      const formattedDoc = formatDocumentNumber(order.id, order.prefix, order.documentNumber).toLowerCase();
       const matchesSearch =
-        order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        !q ||
+        (order.id && order.id.toLowerCase().includes(q)) ||
+        formattedDoc.includes(q) ||
+        (order.trackingNumber && order.trackingNumber.toLowerCase().includes(q)) ||
+        (order.shippingCarrier && order.shippingCarrier.toLowerCase().includes(q)) ||
         (order.motorcycle &&
-          order.motorcycle.modelName
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())) ||
+          order.motorcycle.modelName &&
+          order.motorcycle.modelName.toLowerCase().includes(q)) ||
         (order.guaranteeCode &&
-          order.guaranteeCode
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())) ||
-        order.items.some(
-          (it: any) =>
-            getPrimaryOem(it.part)
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase()) ||
-            it.part.name.toLowerCase().includes(searchTerm.toLowerCase()),
-        );
+          order.guaranteeCode.toLowerCase().includes(q)) ||
+        (order.items &&
+          order.items.some(
+            (it: any) =>
+              (it.part && getPrimaryOem(it.part).toLowerCase().includes(q)) ||
+              (it.part?.name && it.part.name.toLowerCase().includes(q)) ||
+              (it.name && it.name.toLowerCase().includes(q))
+          ));
 
       const matchesStatus =
         statusFilter === "all" ||
-        order.status.toLowerCase() === statusFilter.toLowerCase();
+        (order.status && order.status.toLowerCase() === statusFilter.toLowerCase());
 
-      return matchesSearch && matchesStatus;
+      // Date range filtering
+      let matchesDate = true;
+      const rowTime = new Date(order.date).getTime();
+      if (!isNaN(rowTime)) {
+        if (startDate) {
+          const startTime = new Date(`${startDate}T00:00:00`).getTime();
+          if (!isNaN(startTime) && rowTime < startTime) matchesDate = false;
+        }
+        if (endDate) {
+          const endTime = new Date(`${endDate}T23:59:59.999`).getTime();
+          if (!isNaN(endTime) && rowTime > endTime) matchesDate = false;
+        }
+      }
+
+      return matchesSearch && matchesStatus && matchesDate;
     });
 
     return filtered.sort((a, b) => {
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
-      if (isNaN(dateA)) return 1;
-      if (isNaN(dateB)) return -1;
-      return dateB - dateA;
+      let comparison = 0;
+      if (sortBy === "date") {
+        const dateA = new Date(a.date).getTime() || 0;
+        const dateB = new Date(b.date).getTime() || 0;
+        comparison = dateA - dateB;
+      } else if (sortBy === "id") {
+        const docA = (a.documentNumber || a.id || "").toLowerCase();
+        const docB = (b.documentNumber || b.id || "").toLowerCase();
+        comparison = docA.localeCompare(docB);
+      } else if (sortBy === "total") {
+        comparison = (a.totalPrice || 0) - (b.totalPrice || 0);
+      } else if (sortBy === "items") {
+        const countA = a.items?.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0) || 0;
+        const countB = b.items?.reduce((acc: number, it: any) => acc + (it.quantity || 1), 0) || 0;
+        comparison = countA - countB;
+      } else if (sortBy === "status") {
+        comparison = (a.status || "").localeCompare(b.status || "");
+      }
+      return sortDirection === "asc" ? comparison : -comparison;
     });
-  }, [allOrders, searchTerm, statusFilter]);
+  }, [allOrders, searchTerm, statusFilter, sortBy, sortDirection, startDate, endDate]);
 
   // Pagination calculation
   const totalPages = Math.ceil(filteredOrders.length / pageSize) || 1;
@@ -154,6 +243,21 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
             </select>
           </div>
 
+          <button
+            type="button"
+            onClick={() => setShowDateFilter((prev) => !prev)}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 ${
+              startDate || endDate
+                ? "bg-[#E60012] text-white"
+                : showDateFilter
+                ? "bg-slate-200 text-slate-900"
+                : "bg-slate-50 border border-slate-300 text-slate-700 hover:bg-slate-100"
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{startDate || endDate ? "Filtro Fecha Activo" : "Filtrar Fechas"}</span>
+          </button>
+
           <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
             <span>Mostrar:</span>
             <select
@@ -171,6 +275,81 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Expandable Date Range Filter Bar */}
+      {showDateFilter && (
+        <div className="bg-white p-3.5 rounded-2xl border border-red-200 shadow-xs flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 font-mono">
+              Presets:
+            </span>
+            <button
+              type="button"
+              onClick={() => applyPreset("today")}
+              className="px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-red-50 hover:text-[#E60012] rounded-lg transition-colors cursor-pointer"
+            >
+              Hoy
+            </button>
+            <button
+              type="button"
+              onClick={() => applyPreset("7days")}
+              className="px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-red-50 hover:text-[#E60012] rounded-lg transition-colors cursor-pointer"
+            >
+              Últimos 7 días
+            </button>
+            <button
+              type="button"
+              onClick={() => applyPreset("thisMonth")}
+              className="px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-red-50 hover:text-[#E60012] rounded-lg transition-colors cursor-pointer"
+            >
+              Este mes
+            </button>
+            <button
+              type="button"
+              onClick={() => applyPreset("30days")}
+              className="px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-red-50 hover:text-[#E60012] rounded-lg transition-colors cursor-pointer"
+            >
+              Últimos 30 días
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 ml-auto">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-bold text-slate-500 uppercase">Desde:</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="px-2.5 py-1 text-xs font-mono font-semibold text-slate-800 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#E60012]/30 focus:border-[#E60012] outline-none"
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-bold text-slate-500 uppercase">Hasta:</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="px-2.5 py-1 text-xs font-mono font-semibold text-slate-800 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#E60012]/30 focus:border-[#E60012] outline-none"
+              />
+            </div>
+            {(startDate || endDate) && (
+              <button
+                type="button"
+                onClick={clearDateRange}
+                className="px-2 py-1 text-xs font-bold text-[#E60012] hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+              >
+                Limpiar Rango
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* DataTable Container */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
@@ -197,12 +376,77 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-500 font-extrabold">
-                  <th className="py-3.5 px-4">ID Pedido</th>
-                  <th className="py-3.5 px-4">Fecha</th>
+                  <th className="py-3.5 px-4">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("id")}
+                      className="flex items-center gap-1.5 hover:text-slate-900 transition-colors uppercase font-extrabold cursor-pointer"
+                    >
+                      <span>ID Pedido</span>
+                      {sortBy === "id" ? (
+                        sortDirection === "asc" ? <ArrowUp className="w-3 h-3 text-[#E60012]" /> : <ArrowDown className="w-3 h-3 text-[#E60012]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="py-3.5 px-4">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("date")}
+                      className="flex items-center gap-1.5 hover:text-slate-900 transition-colors uppercase font-extrabold cursor-pointer"
+                    >
+                      <span>Fecha & Hora</span>
+                      {sortBy === "date" ? (
+                        sortDirection === "asc" ? <ArrowUp className="w-3 h-3 text-[#E60012]" /> : <ArrowDown className="w-3 h-3 text-[#E60012]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      )}
+                    </button>
+                  </th>
                   <th className="py-3.5 px-4">Motocicleta Verificada</th>
-                  <th className="py-3.5 px-4 text-center">Ítems</th>
-                  <th className="py-3.5 px-4 text-right">Total Facturado</th>
-                  <th className="py-3.5 px-4 text-center">Estado</th>
+                  <th className="py-3.5 px-4 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("items")}
+                      className="inline-flex items-center gap-1.5 hover:text-slate-900 transition-colors uppercase font-extrabold cursor-pointer"
+                    >
+                      <span>Ítems</span>
+                      {sortBy === "items" ? (
+                        sortDirection === "asc" ? <ArrowUp className="w-3 h-3 text-[#E60012]" /> : <ArrowDown className="w-3 h-3 text-[#E60012]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="py-3.5 px-4 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("total")}
+                      className="inline-flex items-center gap-1.5 hover:text-slate-900 transition-colors uppercase font-extrabold cursor-pointer ml-auto"
+                    >
+                      <span>Total Facturado</span>
+                      {sortBy === "total" ? (
+                        sortDirection === "asc" ? <ArrowUp className="w-3 h-3 text-[#E60012]" /> : <ArrowDown className="w-3 h-3 text-[#E60012]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="py-3.5 px-4 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("status")}
+                      className="inline-flex items-center gap-1.5 hover:text-slate-900 transition-colors uppercase font-extrabold cursor-pointer"
+                    >
+                      <span>Estado</span>
+                      {sortBy === "status" ? (
+                        sortDirection === "asc" ? <ArrowUp className="w-3 h-3 text-[#E60012]" /> : <ArrowDown className="w-3 h-3 text-[#E60012]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      )}
+                    </button>
+                  </th>
                   <th className="py-3.5 px-4 text-right">Acción</th>
                 </tr>
               </thead>

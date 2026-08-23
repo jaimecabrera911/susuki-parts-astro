@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
 import { parts, partOemNumbers } from '../../db/schema';
-import { eq, like, or, inArray } from 'drizzle-orm';
+import { eq, ilike, or, inArray } from 'drizzle-orm';
 import { upsertPart, formatParts } from '../../db/writers';
 
 export const GET: APIRoute = async ({ url }) => {
@@ -15,9 +15,9 @@ export const GET: APIRoute = async ({ url }) => {
     if (category) {
       rawData = await db.select().from(parts).where(eq(parts.category, category));
     } else if (query) {
-      const q = `%${query}%`;
-      const oemRows = await db.select({ partId: partOemNumbers.partId }).from(partOemNumbers).where(like(partOemNumbers.oemNumber, q));
-      const nameMatches = await db.select().from(parts).where(or(like(parts.name, q), like(parts.description, q)));
+      const q = `%${query.trim()}%`;
+      const oemRows = await db.select({ partId: partOemNumbers.partId }).from(partOemNumbers).where(ilike(partOemNumbers.oemNumber, q));
+      const nameMatches = await db.select().from(parts).where(or(ilike(parts.name, q), ilike(parts.description, q)));
       const map = new Map(nameMatches.map(p => [p.id, p]));
       if (oemRows.length) {
         const oemIds = [...new Set(oemRows.map(r => r.partId))];
@@ -26,7 +26,7 @@ export const GET: APIRoute = async ({ url }) => {
       }
       rawData = [...map.values()];
     } else if (oem) {
-      const oemRows = await db.select({ partId: partOemNumbers.partId }).from(partOemNumbers).where(like(partOemNumbers.oemNumber, `%${oem}%`));
+      const oemRows = await db.select({ partId: partOemNumbers.partId }).from(partOemNumbers).where(ilike(partOemNumbers.oemNumber, `%${oem.trim()}%`));
       const ids = [...new Set(oemRows.map(r => r.partId))];
       rawData = ids.length ? await db.select().from(parts).where(inArray(parts.id, ids)) : [];
     } else {

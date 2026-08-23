@@ -596,7 +596,21 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   <span>Consultar WhatsApp</span>
                 </a>
 
-                {!activeMotorcycle ? (
+                {part.active === false ? (
+                  <div className="flex flex-col items-center sm:items-end gap-1">
+                    <button
+                      type="button"
+                      disabled
+                      aria-disabled="true"
+                      className="w-full py-3 px-4 min-h-[44px] bg-slate-200 text-slate-500 border border-slate-300 font-black text-xs uppercase rounded-xl cursor-not-allowed shadow-none"
+                    >
+                      Repuesto No Disponible
+                    </button>
+                    <span className="text-[10px] text-slate-500 font-medium">
+                      Este producto está temporalmente deshabilitado.
+                    </span>
+                  </div>
+                ) : !activeMotorcycle ? (
                   <button
                     type="button"
                     onClick={onOpenGarageModal}

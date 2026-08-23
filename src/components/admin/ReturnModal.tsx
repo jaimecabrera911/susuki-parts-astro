@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, RotateCcw, ShieldCheck, Truck, CreditCard, DollarSign, Package, AlertCircle, MessageSquare, Send, User } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDocumentNumber } from '../../utils/formatDocumentNumber';
+import { formatOrderDate } from '../../utils/formatDate';
 import { parseReturnNotes, formatMessageTime, type ReturnMessage } from '../../utils/returnNotes';
 import { getStoredUser } from '../../utils/auth';
 
@@ -114,19 +115,7 @@ export const ReturnModal: React.FC<ReturnModalProps> = ({
     ? returnItem.itemsJson
     : (typeof returnItem.itemsJson === 'string' ? JSON.parse(returnItem.itemsJson || '[]') : []);
 
-  const formatDate = (ts: string) => {
-    try {
-      const d = new Date(ts);
-      return d.toLocaleString('es-CO', {
-        day: '2-digit',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch {
-      return ts;
-    }
-  };
+  const formatDate = (ts: string) => formatOrderDate(ts);
 
   const isUnpaidOrder = Boolean(
     returnItem.isUnpaidCancel ||

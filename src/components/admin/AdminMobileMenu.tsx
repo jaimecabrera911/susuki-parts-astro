@@ -16,6 +16,7 @@ import {
   Tag,
   RotateCcw,
   Settings,
+  Boxes,
 } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 import type { AdminTab } from './AdminSidebar';
@@ -37,6 +38,7 @@ const menuItems: { id: AdminTab; label: string; icon: React.ElementType }[] = [
   { id: 'models', label: 'MODELOS DE MOTO', icon: FaMotorcycle },
   { id: 'categories', label: 'CATEGORÍAS Y SUBCAT', icon: FolderTree },
   { id: 'parts', label: 'CATÁLOGO REPUESTOS', icon: Package },
+  { id: 'kardex', label: 'KARDEX & INVENTARIO', icon: Boxes },
   { id: 'schematics', label: 'DESPIECES EXPLOSIÓN', icon: Layers },
   { id: 'orders', label: 'GESTIÓN DE PEDIDOS', icon: ShoppingCart },
   { id: 'returns', label: 'DEVOLUCIONES & RMA', icon: RotateCcw },

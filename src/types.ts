@@ -100,6 +100,7 @@ export interface SuzukiPart {
   name: string;
   category: string;
   price: number;
+  cost?: number;
   stock: number;
   image: string;
   images?: string[];
@@ -110,6 +111,8 @@ export interface SuzukiPart {
   diagramHotspot?: { x: number; y: number; itemNumber: number };
   /** Estado de disponibilidad del repuesto. Default: derivado de `stock`. */
   availability?: AvailabilityStatus;
+  /** Indica si el repuesto está activo / visible en el catálogo público. Default: true. */
+  active?: boolean;
   /** Indica si la pieza genera impuesto (IVA). Default: true. */
   taxable?: boolean;
   /** Indica si el precio de catálogo ya incluye el impuesto (IVA). Default: false. */
@@ -167,6 +170,7 @@ export type DashboardModule =
   | 'models'
   | 'categories'
   | 'parts'
+  | 'kardex'
   | 'schematics'
   | 'orders'
   | 'returns'
@@ -461,6 +465,47 @@ export interface PaymentSettings {
     accounts: BankAccount[];
   };
   wompi: WompiConfig;
+}
+
+export type InventoryMovementType =
+  | 'INITIAL_STOCK'
+  | 'OUT_SALE'
+  | 'IN_CANCEL'
+  | 'IN_RETURN'
+  | 'IN_PURCHASE'
+  | 'OUT_DAMAGE'
+  | 'OUT_INTERNAL'
+  | 'ADJUST_IN'
+  | 'ADJUST_OUT';
+
+export type InventoryReferenceType =
+  | 'order'
+  | 'return'
+  | 'manual_adjustment'
+  | 'supplier_invoice'
+  | 'initial_balance';
+
+export interface InventoryMovement {
+  id: string;
+  partId: string;
+  partName?: string;
+  partSku?: string;
+  partCategory?: string;
+  partOemNumbers?: string[];
+  movementType: InventoryMovementType;
+  quantity: number;
+  previousStock: number;
+  resultingStock: number;
+  unitCost: number;
+  unitPrice: number;
+  totalAmount: number;
+  referenceType: InventoryReferenceType;
+  referenceId?: string | null;
+  referenceDocument?: string | null;
+  notes: string;
+  userId?: string | null;
+  userName: string;
+  createdAt: string;
 }
 
 

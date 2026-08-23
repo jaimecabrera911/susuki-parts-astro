@@ -18,6 +18,8 @@ import {
   Sliders,
   Sparkles,
   RotateCcw,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import type {
   SuzukiPart,
@@ -60,13 +62,16 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
   const [secondaryOemInput, setSecondaryOemInput] = useState("");
   const [category, setCategory] = useState<string>("");
   const [price, setPrice] = useState<number>(50000);
+  const [cost, setCost] = useState<number>(0);
   const [taxable, setTaxable] = useState<boolean>(true);
   const [priceIncludesTax, setPriceIncludesTax] = useState<boolean>(false);
   const [stock, setStock] = useState<number>(10);
   const [priceInput, setPriceInput] = useState<string>(formatThousands(50000));
+  const [costInput, setCostInput] = useState<string>(formatThousands(0));
   const [stockInput, setStockInput] = useState<string>(formatThousands(10));
   const [availability, setAvailability] =
     useState<AvailabilityStatus>("in_stock");
+  const [active, setActive] = useState<boolean>(true);
   const [gallery, setGallery] = useState<string[]>([]);
   const [description, setDescription] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -177,6 +182,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       setSecondaryOemInput("");
       setCategory(partToEdit.category || "");
       setPrice(partToEdit.price);
+      setCost(partToEdit.cost || 0);
       setTaxable(partToEdit.taxable !== false);
       setPriceIncludesTax(partToEdit.priceIncludesTax === true);
       setStock(partToEdit.stock);
@@ -184,6 +190,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
         partToEdit.availability ||
           (partToEdit.stock > 0 ? "in_stock" : "on_order"),
       );
+      setActive(partToEdit.active !== false);
       setGallery(
         partToEdit.images && partToEdit.images.length > 0
           ? partToEdit.images
@@ -204,6 +211,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       const defaultSlug = initialData.category || categories[0]?.slug || "";
       setCategory(defaultSlug);
       setPrice(initialData.price ?? 50000);
+      setCost(initialData.cost ?? 0);
       setTaxable(initialData.taxable !== false);
       setPriceIncludesTax(initialData.priceIncludesTax === true);
       setStock(initialData.stock ?? 10);
@@ -211,6 +219,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
         initialData.availability ||
           ((initialData.stock ?? 10) > 0 ? "in_stock" : "on_order"),
       );
+      setActive(initialData.active !== false);
       setGallery(
         initialData.images && initialData.images.length > 0
           ? initialData.images
@@ -239,10 +248,12 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       const defaultSlug = categories[0]?.slug || "";
       setCategory(defaultSlug);
       setPrice(0);
+      setCost(0);
       setTaxable(true);
       setPriceIncludesTax(false);
       setStock(0);
       setAvailability("in_stock");
+      setActive(true);
       setGallery([]);
       setDescription("");
       const initialSpecs =
@@ -263,6 +274,10 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
   }, [price]);
 
   useEffect(() => {
+    setCostInput(formatThousands(cost));
+  }, [cost]);
+
+  useEffect(() => {
     setStockInput(formatThousands(stock));
   }, [stock]);
 
@@ -273,6 +288,15 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       return;
     }
     setPrice(Math.max(0, Number(digits)));
+  };
+
+  const commitCost = () => {
+    const digits = costInput.replace(/\D/g, "");
+    if (digits === "") {
+      setCostInput(formatThousands(cost));
+      return;
+    }
+    setCost(Math.max(0, Number(digits)));
   };
 
   const commitStock = () => {
@@ -442,10 +466,12 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
         name: name.trim(),
         category,
         price,
+        cost,
         taxable,
         priceIncludesTax,
         stock,
         availability,
+        active,
         image: uploaded[0] || "",
         images: uploaded,
         description: description.trim(),
@@ -639,11 +665,11 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
             </div>
           </div>
 
-          {/* Price, Stock & Availability */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Price, Cost, Stock & Availability */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-mono">
-                Precio (COP) *
+                Precio Venta (COP) *
               </label>
               <input
                 type="text"
@@ -657,6 +683,29 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                   setPriceInput(e.target.value.replace(/\D/g, ""))
                 }
                 onBlur={commitPrice}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                }}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 font-mono font-bold"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-mono">
+                Costo Promedio (COP)
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={12}
+                value={costInput}
+                onChange={(e) =>
+                  setCostInput(e.target.value.replace(/\D/g, ""))
+                }
+                onFocus={(e) =>
+                  setCostInput(e.target.value.replace(/\D/g, ""))
+                }
+                onBlur={commitCost}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") e.currentTarget.blur();
                 }}
@@ -689,7 +738,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
 
             <div>
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-mono">
-                Estado Disponibilidad
+                Disponibilidad
               </label>
               <select
                 value={availability}
@@ -702,6 +751,41 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                 <option value="international">Envío Internacional</option>
                 <option value="on_order">Bajo Pedido</option>
               </select>
+            </div>
+          </div>
+
+          {/* Visibility / Active Status Switch Card */}
+          <div className={`p-4 rounded-2xl border transition-all ${active ? 'bg-emerald-50/70 border-emerald-200' : 'bg-slate-100 border-slate-300'}`}>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${active ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' : 'bg-slate-300 text-slate-600'}`}>
+                  {active ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-900 font-mono">
+                      ESTADO DEL REPUESTO:
+                    </span>
+                    <span className={`text-[11px] font-black uppercase px-2 py-0.5 rounded-md ${active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
+                      {active ? 'Activo / Visible' : 'Inactivo / Oculto'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 mt-0.5">
+                    {active
+                      ? 'El repuesto está visible para los clientes en el catálogo, buscador y compras públicas.'
+                      : 'El repuesto está oculto del catálogo público y compras, pero permanece guardado en tu administración.'}
+                  </p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={active}
+                  onChange={(e) => setActive(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
             </div>
           </div>
 

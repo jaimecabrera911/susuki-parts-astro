@@ -634,6 +634,9 @@ export default function App() {
   // Filter Parts List
   const filteredParts = parts
     .filter((part) => {
+      // Exclude disabled / inactive parts from customer catalog and searches
+      if (part.active === false) return false;
+
       // Search query match
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -1018,6 +1021,20 @@ export default function App() {
             isLoggedIn={isLoggedIn}
             onOrderComplete={(order) => {
               setOrders((prev) => [order, ...prev.filter((o) => o.id !== order.id)]);
+              setParts((prevParts) =>
+                prevParts.map((p) => {
+                  const orderedItem = order.items?.find((it: any) =>
+                    (it.part?.id === p.id || it.partId === p.id || (p.sku && it.part?.sku === p.sku))
+                  );
+                  if (orderedItem) {
+                    const qty = Number(orderedItem.quantity || 1);
+                    const newStock = Math.max(0, (p.stock ?? 0) - qty);
+                    return { ...p, stock: newStock };
+                  }
+                  return p;
+                })
+              );
+              loadStorefrontData(false);
             }}
             onClearCart={() => setCartItems([])}
             onNavigateToCatalog={() => navigateToTab("catalog")}

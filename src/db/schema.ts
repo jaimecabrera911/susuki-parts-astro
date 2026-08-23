@@ -73,6 +73,7 @@ export const parts = pgTable('parts', {
   name: text('name').notNull(),
   category: text('category').notNull().references(() => categories.slug, { onDelete: 'restrict', onUpdate: 'cascade' }),
   price: doublePrecision('price').notNull(),
+  cost: doublePrecision('cost').notNull().default(0),
   stock: integer('stock').notNull().default(0),
   image: text('image').notNull(),
   description: text('description').notNull(),
@@ -80,12 +81,14 @@ export const parts = pgTable('parts', {
   schematicId: uuid('schematic_id').references(() => schematics.id, { onDelete: 'set null' }),
   diagramHotspot: jsonb('diagram_hotspot'),
   availability: text('availability').notNull().default('in_stock'),
+  active: boolean('active').notNull().default(true),
   taxable: boolean('taxable').notNull().default(true),
   priceIncludesTax: boolean('price_includes_tax').notNull().default(false)
 }, (table) => ({
   skuUniqueIdx: uniqueIndex('idx_parts_sku_unique').on(table.sku),
   categoryIdx: index('idx_parts_category').on(table.category),
   availabilityIdx: index('idx_parts_availability').on(table.availability),
+  activeIdx: index('idx_parts_active').on(table.active),
   schematicIdx: index('idx_parts_schematic_id').on(table.schematicId)
 }));
 
@@ -527,6 +530,31 @@ export const rolePermissions = pgTable('role_permissions', {
 }, (table) => ({
   roleIdx: index('idx_role_permissions_role_id').on(table.roleId),
   roleModuleUnique: uniqueIndex('idx_role_permissions_role_module_unique').on(table.roleId, table.module)
+}));
+
+// 20. Inventory Movements / Kardex Table (3NF Normalized Transactional Ledger)
+export const inventoryMovements = pgTable('inventory_movements', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  partId: uuid('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
+  movementType: text('movement_type').notNull(), // 'INITIAL_STOCK', 'OUT_SALE', 'IN_CANCEL', 'IN_RETURN', 'IN_PURCHASE', 'OUT_DAMAGE', 'OUT_INTERNAL', 'ADJUST_IN', 'ADJUST_OUT'
+  quantity: integer('quantity').notNull(), // positive for IN, negative for OUT
+  previousStock: integer('previous_stock').notNull().default(0),
+  resultingStock: integer('resulting_stock').notNull().default(0),
+  unitCost: doublePrecision('unit_cost').notNull().default(0),
+  unitPrice: doublePrecision('unit_price').notNull().default(0),
+  totalAmount: doublePrecision('total_amount').notNull().default(0),
+  referenceType: text('reference_type').notNull().default('manual_adjustment'), // 'order', 'return', 'manual_adjustment', 'supplier_invoice', 'initial_balance'
+  referenceId: text('reference_id'),
+  referenceDocument: text('reference_document'), // e.g. SZ-ORD-123456, SZ-RET-FF2961E9
+  notes: text('notes').notNull().default(''),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  userName: text('user_name').notNull().default('Sistema'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  partIdx: index('idx_inventory_movements_part_id').on(table.partId),
+  movementTypeIdx: index('idx_inventory_movements_type').on(table.movementType),
+  referenceIdx: index('idx_inventory_movements_reference').on(table.referenceType, table.referenceId),
+  createdAtIdx: index('idx_inventory_movements_created_at').on(table.createdAt)
 }));
 
 

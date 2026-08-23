@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
 import { orderReturns, orders } from '../../db/schema';
-import { eq, like, or, desc, inArray } from 'drizzle-orm';
+import { eq, ilike, or, and, desc, inArray, sql } from 'drizzle-orm';
 import { upsertOrderReturn, deleteOrderReturn } from '../../db/writers';
 
 export const GET: APIRoute = async ({ url }) => {
@@ -9,27 +9,39 @@ export const GET: APIRoute = async ({ url }) => {
     const db = getDb();
     const status = url.searchParams.get('status');
     const orderId = url.searchParams.get('orderId');
+    const email = url.searchParams.get('email');
     const query = url.searchParams.get('q');
 
-    let data;
+    const conditions: any[] = [];
+
     if (orderId) {
-      data = await db.select().from(orderReturns).where(eq(orderReturns.orderId, orderId)).orderBy(desc(orderReturns.createdAt));
-    } else if (status) {
-      data = await db.select().from(orderReturns).where(eq(orderReturns.status, status)).orderBy(desc(orderReturns.createdAt));
-    } else if (query) {
-      const q = `%${query}%`;
-      data = await db.select().from(orderReturns).where(
-        or(
-          like(orderReturns.id, q),
-          like(orderReturns.orderId, q),
-          like(orderReturns.customerName, q),
-          like(orderReturns.email, q),
-          like(orderReturns.reason, q)
-        )
-      ).orderBy(desc(orderReturns.createdAt));
-    } else {
-      data = await db.select().from(orderReturns).orderBy(desc(orderReturns.createdAt));
+      conditions.push(eq(orderReturns.orderId, orderId));
     }
+    if (status) {
+      conditions.push(eq(orderReturns.status, status));
+    }
+    if (email) {
+      conditions.push(ilike(orderReturns.email, email.trim()));
+    }
+    if (query) {
+      const q = `%${query.trim()}%`;
+      conditions.push(
+        or(
+          sql`${orderReturns.id}::text ILIKE ${q}`,
+          sql`${orderReturns.orderId}::text ILIKE ${q}`,
+          ilike(orderReturns.customerName, q),
+          ilike(orderReturns.email, q),
+          ilike(orderReturns.reason, q),
+          ilike(orderReturns.prefix, q),
+          ilike(orderReturns.documentNumber, q),
+          sql`(${orderReturns.prefix} || '-' || COALESCE(${orderReturns.documentNumber}, UPPER(SUBSTRING(${orderReturns.id}::text, 1, 8)))) ILIKE ${q}`
+        )
+      );
+    }
+
+    const data = conditions.length > 0
+      ? await db.select().from(orderReturns).where(and(...conditions)).orderBy(desc(orderReturns.createdAt))
+      : await db.select().from(orderReturns).orderBy(desc(orderReturns.createdAt));
 
     const orderIds = Array.from(new Set(data.map((r) => r.orderId).filter(Boolean)));
     const ordersRows = orderIds.length

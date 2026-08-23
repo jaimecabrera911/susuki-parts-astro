@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
 import { users, userFavorites, userPermissions } from '../../db/schema';
-import { eq, like, or } from 'drizzle-orm';
+import { eq, ilike, or, and } from 'drizzle-orm';
 import { upsertUser } from '../../db/writers';
 
 export const GET: APIRoute = async ({ url }) => {
@@ -10,22 +10,23 @@ export const GET: APIRoute = async ({ url }) => {
     const role = url.searchParams.get('role');
     const query = url.searchParams.get('q');
 
-    let rawData;
-    if (role) {
-      rawData = await db.select().from(users).where(eq(users.role, role));
-    } else if (query) {
-      const q = `%${query}%`;
-      rawData = await db.select().from(users).where(
+    const conditions: any[] = [];
+    if (role) conditions.push(eq(users.role, role));
+    if (query) {
+      const q = `%${query.trim()}%`;
+      conditions.push(
         or(
-          like(users.fullName, q),
-          like(users.email, q),
-          like(users.documentId, q),
-          like(users.city, q)
+          ilike(users.fullName, q),
+          ilike(users.email, q),
+          ilike(users.documentId, q),
+          ilike(users.city, q)
         )
       );
-    } else {
-      rawData = await db.select().from(users);
     }
+
+    const rawData = conditions.length > 0
+      ? await db.select().from(users).where(and(...conditions))
+      : await db.select().from(users);
 
     const allFavorites = await db.select().from(userFavorites);
     const favoritesByUser = new Map<string, string[]>();

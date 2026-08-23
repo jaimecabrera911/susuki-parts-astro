@@ -8,6 +8,7 @@ import { BrandsManager } from "./BrandsManager";
 import { ModelsManager } from "./ModelsManager";
 import { CategoriesManager } from "./CategoriesManager";
 import { PartsManager } from "./PartsManager";
+import { KardexManager } from "./KardexManager";
 import { SchematicsManager } from "./SchematicsManager";
 import { OrdersManager } from "./OrdersManager";
 import { UsersManager } from "./UsersManager";
@@ -89,6 +90,7 @@ const getTabFromUrl = (): AdminTab => {
     "models",
     "categories",
     "parts",
+    "kardex",
     "schematics",
     "orders",
     "returns",
@@ -175,6 +177,7 @@ export const AdminDashboard: React.FC = () => {
 
   const [isPartDrawerOpen, setIsPartDrawerOpen] = useState(false);
   const [partToEdit, setPartToEdit] = useState<SuzukiPart | null>(null);
+  const [kardexFilterPartId, setKardexFilterPartId] = useState<string | undefined>(undefined);
 
   const [isSchematicDrawerOpen, setIsSchematicDrawerOpen] = useState(false);
   const [schematicToEdit, setSchematicToEdit] =
@@ -223,6 +226,7 @@ export const AdminDashboard: React.FC = () => {
       "models",
       "categories",
       "parts",
+      "kardex",
       "schematics",
       "orders",
       "returns",
@@ -749,6 +753,23 @@ export const AdminDashboard: React.FC = () => {
       );
   };
 
+  const handleTogglePartActive = async (part: SuzukiPart) => {
+    const nextActive = part.active === false;
+    const updated: SuzukiPart = { ...part, active: nextActive };
+    setParts(parts.map((p) => (p.id === part.id ? updated : p)));
+    try {
+      await savePartApi(updated, true);
+      showToast(
+        `Repuesto "${part.name}" ${nextActive ? "activado y visible en tienda" : "deshabilitado y oculto en tienda"}.`,
+        nextActive ? "success" : "info"
+      );
+    } catch (e: any) {
+      // Revert if API failed
+      setParts(parts.map((p) => (p.id === part.id ? part : p)));
+      showToast(`Error al cambiar estado del repuesto: ${e?.message || e}`, "error");
+    }
+  };
+
   const handleDeletePart = (id: string) => {
     const part = parts.find((p) => p.id === id);
     if (!part) return;
@@ -1130,10 +1151,19 @@ export const AdminDashboard: React.FC = () => {
                 setPartToEdit(part);
                 setIsPartDrawerOpen(true);
               }}
+              onViewKardex={(part) => {
+                setKardexFilterPartId(part.id);
+                handleSetActiveTab("kardex");
+              }}
               onDuplicatePart={handleDuplicatePart}
               onToggleAvailability={handleTogglePartAvailability}
+              onToggleActive={handleTogglePartActive}
               onDeletePart={handleDeletePart}
             />
+          )}
+
+          {activeTab === "kardex" && (
+            <KardexManager initialPartId={kardexFilterPartId} />
           )}
 
           {activeTab === "schematics" && (

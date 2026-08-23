@@ -17,7 +17,8 @@ import {
   RotateCcw,
   Check,
   Eye,
-  Edit3
+  Edit3,
+  Boxes
 } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 import type { Role, DashboardModule, UserPermission } from '../../types';
@@ -25,8 +26,8 @@ import type { Role, DashboardModule, UserPermission } from '../../types';
 interface RoleModalProps {
   isOpen: boolean;
   onClose: () => void;
-  roleToEdit: Role | null;
-  onSaveRole: (savedRole: Partial<Role>) => void;
+  roleToEdit?: Role | null;
+  onSaveRole: (role: any, isEdit?: boolean) => Promise<void>;
 }
 
 export const MODULE_DEFINITIONS: {
@@ -39,6 +40,7 @@ export const MODULE_DEFINITIONS: {
   { id: 'models', label: 'Modelos de Moto', description: 'Modelos, años y categorías de motos', icon: FaMotorcycle },
   { id: 'categories', label: 'Categorías', description: 'Árbol de categorías y subcategorías', icon: FolderTree },
   { id: 'parts', label: 'Catálogo Repuestos', description: 'Piezas, precios, stock y números OEM', icon: Package },
+  { id: 'kardex', label: 'Kardex & Inventario', description: 'Movimientos de inventario, auditoría y valoración', icon: Boxes },
   { id: 'schematics', label: 'Despieces Explosión', description: 'Diagramas interactivos y hotspots', icon: Layers },
   { id: 'orders', label: 'Gestión de Pedidos', description: 'Ventas, estados de orden y comprobantes', icon: ShoppingCart },
   { id: 'returns', label: 'Devoluciones y RMA', description: 'Garantías, reembolsos y notas QC', icon: RotateCcw },

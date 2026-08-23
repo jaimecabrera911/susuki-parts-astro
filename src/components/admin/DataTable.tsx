@@ -6,7 +6,7 @@ import RDTable, {
   type PaginationOptions,
 } from 'react-data-table-component';
 import 'react-data-table-component/css';
-import { ListFilter, Check, X, Inbox, SlidersHorizontal, ArrowUpDown, Minus } from 'lucide-react';
+import { ListFilter, Check, X, Inbox, SlidersHorizontal, ArrowUpDown, Minus, Calendar } from 'lucide-react';
 import { formatThousands } from '../../utils/formatCurrency';
 
 createTheme(
@@ -99,6 +99,11 @@ export interface DataTableRangeField<T> {
   value: (row: T) => number;
 }
 
+export interface DateRangeBounds {
+  start?: string; // YYYY-MM-DD
+  end?: string;   // YYYY-MM-DD
+}
+
 export interface DataTableColumn<T> {
   key: string;
   label: React.ReactNode;
@@ -108,6 +113,8 @@ export interface DataTableColumn<T> {
   filterOptions?: { value: string; label: string }[];
   filterMatcher?: (row: T, value: string) => boolean;
   ranges?: DataTableRangeField<T>[];
+  dateRange?: boolean;
+  dateAccessor?: (row: T) => string | number | Date | null | undefined;
   sortable?: boolean;
   sortSelector?: (row: T) => string | number;
   align?: 'left' | 'center' | 'right';
@@ -179,6 +186,8 @@ export function DataTable<T>({
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [rangeFilters, setRangeFilters] = useState<Record<string, RangeBounds[]>>({});
   const [rangeDrafts, setRangeDrafts] = useState<Record<string, RangeDraft[]>>({});
+  const [dateFilters, setDateFilters] = useState<Record<string, DateRangeBounds>>({});
+  const [dateDrafts, setDateDrafts] = useState<Record<string, DateRangeBounds>>({});
   const [openCol, setOpenCol] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -187,22 +196,44 @@ export function DataTable<T>({
   const hasActiveRange = (col: DataTableColumn<T>): boolean =>
     (rangeFilters[col.key] ?? []).some((b) => b.min !== undefined || b.max !== undefined);
 
+  const hasActiveDateRange = (col: DataTableColumn<T>): boolean =>
+    Boolean(dateFilters[col.key]?.start || dateFilters[col.key]?.end);
+
   const activeFilterCount = useMemo(
     () =>
       columns.filter((c) => {
         const selectActive = columnFilters[c.key] && columnFilters[c.key] !== ALL_VALUE;
-        return Boolean(selectActive) || hasActiveRange(c);
+        return Boolean(selectActive) || hasActiveRange(c) || hasActiveDateRange(c);
       }).length,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [columns, columnFilters, rangeFilters],
+    [columns, columnFilters, rangeFilters, dateFilters],
   );
 
-  // Apply global search + per-column filters + numeric ranges
+  // Apply global search + per-column filters + numeric ranges + date ranges
   const filteredData = useMemo(() => {
     const query = (searchQuery ?? '').trim().toLowerCase();
     return data.filter((row) => {
       if (query && searchFilter && !searchFilter(row, query)) return false;
       for (const col of columns) {
+        if (col.dateRange) {
+          const dRange = dateFilters[col.key];
+          if (dRange && (dRange.start || dRange.end)) {
+            const rawVal = col.dateAccessor ? col.dateAccessor(row) : (row as any)[col.key];
+            if (!rawVal) return false;
+            const rowTime = new Date(rawVal).getTime();
+            if (isNaN(rowTime)) return false;
+
+            if (dRange.start) {
+              const startTime = new Date(`${dRange.start}T00:00:00`).getTime();
+              if (!isNaN(startTime) && rowTime < startTime) return false;
+            }
+            if (dRange.end) {
+              const endTime = new Date(`${dRange.end}T23:59:59.999`).getTime();
+              if (!isNaN(endTime) && rowTime > endTime) return false;
+            }
+          }
+        }
+
         const boundsList = rangeFilters[col.key];
         if (boundsList && col.ranges) {
           for (let i = 0; i < col.ranges.length; i++) {
@@ -219,7 +250,7 @@ export function DataTable<T>({
       }
       return true;
     });
-  }, [data, columns, columnFilters, rangeFilters, searchQuery, searchFilter]);
+  }, [data, columns, columnFilters, rangeFilters, dateFilters, searchQuery, searchFilter]);
 
   // Dynamic filter options derived from live data (unique values + counts)
   const columnOptions = useMemo(() => {
@@ -325,10 +356,72 @@ export function DataTable<T>({
     });
   };
 
+  const setDateDraft = (colKey: string, field: 'start' | 'end', val: string) => {
+    setDateDrafts((prev) => ({
+      ...prev,
+      [colKey]: { ...(prev[colKey] ?? {}), [field]: val }
+    }));
+  };
+
+  const applyDateRange = (colKey: string, customRange?: DateRangeBounds) => {
+    const range = customRange || dateDrafts[colKey] || {};
+    setDateFilters((prev) => ({ ...prev, [colKey]: range }));
+    if (customRange) {
+      setDateDrafts((prev) => ({ ...prev, [colKey]: customRange }));
+    }
+    setOpenCol(null);
+    setMenuPos(null);
+  };
+
+  const clearDateRange = (colKey: string) => {
+    setDateFilters((prev) => {
+      const next = { ...prev };
+      delete next[colKey];
+      return next;
+    });
+    setDateDrafts((prev) => {
+      const next = { ...prev };
+      delete next[colKey];
+      return next;
+    });
+  };
+
+  const applyDatePreset = (colKey: string, preset: 'today' | '7days' | 'thisMonth' | '30days') => {
+    const now = new Date();
+    const toDateStr = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    let start = '';
+    const end = toDateStr(now);
+
+    if (preset === 'today') {
+      start = end;
+    } else if (preset === '7days') {
+      const d = new Date();
+      d.setDate(d.getDate() - 7);
+      start = toDateStr(d);
+    } else if (preset === 'thisMonth') {
+      const d = new Date(now.getFullYear(), now.getMonth(), 1);
+      start = toDateStr(d);
+    } else if (preset === '30days') {
+      const d = new Date();
+      d.setDate(d.getDate() - 30);
+      start = toDateStr(d);
+    }
+
+    applyDateRange(colKey, { start, end });
+  };
+
   const clearAllFilters = () => {
     setColumnFilters({});
     setRangeFilters({});
     setRangeDrafts({});
+    setDateFilters({});
+    setDateDrafts({});
     setOpenCol(null);
     setMenuPos(null);
   };
@@ -372,7 +465,7 @@ export function DataTable<T>({
               aria-expanded={openCol === col.key}
               onClick={(e) => openFilterMenu(e, col.key)}
               className={`p-1 rounded-md transition-colors cursor-pointer ${
-                (columnFilters[col.key] && columnFilters[col.key] !== ALL_VALUE) || hasActiveRange(col)
+                (columnFilters[col.key] && columnFilters[col.key] !== ALL_VALUE) || hasActiveRange(col) || hasActiveDateRange(col)
                   ? 'text-[#E60012] bg-red-50'
                   : 'text-slate-400 hover:text-[#E60012] hover:bg-slate-100'
               }`}
@@ -409,7 +502,7 @@ export function DataTable<T>({
     }
     return cols;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columns, actions, openCol, columnFilters, actionsMinWidth, actionsWidth, actionsAlign]);
+  }, [columns, actions, openCol, columnFilters, rangeFilters, dateFilters, actionsMinWidth, actionsWidth, actionsAlign]);
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto shadow-xs">
@@ -440,6 +533,33 @@ export function DataTable<T>({
                 </button>
               </span>
             ))}
+          {columns
+            .filter((c) => c.dateRange && hasActiveDateRange(c))
+            .map((c) => {
+              const dRange = dateFilters[c.key];
+              const startFmt = dRange?.start ? dRange.start.split('-').reverse().join('/') : '';
+              const endFmt = dRange?.end ? dRange.end.split('-').reverse().join('/') : '';
+              const text = startFmt && endFmt ? `${startFmt} - ${endFmt}` : startFmt ? `Desde ${startFmt}` : `Hasta ${endFmt}`;
+              return (
+                <span
+                  key={`date-chip-${c.key}`}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-red-200 text-red-900 font-bold text-[11px] rounded-lg shadow-xs"
+                >
+                  <Calendar className="w-3 h-3 text-[#E60012]" />
+                  <span>{typeof c.label === 'string' ? c.label : c.key}</span>
+                  <span className="text-slate-400">:</span>
+                  <span>{text}</span>
+                  <button
+                    type="button"
+                    aria-label={`Quitar rango de fecha de ${typeof c.label === 'string' ? c.label : c.key}`}
+                    onClick={() => clearDateRange(c.key)}
+                    className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-red-100 transition-colors cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              );
+            })}
           {columns
             .filter((c) => c.ranges && hasActiveRange(c))
             .flatMap((c) =>
@@ -519,12 +639,113 @@ export function DataTable<T>({
         <div
           ref={menuRef}
           role="menu"
-          className="fixed z-[100] bg-white border border-slate-200 rounded-xl shadow-xl shadow-slate-900/10 py-1.5 max-h-72 overflow-y-auto custom-scrollbar"
-          style={{ top: menuPos.top, left: menuPos.left, minWidth: 200, maxWidth: 260 }}
+          className="fixed z-[100] bg-white border border-slate-200 rounded-xl shadow-xl shadow-slate-900/10 py-1.5 max-h-80 overflow-y-auto custom-scrollbar"
+          style={{ top: menuPos.top, left: menuPos.left, minWidth: 220, maxWidth: 290 }}
         >
           {(() => {
             const col = columns.find((c) => c.key === openCol);
             if (!col) return null;
+
+            if (col.dateRange) {
+              const draft = dateDrafts[openCol] ?? dateFilters[openCol] ?? { start: '', end: '' };
+              const hasActive = hasActiveDateRange(col);
+              return (
+                <div className="p-3 space-y-3 min-w-[240px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-[#E60012]" />
+                      Rango de Fechas
+                    </span>
+                    {hasActive && (
+                      <button
+                        type="button"
+                        onClick={() => clearDateRange(openCol)}
+                        className="text-[10px] font-bold text-[#E60012] hover:underline cursor-pointer"
+                      >
+                        Quitar
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Preset Shortcuts */}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => applyDatePreset(openCol, 'today')}
+                      className="px-2 py-1 text-[10px] font-bold text-slate-700 bg-slate-100 hover:bg-red-50 hover:text-[#E60012] rounded-lg transition-colors cursor-pointer"
+                    >
+                      Hoy
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyDatePreset(openCol, '7days')}
+                      className="px-2 py-1 text-[10px] font-bold text-slate-700 bg-slate-100 hover:bg-red-50 hover:text-[#E60012] rounded-lg transition-colors cursor-pointer"
+                    >
+                      Últimos 7 días
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyDatePreset(openCol, 'thisMonth')}
+                      className="px-2 py-1 text-[10px] font-bold text-slate-700 bg-slate-100 hover:bg-red-50 hover:text-[#E60012] rounded-lg transition-colors cursor-pointer"
+                    >
+                      Este mes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyDatePreset(openCol, '30days')}
+                      className="px-2 py-1 text-[10px] font-bold text-slate-700 bg-slate-100 hover:bg-red-50 hover:text-[#E60012] rounded-lg transition-colors cursor-pointer"
+                    >
+                      Últimos 30 días
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 pt-1 border-t border-slate-100">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                        Desde:
+                      </label>
+                      <input
+                        type="date"
+                        value={draft.start || ''}
+                        onChange={(e) => setDateDraft(openCol, 'start', e.target.value)}
+                        className="w-full px-2 py-1.5 text-xs font-mono font-semibold text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#E60012]/30 focus:border-[#E60012] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                        Hasta:
+                      </label>
+                      <input
+                        type="date"
+                        value={draft.end || ''}
+                        onChange={(e) => setDateDraft(openCol, 'end', e.target.value)}
+                        className="w-full px-2 py-1.5 text-xs font-mono font-semibold text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#E60012]/30 focus:border-[#E60012] outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => applyDateRange(openCol)}
+                      className="flex-1 px-3 py-1.5 text-xs font-bold text-white bg-[#E60012] hover:bg-[#b5000b] rounded-lg transition-colors shadow-xs cursor-pointer text-center"
+                    >
+                      Aplicar Rango
+                    </button>
+                    {hasActive && (
+                      <button
+                        type="button"
+                        onClick={() => clearDateRange(openCol)}
+                        className="px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                      >
+                        Limpiar
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+
             if (col.ranges && col.ranges.length > 0) {
               const drafts = rangeDrafts[openCol] ?? [];
               return (
@@ -553,7 +774,7 @@ export function DataTable<T>({
                     return (
                       <div key={`${col.key}-${field.label}`}>
                         <span className="flex items-center justify-between mb-1.5">
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 font-bold" style={{ fontFamily: 'Inter, system-ui, sans-serif', letterSpacing: '0.05em' }}>
+                          <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 font-bold" style={{ fontFamily: 'Inter, system-ui, sans-serif', letterSpacing: '0.05em' }}>
                             {field.label}
                           </span>
                           {(bounds?.min !== undefined || bounds?.max !== undefined) && (

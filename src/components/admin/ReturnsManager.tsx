@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { RotateCcw, Clock, CheckCircle2, DollarSign, Edit, Trash2, FileText } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDocumentNumber } from '../../utils/formatDocumentNumber';
+import { formatOrderDate } from '../../utils/formatDate';
 import { AdminSearchInput } from './AdminSearchInput';
 import { DataTable } from './DataTable';
 import type { DataTableColumn } from './DataTable';
@@ -73,14 +74,36 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
       key: 'rma',
       label: 'RMA',
       minWidth: '140px',
+      sortable: true,
+      sortSelector: (r) => r.documentNumber || r.id,
       render: (r) => (
         <span className="font-extrabold text-slate-900 font-mono">{formatDocumentNumber(r.id, r.prefix, r.documentNumber)}</span>
+      ),
+    },
+    {
+      key: 'date',
+      label: 'Fecha & Hora',
+      minWidth: '170px',
+      sortable: true,
+      sortSelector: (r) => {
+        const time = new Date(r.createdAt || r.date).getTime();
+        return isNaN(time) ? 0 : time;
+      },
+      filterable: true,
+      dateRange: true,
+      dateAccessor: (r) => r.createdAt || r.date,
+      render: (r) => (
+        <p className="text-xs font-mono text-slate-700 font-bold whitespace-nowrap">
+          {formatOrderDate(r.createdAt || r.date)}
+        </p>
       ),
     },
     {
       key: 'order',
       label: 'Pedido',
       minWidth: '140px',
+      sortable: true,
+      sortSelector: (r) => r.orderDocumentNumber || r.orderId,
       render: (r) => (
         <span className="text-[11px] font-mono text-slate-600 font-bold">{formatDocumentNumber(r.orderId, r.orderPrefix, r.orderDocumentNumber)}</span>
       ),
@@ -89,6 +112,8 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
       key: 'orderStatus',
       label: 'Estado Pedido',
       minWidth: '140px',
+      sortable: true,
+      sortSelector: (r) => getOrderStatus(r),
       filterable: true,
       accessor: (r) => getOrderStatus(r),
       render: (r) => (
@@ -101,6 +126,10 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
       key: 'customer',
       label: 'Cliente',
       minWidth: '140px',
+      sortable: true,
+      sortSelector: (r) => r.customerName || '',
+      filterable: true,
+      accessor: (r) => r.customerName,
       render: (r) => (
         <p className="font-bold text-slate-900">{r.customerName}</p>
       ),
@@ -109,6 +138,8 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
       key: 'email',
       label: 'Correo',
       minWidth: '180px',
+      sortable: true,
+      sortSelector: (r) => r.email || '',
       render: (r) => (
         <p className="text-[11px] text-slate-500 font-mono">{r.email}</p>
       ),
@@ -117,6 +148,8 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
       key: 'reason',
       label: 'Motivo Devolución',
       minWidth: '180px',
+      sortable: true,
+      sortSelector: (r) => r.reason || '',
       render: (r) => (
         <p className="font-semibold text-slate-800 truncate max-w-xs">{r.reason}</p>
       ),
@@ -125,6 +158,8 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
       key: 'status',
       label: 'Estado RMA',
       minWidth: '120px',
+      sortable: true,
+      sortSelector: (r) => r.status || '',
       filterable: true,
       accessor: (r) => r.status,
       render: (r) => (
@@ -137,6 +172,8 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
       key: 'refund',
       label: 'Reembolso',
       minWidth: '120px',
+      sortable: true,
+      sortSelector: (r) => r.refundAmount || 0,
       filterable: true,
       ranges: [{ label: 'Reembolso', value: (r) => r.refundAmount || 0 }],
       render: (r) => (
@@ -147,6 +184,8 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
       key: 'guide',
       label: 'Guía',
       minWidth: '120px',
+      sortable: true,
+      sortSelector: (r) => r.returnTrackingNumber || '',
       render: (r) =>
         r.returnTrackingNumber ? (
           <p className="text-[10px] text-slate-500 font-mono">#{r.returnTrackingNumber}</p>
@@ -158,6 +197,8 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
       key: 'stock',
       label: 'Stock',
       minWidth: '120px',
+      sortable: true,
+      sortSelector: (r) => (r.restockInventory ? '1' : '0'),
       filterable: true,
       filterOptions: [
         { value: 'true', label: 'Reintegrado' },
@@ -177,12 +218,19 @@ export const ReturnsManager: React.FC<ReturnsManagerProps> = ({
     },
   ];
 
-  const handleSearchFilter = (r: any, query: string) =>
-    r.id.toLowerCase().includes(query) ||
-    r.orderId.toLowerCase().includes(query) ||
-    r.customerName.toLowerCase().includes(query) ||
-    r.email.toLowerCase().includes(query) ||
-    r.reason.toLowerCase().includes(query);
+  const handleSearchFilter = (r: any, query: string) => {
+    const rmaDoc = formatDocumentNumber(r.id, r.prefix, r.documentNumber).toLowerCase();
+    const orderDoc = formatDocumentNumber(r.orderId, r.orderPrefix, r.orderDocumentNumber).toLowerCase();
+    return Boolean(
+      (r.id && r.id.toLowerCase().includes(query)) ||
+      (r.orderId && r.orderId.toLowerCase().includes(query)) ||
+      (r.customerName && r.customerName.toLowerCase().includes(query)) ||
+      (r.email && r.email.toLowerCase().includes(query)) ||
+      (r.reason && r.reason.toLowerCase().includes(query)) ||
+      rmaDoc.includes(query) ||
+      orderDoc.includes(query)
+    );
+  };
 
   const pendingCount = returnsList.filter(r => r.status === 'Pendiente').length;
   const refundedCount = returnsList.filter(r => r.status === 'Reembolsada').length;

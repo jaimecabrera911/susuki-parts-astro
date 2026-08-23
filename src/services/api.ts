@@ -462,6 +462,56 @@ export async function savePaymentSettingsApi(settings: any) {
   return json.data;
 }
 
+export async function fetchKardex(params?: {
+  partId?: string;
+  type?: string;
+  startDate?: string;
+  endDate?: string;
+  q?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const query = new URLSearchParams();
+  if (params?.partId) query.set('partId', params.partId);
+  if (params?.type) query.set('type', params.type);
+  if (params?.startDate) query.set('startDate', params.startDate);
+  if (params?.endDate) query.set('endDate', params.endDate);
+  if (params?.q) query.set('q', params.q);
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.offset) query.set('offset', String(params.offset));
+
+  const url = `/api/kardex${query.toString() ? `?${query.toString()}` : ''}`;
+  const res = await fetch(url, { headers: getAuthHeaders() });
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Error cargando movimientos del Kardex');
+  return json.data || [];
+}
+
+export async function saveKardexMovementApi(movement: any) {
+  const res = await fetch('/api/kardex', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify(movement)
+  });
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Error guardando movimiento en Kardex');
+  return json.data;
+}
+
+export async function deleteKardexMovementApi(id: string) {
+  const res = await fetch(`/api/kardex?id=${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Error eliminando movimiento del Kardex');
+  return json.data;
+}
+
+
 
 
 

@@ -9,6 +9,7 @@ const ALL_MODULES: DashboardModule[] = [
   'models',
   'categories',
   'parts',
+  'kardex',
   'schematics',
   'orders',
   'returns',

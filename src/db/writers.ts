@@ -8,7 +8,8 @@ import {
   users, userFavorites, userPermissions,
   shippingMethods, shippingZones, shippingZoneStates, shippingMethodZoneRates,
   shippingZoneCities,
-  countries, states, cities
+  countries, states, cities,
+  inventoryMovements
 } from './schema';
 import { eq, and } from 'drizzle-orm';
 import { DEFAULT_SHIPPING_ZONES, DEFAULT_SHIPPING_METHODS, DEFAULT_COLOMBIAN_CITIES, COLOMBIAN_DEPARTMENTS } from '../data/initialShippingAndCities';
@@ -81,6 +82,7 @@ export async function formatParts(db: AppDb, rows: any[]) {
       note: r.note
     })),
     diagramHotspot: p.diagramHotspot ?? null,
+    active: p.active !== false,
     taxable: p.taxable !== false,
     priceIncludesTax: p.priceIncludesTax === true
   }));
@@ -170,12 +172,16 @@ export async function upsertPart(db: AppDb, body: any) {
       }
     }
 
+    const existingPart = await tx.select({ id: parts.id }).from(parts).where(eq(parts.id, id)).limit(1);
+    const isNewPart = existingPart.length === 0;
+
     data = {
       id,
       sku,
       name: body.name,
       category: resolvedCategory,
       price: Number(body.price),
+      cost: Number(body.cost || 0),
       stock: Number(body.stock || 0),
       image: primaryImage,
       description: body.description || '',
@@ -183,11 +189,32 @@ export async function upsertPart(db: AppDb, body: any) {
       schematicId: body.schematicId ? ensureUuid(body.schematicId) : null,
       diagramHotspot: body.diagramHotspot || null,
       availability: body.availability || 'in_stock',
+      active: body.active !== false,
       taxable: body.taxable !== false,
       priceIncludesTax: body.priceIncludesTax === true
     };
 
     await tx.insert(parts).values(data).onConflictDoUpdate({ target: parts.id, set: data });
+
+    if (isNewPart && data.stock > 0) {
+      await tx.insert(inventoryMovements).values({
+        id: crypto.randomUUID(),
+        partId: id,
+        movementType: 'INITIAL_STOCK',
+        quantity: data.stock,
+        previousStock: 0,
+        resultingStock: data.stock,
+        unitCost: data.cost || (data.price * 0.6),
+        unitPrice: data.price,
+        totalAmount: data.stock * (data.cost || (data.price * 0.6)),
+        referenceType: 'initial_balance',
+        referenceId: null,
+        referenceDocument: 'CREACION-REPUESTO',
+        notes: 'Stock inicial al registrar repuesto',
+        userName: 'Admin',
+        createdAt: new Date()
+      }).onConflictDoNothing();
+    }
 
     await tx.delete(partImages).where(eq(partImages.partId, id));
     for (let i = 0; i < images.length; i++) {
@@ -338,6 +365,9 @@ export async function upsertOrder(db: AppDb, body: any) {
   };
 
   await db.transaction(async (tx) => {
+    const existingOrderRows = await tx.select({ id: orders.id }).from(orders).where(eq(orders.id, id)).limit(1);
+    const isNewOrder = existingOrderRows.length === 0;
+
     await tx.insert(orders).values(data).onConflictDoUpdate({ target: orders.id, set: data });
 
     await tx.delete(orderItems).where(eq(orderItems.orderId, id));
@@ -353,10 +383,42 @@ export async function upsertOrder(db: AppDb, body: any) {
       const unitPrice = Number(part.price ?? item.unitPrice ?? 0);
       const lineTotal = Number(item.lineTotal ?? quantity * unitPrice);
 
+      const rawPartId = part.id || item.partId || item.id;
+      let partDbId: string | null = null;
+
+      if (rawPartId && isValidUuid(rawPartId)) {
+        partDbId = rawPartId;
+      } else if (part.sku || item.sku) {
+        const skuVal = part.sku || item.sku;
+        const bySku = await tx.select({ id: parts.id }).from(parts).where(eq(parts.sku, skuVal)).limit(1);
+        if (bySku.length > 0) partDbId = bySku[0].id;
+      } else if (Array.isArray(part.oemNumbers) && part.oemNumbers.length > 0) {
+        const oem = part.oemNumbers[0];
+        if (typeof oem === 'string' && oem.trim()) {
+          const byOem = await tx.select({ partId: partOemNumbers.partId }).from(partOemNumbers).where(eq(partOemNumbers.oemNumber, oem.trim())).limit(1);
+          if (byOem.length > 0) partDbId = byOem[0].partId;
+        }
+      }
+
+      // Register Kardex movement and decrement stock for newly placed order
+      if (isNewOrder && partDbId) {
+        await recordInventoryMovement(tx, {
+          partId: partDbId,
+          movementType: 'OUT_SALE',
+          quantity: -quantity,
+          unitPrice,
+          referenceType: 'order',
+          referenceId: id,
+          referenceDocument: (data.prefix || 'SZ-ORD') + '-' + (data.documentNumber || id.substring(0, 8).toUpperCase()),
+          notes: `Venta en pedido ${(data.prefix || 'SZ-ORD')}-${data.documentNumber || id.substring(0, 8).toUpperCase()}`,
+          userName: data.customerName
+        });
+      }
+
       await tx.insert(orderItems).values({
         id: crypto.randomUUID(),
         orderId: id,
-        partId: part.id ?? null,
+        partId: partDbId || (isValidUuid(part.id) ? part.id : null),
         part,
         quantity,
         unitPrice,
@@ -900,14 +962,24 @@ export async function upsertOrderReturn(db: AppDb, body: any) {
     // Handle inventory restocking if switch is enabled and QC passed or status approved
     if (data.restockInventory && (data.qcStatus === 'passed' || data.status === 'Reembolsada' || data.status === 'Pieza recibida')) {
       const items = (data.itemDetailsJson && data.itemDetailsJson.length > 0) ? data.itemDetailsJson : (data.itemsJson || []);
-      for (const item of items) {
-        const partId = item.partId || item.id;
-        const qty = Number(item.quantity || 1);
-        if (partId) {
-          const existingPart = await tx.select().from(parts).where(eq(parts.id, partId));
-          if (existingPart.length > 0) {
-            const currentStock = existingPart[0].stock ?? 0;
-            await tx.update(parts).set({ stock: currentStock + qty }).where(eq(parts.id, partId));
+      const existingRetMovements = await tx.select({ id: inventoryMovements.id }).from(inventoryMovements).where(and(eq(inventoryMovements.referenceType, 'return'), eq(inventoryMovements.referenceId, data.id))).limit(1);
+
+      if (existingRetMovements.length === 0) {
+        for (const item of items) {
+          const partId = item.partId || item.id;
+          const qty = Number(item.quantity || 1);
+          if (partId && isValidUuid(partId)) {
+            await recordInventoryMovement(tx, {
+              partId,
+              movementType: 'IN_RETURN',
+              quantity: qty,
+              unitPrice: Number(item.price || 0),
+              referenceType: 'return',
+              referenceId: data.id,
+              referenceDocument: (data.prefix || 'SZ-RET') + '-' + (data.documentNumber || data.id.substring(0, 8).toUpperCase()),
+              notes: `Reintegro por devolución RMA ${(data.prefix || 'SZ-RET')}-${data.documentNumber || data.id.substring(0, 8).toUpperCase()}`,
+              userName: data.customerName
+            });
           }
         }
       }
@@ -1160,5 +1232,158 @@ export async function upsertPaymentSettings(db: AppDb, body: any): Promise<Payme
 
   return getPaymentSettings(db);
 }
+
+// ============ 20. Kardex & Inventory Movements Management ============
+
+export interface RecordMovementParams {
+  partId: string;
+  movementType: 'INITIAL_STOCK' | 'OUT_SALE' | 'IN_CANCEL' | 'IN_RETURN' | 'IN_PURCHASE' | 'OUT_DAMAGE' | 'OUT_INTERNAL' | 'ADJUST_IN' | 'ADJUST_OUT';
+  quantity: number; // positive for IN, negative for OUT
+  unitCost?: number;
+  unitPrice?: number;
+  referenceType?: 'order' | 'return' | 'manual_adjustment' | 'supplier_invoice' | 'initial_balance';
+  referenceId?: string | null;
+  referenceDocument?: string | null;
+  notes?: string;
+  userId?: string | null;
+  userName?: string;
+  createdAt?: Date;
+}
+
+export async function recordInventoryMovement(txOrDb: any, params: RecordMovementParams) {
+  const partRows = await txOrDb.select().from(parts).where(eq(parts.id, params.partId)).limit(1);
+  if (partRows.length === 0) {
+    throw new Error(`Repuesto con ID ${params.partId} no encontrado para registrar movimiento en Kardex`);
+  }
+
+  const part = partRows[0];
+  const previousStock = part.stock ?? 0;
+  const currentCost = part.cost ?? 0;
+  const currentPrice = part.price ?? 0;
+
+  const rawQty = Number(params.quantity);
+  let qty = rawQty;
+  const isOut = ['OUT_SALE', 'OUT_DAMAGE', 'OUT_INTERNAL', 'ADJUST_OUT'].includes(params.movementType);
+  if (isOut && qty > 0) {
+    qty = -qty;
+  } else if (!isOut && qty < 0 && params.movementType !== 'ADJUST_OUT') {
+    qty = Math.abs(qty);
+  }
+
+  const resultingStock = Math.max(0, previousStock + qty);
+  const unitCost = params.unitCost !== undefined && params.unitCost >= 0 ? Number(params.unitCost) : currentCost;
+  const unitPrice = params.unitPrice !== undefined && params.unitPrice >= 0 ? Number(params.unitPrice) : currentPrice;
+
+  // Recalculate weighted average cost on positive stock additions with specified cost
+  let newCost = currentCost;
+  if (qty > 0 && params.unitCost !== undefined && params.unitCost > 0) {
+    if (previousStock <= 0) {
+      newCost = unitCost;
+    } else {
+      newCost = ((previousStock * currentCost) + (qty * unitCost)) / resultingStock;
+    }
+  }
+
+  const totalAmount = Math.abs(qty) * (unitCost > 0 ? unitCost : unitPrice);
+
+  const movementData = {
+    id: crypto.randomUUID(),
+    partId: params.partId,
+    movementType: params.movementType,
+    quantity: qty,
+    previousStock,
+    resultingStock,
+    unitCost,
+    unitPrice,
+    totalAmount,
+    referenceType: params.referenceType || 'manual_adjustment',
+    referenceId: params.referenceId || null,
+    referenceDocument: params.referenceDocument || null,
+    notes: params.notes || '',
+    userId: params.userId && isValidUuid(params.userId) ? params.userId : null,
+    userName: params.userName || 'Sistema',
+    createdAt: params.createdAt || new Date()
+  };
+
+  await txOrDb.insert(inventoryMovements).values(movementData);
+
+  // Update part stock and cost atomically
+  await txOrDb.update(parts).set({
+    stock: resultingStock,
+    cost: newCost
+  }).where(eq(parts.id, params.partId));
+
+  return movementData;
+}
+
+export async function initializeKardexBalances(db: AppDb) {
+  const allParts = await db.select().from(parts);
+  const existingMovements = await db.select({ partId: inventoryMovements.partId }).from(inventoryMovements);
+  const partsWithMovements = new Set(existingMovements.map(m => m.partId));
+
+  const toInitialize = allParts.filter(p => !partsWithMovements.has(p.id));
+  if (toInitialize.length === 0) return { initialized: 0 };
+
+  await db.transaction(async (tx) => {
+    for (const part of toInitialize) {
+      const stock = part.stock ?? 0;
+      const cost = part.cost || (part.price ? part.price * 0.6 : 0);
+      await tx.insert(inventoryMovements).values({
+        id: crypto.randomUUID(),
+        partId: part.id,
+        movementType: 'INITIAL_STOCK',
+        quantity: stock,
+        previousStock: 0,
+        resultingStock: stock,
+        unitCost: cost,
+        unitPrice: part.price ?? 0,
+        totalAmount: stock * cost,
+        referenceType: 'initial_balance',
+        referenceId: null,
+        referenceDocument: 'SALDO-INICIAL',
+        notes: 'Carga inicial de apertura de Kardex',
+        userName: 'Sistema',
+        createdAt: new Date()
+      });
+      if (!part.cost && cost > 0) {
+        await tx.update(parts).set({ cost }).where(eq(parts.id, part.id));
+      }
+    }
+  });
+
+  return { initialized: toInitialize.length };
+}
+
+export async function upsertInventoryMovement(db: AppDb, body: any) {
+  if (!body.partId) throw new Error('El ID del repuesto (partId) es requerido');
+  if (!body.movementType) throw new Error('El tipo de movimiento (movementType) es requerido');
+  if (body.quantity === undefined || Number(body.quantity) === 0) throw new Error('La cantidad debe ser distinta de cero');
+
+  let result: any = null;
+  await db.transaction(async (tx) => {
+    result = await recordInventoryMovement(tx, {
+      partId: body.partId,
+      movementType: body.movementType,
+      quantity: Number(body.quantity),
+      unitCost: body.unitCost !== undefined ? Number(body.unitCost) : undefined,
+      unitPrice: body.unitPrice !== undefined ? Number(body.unitPrice) : undefined,
+      referenceType: body.referenceType || 'manual_adjustment',
+      referenceId: body.referenceId || null,
+      referenceDocument: body.referenceDocument || null,
+      notes: body.notes || '',
+      userId: body.userId || null,
+      userName: body.userName || 'Admin',
+      createdAt: body.createdAt ? new Date(body.createdAt) : new Date()
+    });
+  });
+
+  return result;
+}
+
+export async function deleteInventoryMovement(db: AppDb, id: string) {
+  await db.delete(inventoryMovements).where(eq(inventoryMovements.id, id));
+  return { id };
+}
+
 
 

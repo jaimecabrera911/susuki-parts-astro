@@ -806,6 +806,8 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                   {/* Hotspot pins with radar pulse effect */}
                   {currentDiagram.hotspots.map(spot => {
                     const isSelected = selectedPartId === spot.partId;
+                    const spotPart = spot.partId ? allParts.find(p => p.id === spot.partId) : null;
+                    const isPartDisabled = spotPart ? spotPart.active === false : false;
 
                     // Dynamic pin sizes for small parts
                     const pinClasses =
@@ -823,7 +825,8 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                           e.stopPropagation();
                           setSelectedPartId(spot.partId);
                         }}
-                        aria-label={`Punto #${spot.itemNumber} - ${spot.label}`}
+                        aria-label={`Punto #${spot.itemNumber} - ${spot.label}${isPartDisabled ? ' (No disponible)' : ''}`}
+                        title={`#${spot.itemNumber}: ${spot.label}${isPartDisabled ? ' (Temporalmente no disponible)' : ''}`}
                         style={{
                           left: `${spot.x}%`,
                           top: `${spot.y}%`,
@@ -831,8 +834,12 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                         }}
                         className={`absolute rounded-full flex items-center justify-center transition-transform duration-150 cursor-pointer focus-visible:outline-none shadow-md ${pinClasses} ${
                           isSelected
-                            ? 'bg-[#E60012] text-white border-white ring-4 ring-[#E60012]/40 z-30 scale-110 shadow-lg animate-pulse'
-                            : 'bg-white text-slate-900 border-slate-900 hover:bg-[#E60012] hover:text-white hover:border-white z-10'
+                            ? isPartDisabled
+                              ? 'bg-slate-700 text-white border-white ring-4 ring-slate-400/40 z-30 scale-110 shadow-lg'
+                              : 'bg-[#E60012] text-white border-white ring-4 ring-[#E60012]/40 z-30 scale-110 shadow-lg animate-pulse'
+                            : isPartDisabled
+                              ? 'bg-slate-200 text-slate-500 border-slate-300 hover:bg-slate-300 z-10'
+                              : 'bg-white text-slate-900 border-slate-900 hover:bg-[#E60012] hover:text-white hover:border-white z-10'
                         }`}
                       >
                         <span className="relative z-10 leading-none">{spot.itemNumber}</span>
@@ -897,6 +904,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                   const compat = isPartCompatible(part);
                   const availability: AvailabilityStatus = getAvailabilityStatus(part);
                   const meta = AVAILABILITY_META[availability];
+                  const isPartDisabled = part.active === false;
                   const currentQty = getPartQuantity(part.id);
                   return (
                     <tr
@@ -905,35 +913,49 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                       onClick={() => setSelectedPartId(part.id)}
                       className={`cursor-pointer transition-colors ${
                         isSelected
-                          ? 'bg-red-50/60 border-l-4 border-l-[#E60012]'
-                          : 'hover:bg-slate-50 border-l-4 border-l-transparent'
+                          ? isPartDisabled
+                            ? 'bg-slate-100 border-l-4 border-l-slate-500'
+                            : 'bg-red-50/60 border-l-4 border-l-[#E60012]'
+                          : isPartDisabled
+                            ? 'bg-slate-50/60 opacity-60 hover:bg-slate-100 border-l-4 border-l-transparent'
+                            : 'hover:bg-slate-50 border-l-4 border-l-transparent'
                       }`}
                     >
                       <td className="px-3 py-3 text-center">
                         <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full font-mono font-extrabold text-xs ${
-                          isSelected ? 'bg-[#E60012] text-white' : 'bg-slate-900 text-white'
+                          isSelected
+                            ? isPartDisabled ? 'bg-slate-700 text-white' : 'bg-[#E60012] text-white'
+                            : isPartDisabled ? 'bg-slate-300 text-slate-700' : 'bg-slate-900 text-white'
                         }`}>
                           {spot.itemNumber}
                         </span>
                       </td>
                       <td className="px-3 py-3 min-w-0">
-                        <div className="font-bold text-xs text-slate-900 line-clamp-1">{part.name}</div>
+                        <div className={`font-bold text-xs line-clamp-1 ${isPartDisabled ? 'text-slate-500 line-through' : 'text-slate-900'}`}>
+                          {part.name}
+                        </div>
                         <div className="font-mono text-[10px] text-slate-500 mt-0.5 flex items-center gap-1.5">
                           <span className="font-extrabold text-slate-600">OEM</span>
                           <span>{getPrimaryOem(part)}</span>
                         </div>
                       </td>
                       <td className="px-3 py-3 text-right whitespace-nowrap">
-                        <div className="font-mono font-extrabold text-sm text-slate-900">
+                        <div className={`font-mono font-extrabold text-sm ${isPartDisabled ? 'text-slate-400' : 'text-slate-900'}`}>
                           {formatCurrency(part.price)}
                         </div>
                       </td>
                       <td className="px-3 py-3 text-center">
                         <div className="flex flex-col items-center gap-0.5">
-                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wider ${meta.bgClass} ${meta.textClass} border ${meta.borderClass}`}>
-                            {meta.label}
-                          </span>
-                          {activeMotorcycle && (
+                          {isPartDisabled ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-300">
+                              No disponible
+                            </span>
+                          ) : (
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wider ${meta.bgClass} ${meta.textClass} border ${meta.borderClass}`}>
+                              {meta.label}
+                            </span>
+                          )}
+                          {!isPartDisabled && activeMotorcycle && (
                             compat ? (
                               <span className="text-[9px] font-extrabold text-emerald-700 uppercase tracking-wider">Compatible</span>
                             ) : (
@@ -944,28 +966,30 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                       </td>
                       <td className="px-3 py-3 text-right">
                         <div className="inline-flex items-center gap-1.5 justify-end" onClick={(e) => e.stopPropagation()}>
-                          <div className="inline-flex items-center border border-slate-200 rounded-lg bg-slate-50 p-0.5 shadow-2xs">
-                            <button
-                              type="button"
-                              onClick={() => setPartQuantity(part.id, currentQty - 1)}
-                              disabled={currentQty <= 1}
-                              aria-label="Disminuir cantidad"
-                              className="w-6 h-6 rounded flex items-center justify-center bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed text-xs transition-colors cursor-pointer"
-                            >
-                              <Minus className="w-2.5 h-2.5" />
-                            </button>
-                            <span className="w-6 text-center font-mono font-black text-xs text-slate-900 select-none">
-                              {currentQty}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setPartQuantity(part.id, currentQty + 1)}
-                              aria-label="Aumentar cantidad"
-                              className="w-6 h-6 rounded flex items-center justify-center bg-white text-slate-700 hover:bg-slate-100 text-xs transition-colors cursor-pointer"
-                            >
-                              <Plus className="w-2.5 h-2.5" />
-                            </button>
-                          </div>
+                          {!isPartDisabled && (
+                            <div className="inline-flex items-center border border-slate-200 rounded-lg bg-slate-50 p-0.5 shadow-2xs">
+                              <button
+                                type="button"
+                                onClick={() => setPartQuantity(part.id, currentQty - 1)}
+                                disabled={currentQty <= 1}
+                                aria-label="Disminuir cantidad"
+                                className="w-6 h-6 rounded flex items-center justify-center bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed text-xs transition-colors cursor-pointer"
+                              >
+                                <Minus className="w-2.5 h-2.5" />
+                              </button>
+                              <span className="w-6 text-center font-mono font-black text-xs text-slate-900 select-none">
+                                {currentQty}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setPartQuantity(part.id, currentQty + 1)}
+                                aria-label="Aumentar cantidad"
+                                className="w-6 h-6 rounded flex items-center justify-center bg-white text-slate-700 hover:bg-slate-100 text-xs transition-colors cursor-pointer"
+                              >
+                                <Plus className="w-2.5 h-2.5" />
+                              </button>
+                            </div>
+                          )}
                           <button
                             type="button"
                             onClick={() => onOpenPartDetail(part)}
@@ -978,9 +1002,9 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onAddToCart(part, currentQty)}
-                            disabled={!!activeMotorcycle && compat === false}
+                            disabled={isPartDisabled || (!!activeMotorcycle && compat === false)}
                             className="w-8 h-8 flex items-center justify-center bg-[#E60012] hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
-                            title={`Añadir ${currentQty} al carrito`}
+                            title={isPartDisabled ? 'Repuesto temporalmente no disponible' : `Añadir ${currentQty} al carrito`}
                           >
                             <FaCartPlus className="w-3.5 h-3.5" aria-hidden="true" />
                           </button>
@@ -1410,18 +1434,21 @@ const SelectedPartStrip: React.FC<{
     setQuantity(1);
   }, [part.id]);
 
+  const isPartDisabled = part.active === false;
   const availability = getAvailabilityStatus(part);
   const meta = AVAILABILITY_META[availability];
   return (
     <div className="border-b border-slate-200 bg-white px-5 py-4">
       <div className="flex items-start gap-3">
-        <span className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#E60012] text-white font-mono font-extrabold text-sm shadow-md">
+        <span className={`shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full font-mono font-extrabold text-sm shadow-md ${
+          isPartDisabled ? 'bg-slate-400 text-white' : 'bg-[#E60012] text-white'
+        }`}>
           #{itemNumber}
         </span>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <h4 className="font-black text-sm text-slate-900 leading-snug line-clamp-2">{part.name}</h4>
+              <h4 className={`font-black text-sm leading-snug line-clamp-2 ${isPartDisabled ? 'text-slate-500 line-through' : 'text-slate-900'}`}>{part.name}</h4>
               <div className="font-mono text-[10px] text-slate-500 mt-0.5">
                 OEM <span className="text-slate-800 font-bold">{getPrimaryOem(part)}</span>
               </div>
@@ -1437,13 +1464,19 @@ const SelectedPartStrip: React.FC<{
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px]">
-            <span className="font-mono font-extrabold text-base text-slate-900 tracking-tight">
+            <span className={`font-mono font-extrabold text-base tracking-tight ${isPartDisabled ? 'text-slate-400' : 'text-slate-900'}`}>
               {formatCurrency(part.price)}
             </span>
-            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-extrabold uppercase tracking-wider ${meta.bgClass} ${meta.textClass} border ${meta.borderClass}`}>
-              {meta.label}
-            </span>
-            {activeMotorcycle && (
+            {isPartDisabled ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-extrabold uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-300">
+                No disponible / Inactivo
+              </span>
+            ) : (
+              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-extrabold uppercase tracking-wider ${meta.bgClass} ${meta.textClass} border ${meta.borderClass}`}>
+                {meta.label}
+              </span>
+            )}
+            {!isPartDisabled && activeMotorcycle && (
               compatible ? (
                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-extrabold uppercase tracking-wider">
                   <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
@@ -1457,36 +1490,38 @@ const SelectedPartStrip: React.FC<{
               )
             )}
             <div className="ml-auto inline-flex items-center gap-2">
-              <div className="inline-flex items-center border border-slate-200 rounded-lg bg-slate-50 p-0.5 shadow-2xs">
-                <button
-                  type="button"
-                  onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                  disabled={quantity <= 1}
-                  aria-label="Disminuir cantidad"
-                  className="w-6 h-6 rounded flex items-center justify-center bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed text-xs transition-colors cursor-pointer"
-                >
-                  <Minus className="w-2.5 h-2.5" />
-                </button>
-                <span className="w-6 text-center font-mono font-black text-xs text-slate-900 select-none">
-                  {quantity}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setQuantity(q => q + 1)}
-                  aria-label="Aumentar cantidad"
-                  className="w-6 h-6 rounded flex items-center justify-center bg-white text-slate-700 hover:bg-slate-100 text-xs transition-colors cursor-pointer"
-                >
-                  <Plus className="w-2.5 h-2.5" />
-                </button>
-              </div>
+              {!isPartDisabled && (
+                <div className="inline-flex items-center border border-slate-200 rounded-lg bg-slate-50 p-0.5 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                    disabled={quantity <= 1}
+                    aria-label="Disminuir cantidad"
+                    className="w-6 h-6 rounded flex items-center justify-center bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed text-xs transition-colors cursor-pointer"
+                  >
+                    <Minus className="w-2.5 h-2.5" />
+                  </button>
+                  <span className="w-6 text-center font-mono font-black text-xs text-slate-900 select-none">
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(q => q + 1)}
+                    aria-label="Aumentar cantidad"
+                    className="w-6 h-6 rounded flex items-center justify-center bg-white text-slate-700 hover:bg-slate-100 text-xs transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => onAddToCart(part, quantity)}
-                disabled={!!activeMotorcycle && compatible === false}
+                disabled={isPartDisabled || (!!activeMotorcycle && compatible === false)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#E60012] hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-extrabold uppercase tracking-wider rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
               >
                 <FaCartPlus className="w-3.5 h-3.5" aria-hidden="true" />
-                Añadir {quantity > 1 ? `(${quantity})` : ''}
+                {isPartDisabled ? 'No disponible' : `Añadir ${quantity > 1 ? `(${quantity})` : ''}`}
               </button>
             </div>
           </div>

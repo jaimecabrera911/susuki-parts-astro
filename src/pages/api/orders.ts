@@ -1,32 +1,38 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
 import { orders, orderItems } from '../../db/schema';
-import { eq, like, or, desc } from 'drizzle-orm';
+import { eq, ilike, or, and, desc, sql } from 'drizzle-orm';
 import { upsertOrder } from '../../db/writers';
 
 export const GET: APIRoute = async ({ url }) => {
   try {
     const db = getDb();
     const status = url.searchParams.get('status');
+    const email = url.searchParams.get('email');
     const query = url.searchParams.get('q');
 
-    let rawData;
-    if (status) {
-      rawData = await db.select().from(orders).where(eq(orders.status, status)).orderBy(desc(orders.date));
-    } else if (query) {
-      const q = `%${query}%`;
-      rawData = await db.select().from(orders).where(
+    const conditions: any[] = [];
+    if (status) conditions.push(eq(orders.status, status));
+    if (email) conditions.push(ilike(orders.email, email.trim()));
+    if (query) {
+      const q = `%${query.trim()}%`;
+      conditions.push(
         or(
-          like(orders.id, q),
-          like(orders.customerName, q),
-          like(orders.email, q),
-          like(orders.documentId, q),
-          like(orders.trackingNumber, q)
+          sql`${orders.id}::text ILIKE ${q}`,
+          ilike(orders.customerName, q),
+          ilike(orders.email, q),
+          ilike(orders.documentId, q),
+          ilike(orders.trackingNumber, q),
+          ilike(orders.prefix, q),
+          ilike(orders.documentNumber, q),
+          sql`(${orders.prefix} || '-' || COALESCE(${orders.documentNumber}, UPPER(SUBSTRING(${orders.id}::text, 1, 8)))) ILIKE ${q}`
         )
-      ).orderBy(desc(orders.date));
-    } else {
-      rawData = await db.select().from(orders).orderBy(desc(orders.date));
+      );
     }
+
+    const rawData = conditions.length > 0
+      ? await db.select().from(orders).where(and(...conditions)).orderBy(desc(orders.date))
+      : await db.select().from(orders).orderBy(desc(orders.date));
 
     const itemsAll = await db.select().from(orderItems);
     const itemsByOrder = new Map<string, typeof itemsAll>();

@@ -3,6 +3,7 @@ import { ShoppingCart, Eye, Edit, Truck, CheckCircle2, Clock } from 'lucide-reac
 import type { Order, OrderStatus } from '../../types';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDocumentNumber } from '../../utils/formatDocumentNumber';
+import { formatOrderDate } from '../../utils/formatDate';
 import { fetchOrderStatuses } from '../../services/api';
 import { AdminSearchInput } from './AdminSearchInput';
 import { DataTable } from './DataTable';
@@ -87,32 +88,62 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
     },
     {
       key: 'date',
-      label: 'Fecha',
-      minWidth: '100px',
+      label: 'Fecha & Hora',
+      minWidth: '170px',
+      sortable: true,
+      sortSelector: (ord) => {
+        const time = new Date(ord.date).getTime();
+        return isNaN(time) ? 0 : time;
+      },
+      filterable: true,
+      dateRange: true,
+      dateAccessor: (ord) => ord.date,
       render: (ord) => (
-        <p className="text-[11px] font-mono text-slate-500 font-bold">{ord.date}</p>
+        <p className="text-xs font-mono text-slate-700 font-bold whitespace-nowrap">
+          {formatOrderDate(ord.date)}
+        </p>
       ),
     },
     {
       key: 'customer',
       label: 'Cliente',
       minWidth: '160px',
+      sortable: true,
+      sortSelector: (ord) => ord.customerName || '',
+      filterable: true,
+      accessor: (ord) => ord.customerName,
       render: (ord) => (
-        <p className="font-extrabold text-slate-900 text-xs font-display">{ord.customerName}</p>
+        <div>
+          <p className="font-extrabold text-slate-900 text-xs font-display">{ord.customerName}</p>
+          {ord.email && (
+            <p className="text-[10px] text-slate-400 font-mono">{ord.email}</p>
+          )}
+        </div>
       ),
     },
     {
       key: 'city',
-      label: 'Ciudad',
-      minWidth: '120px',
+      label: 'Ciudad / Dpto',
+      minWidth: '130px',
+      sortable: true,
+      sortSelector: (ord) => `${ord.city || ''} ${ord.department || ''}`.trim(),
+      filterable: true,
+      accessor: (ord) => ord.city || 'Sin ciudad',
       render: (ord) => (
-        <p className="text-[11px] font-mono text-slate-500 font-bold">{ord.city || '—'}</p>
+        <div>
+          <p className="text-[11px] font-mono text-slate-800 font-bold">{ord.city || '—'}</p>
+          {ord.department && (
+            <p className="text-[10px] text-slate-400 font-sans">{ord.department}</p>
+          )}
+        </div>
       ),
     },
     {
       key: 'cc',
       label: 'C.C. / NIT',
       minWidth: '120px',
+      sortable: true,
+      sortSelector: (ord) => ord.documentId || '',
       render: (ord) => (
         <p className="text-[11px] font-mono text-slate-700 font-bold">{ord.documentId || '—'}</p>
       ),
@@ -120,7 +151,9 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
     {
       key: 'items',
       label: 'Repuestos',
-      minWidth: '100px',
+      minWidth: '110px',
+      sortable: true,
+      sortSelector: (ord) => ord.items?.length || 0,
       filterable: true,
       ranges: [{ label: 'Ítems', value: (ord) => ord.items?.length || 0 }],
       render: (ord) => (
@@ -132,11 +165,11 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
     {
       key: 'total',
       label: 'Total (COP)',
-      minWidth: '120px',
-      filterable: true,
-      ranges: [{ label: 'Total', value: (ord) => ord.totalPrice || 0 }],
+      minWidth: '130px',
       sortable: true,
       sortSelector: (ord) => ord.totalPrice || 0,
+      filterable: true,
+      ranges: [{ label: 'Total', value: (ord) => ord.totalPrice || 0 }],
       render: (ord) => (
         <span className="font-black font-mono text-xs text-[#E60012]">
           {formatCurrency(ord.totalPrice)}
@@ -146,7 +179,11 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
     {
       key: 'carrier',
       label: 'Transportadora',
-      minWidth: '120px',
+      minWidth: '130px',
+      sortable: true,
+      sortSelector: (ord) => (isShipped(ord.status) ? (ord.shippingCarrier || '') : ''),
+      filterable: true,
+      accessor: (ord) => (isShipped(ord.status) ? (ord.shippingCarrier || 'Sin transportadora') : 'Pendiente'),
       render: (ord) => (
         <p className="text-xs text-slate-900 font-bold">
           {isShipped(ord.status) ? ord.shippingCarrier || 'Envío' : '—'}
@@ -157,6 +194,8 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
       key: 'tracking',
       label: 'Guía Nro',
       minWidth: '140px',
+      sortable: true,
+      sortSelector: (ord) => ord.trackingNumber || '',
       render: (ord) =>
         isShipped(ord.status) && ord.trackingNumber ? (
           <span className="text-[10px] text-blue-700 font-mono font-bold">{ord.trackingNumber}</span>
@@ -169,7 +208,9 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
     {
       key: 'status',
       label: 'Estado',
-      minWidth: '120px',
+      minWidth: '130px',
+      sortable: true,
+      sortSelector: (ord) => ord.status || '',
       filterable: true,
       accessor: (ord) => ord.status,
       filterOptions: statusRows.map((s) => ({ value: s.name, label: s.short || s.name })),
@@ -177,12 +218,22 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
     },
   ];
 
-  const handleSearchFilter = (ord: Order, query: string) =>
-    ord.id.toLowerCase().includes(query) ||
-    ord.customerName.toLowerCase().includes(query) ||
-    (ord.documentId?.toLowerCase().includes(query) ?? false) ||
-    (ord.city?.toLowerCase().includes(query) ?? false) ||
-    (ord.trackingNumber?.toLowerCase().includes(query) ?? false);
+  const handleSearchFilter = (ord: Order, query: string) => {
+    const formattedCode = formatDocumentNumber(ord.id, ord.prefix, ord.documentNumber).toLowerCase();
+    const q = query.toLowerCase();
+    return Boolean(
+      (ord.id && ord.id.toLowerCase().includes(q)) ||
+      (ord.customerName && ord.customerName.toLowerCase().includes(q)) ||
+      (ord.email && ord.email.toLowerCase().includes(q)) ||
+      (ord.documentId && ord.documentId.toLowerCase().includes(q)) ||
+      (ord.city && ord.city.toLowerCase().includes(q)) ||
+      (ord.department && ord.department.toLowerCase().includes(q)) ||
+      (ord.shippingCarrier && ord.shippingCarrier.toLowerCase().includes(q)) ||
+      (ord.trackingNumber && ord.trackingNumber.toLowerCase().includes(q)) ||
+      (ord.status && ord.status.toLowerCase().includes(q)) ||
+      formattedCode.includes(q)
+    );
+  };
 
   const totalRevenue = orders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
   const pendingCount = orders.filter(o => groupOf(o.status) === 'pending').length;

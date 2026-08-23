@@ -9,7 +9,8 @@ import {
   Truck,
   BarChart3, 
   ArrowLeft,
-  ChevronRight
+  ChevronRight,
+  Boxes
 } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 
@@ -21,7 +22,7 @@ import logoImg from '../../assets/logo.png';
 
 const logoUrl = typeof logoImg === 'string' ? logoImg : (logoImg?.src || '/src/assets/logo.png');
 
-export type AdminTab = 'brands' | 'models' | 'categories' | 'parts' | 'schematics' | 'orders' | 'returns' | 'users' | 'shipping' | 'payments' | 'settings' | 'coupons' | 'metrics';
+export type AdminTab = 'brands' | 'models' | 'categories' | 'parts' | 'kardex' | 'schematics' | 'orders' | 'returns' | 'users' | 'shipping' | 'payments' | 'settings' | 'coupons' | 'metrics';
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -80,6 +81,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       id: 'parts' as AdminTab,
       label: 'CATÁLOGO REPUESTOS',
       icon: Package,
+    },
+    {
+      id: 'kardex' as AdminTab,
+      label: 'KARDEX & INVENTARIO',
+      icon: Boxes,
     },
     {
       id: 'schematics' as AdminTab,

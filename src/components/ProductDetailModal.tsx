@@ -14,6 +14,7 @@ import {
   ChevronUp,
   Plus,
   Minus,
+  EyeOff,
 } from "lucide-react";
 import { FaMotorcycle } from "react-icons/fa";
 import { FaCartPlus } from "react-icons/fa6";
@@ -682,7 +683,15 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
         {/* Footer Unified Purchase & Technical Advisory Console */}
         <div className="mt-6 border-t border-slate-200 pt-4 space-y-3">
-          {!activeMotorcycle ? (
+          {part.active === false ? (
+            <div className="flex items-center gap-3 bg-slate-100 border border-slate-300 p-3.5 rounded-2xl">
+              <EyeOff className="w-5 h-5 text-slate-500 shrink-0" />
+              <div className="text-xs text-slate-700">
+                <span className="font-extrabold uppercase block text-slate-900">Repuesto No Disponible</span>
+                <span className="text-[11px] text-slate-600">Este repuesto se encuentra temporalmente deshabilitado en el catálogo.</span>
+              </div>
+            </div>
+          ) : !activeMotorcycle ? (
             /* No Motorcycle Selected */
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-amber-50/80 border border-amber-200 p-3 rounded-2xl">
               <div className="flex items-center gap-2">
