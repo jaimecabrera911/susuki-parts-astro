@@ -75,6 +75,7 @@ export const parts = pgTable('parts', {
   price: doublePrecision('price').notNull(),
   cost: doublePrecision('cost').notNull().default(0),
   stock: integer('stock').notNull().default(0),
+  stockReserved: integer('stock_reserved').notNull().default(0),
   image: text('image').notNull(),
   description: text('description').notNull(),
   specs: jsonb('specs').notNull(),
@@ -225,11 +226,15 @@ export const orders = pgTable('orders', {
   trackingUrl: text('tracking_url'),
   notes: text('notes'),
   prefix: text('prefix').notNull().default('SZ-ORD'),
-  documentNumber: text('document_number')
+  documentNumber: text('document_number'),
+  reservationExpiresAt: timestamp('reservation_expires_at'),
+  reservationStatus: text('reservation_status').notNull().default('active') // 'active' | 'consumed' | 'released' | 'expired'
 }, (table) => ({
   emailIdx: index('idx_orders_email').on(table.email),
   statusIdx: index('idx_orders_status').on(table.status),
-  docIdx: index('idx_orders_document_id').on(table.documentId)
+  docIdx: index('idx_orders_document_id').on(table.documentId),
+  reservationExpiresIdx: index('idx_orders_reservation_expires').on(table.reservationExpiresAt),
+  reservationStatusIdx: index('idx_orders_reservation_status').on(table.reservationStatus)
 }));
 
 // 7b. Shipping Methods Table
@@ -556,5 +561,23 @@ export const inventoryMovements = pgTable('inventory_movements', {
   referenceIdx: index('idx_inventory_movements_reference').on(table.referenceType, table.referenceId),
   createdAtIdx: index('idx_inventory_movements_created_at').on(table.createdAt)
 }));
+
+// 21. Temporary Stock Reservations Table (ACID Controlled Inventory Locking)
+export const stockReservations = pgTable('stock_reservations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  partId: uuid('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
+  quantity: integer('quantity').notNull(),
+  status: text('status').notNull().default('active'), // 'active' | 'consumed' | 'released' | 'expired'
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  orderIdx: index('idx_stock_reservations_order_id').on(table.orderId),
+  partIdx: index('idx_stock_reservations_part_id').on(table.partId),
+  statusIdx: index('idx_stock_reservations_status').on(table.status),
+  expiresIdx: index('idx_stock_reservations_expires_at').on(table.expiresAt)
+}));
+
 
 

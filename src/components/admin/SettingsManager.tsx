@@ -26,6 +26,15 @@ import {
   ChevronUp,
   ChevronDown,
   Sparkles,
+  Clock,
+  Hourglass,
+  Timer,
+  Zap,
+  CreditCard,
+  Building2,
+  Smartphone,
+  PackageCheck,
+  AlertCircle,
 } from "lucide-react";
 import { FaFacebookF, FaInstagram, FaYoutube } from "react-icons/fa";
 import type {
@@ -34,21 +43,32 @@ import type {
   FooterLink,
   CityRecord,
   SocialLinks,
+  InventoryReservationSettings,
+  StockReservation,
 } from "../../types";
 import {
   GET_SETTINGS,
   POST_SETTINGS,
   UPLOAD_IMAGE,
   fetchCities,
+  fetchInventoryReservationSettings,
+  saveInventoryReservationSettingsApi,
+  fetchStockReservations,
+  expireOverdueReservationsApi,
+  extendStockReservationApi,
+  releaseStockReservationApi,
 } from "../../services/api";
+import { formatCurrency } from "../../utils/formatCurrency";
+import { formatOrderDate } from "../../utils/formatDate";
 import { LocationSelector } from "../LocationSelector";
 
-type SettingsTab = "general" | "specs" | "taxes" | "returns" | "documents" | "footer";
+type SettingsTab = "general" | "specs" | "taxes" | "reservations" | "returns" | "documents" | "footer";
 
 const SUBTABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "General", icon: Settings },
   { id: "specs", label: "Especificaciones", icon: Sliders },
   { id: "taxes", label: "Impuestos (IVA)", icon: Percent },
+  { id: "reservations", label: "Reservas de Stock", icon: Clock },
   { id: "returns", label: "Devoluciones", icon: RotateCcw },
   { id: "documents", label: "Documentos", icon: FileText },
   { id: "footer", label: "Footer", icon: Link2 },
@@ -101,6 +121,139 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
   const [citiesList, setCitiesList] = useState<CityRecord[]>([]);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Stock Reservation Config & Monitor State
+  const DEFAULT_RESERVATION_STATE: InventoryReservationSettings = {
+    enabled: true,
+    defaultTtlMinutes: 60,
+    paymentMethodTtl: {
+      transferencia: 720,
+      nequi: 120,
+      daviplata: 120,
+      wompi: 30,
+      tarjeta: 30,
+      pse: 30,
+      contraentrega: 1440
+    },
+    expiryAction: 'cancel'
+  };
+
+  const [reservationConfig, setReservationConfig] = useState<InventoryReservationSettings>(DEFAULT_RESERVATION_STATE);
+  const [reservations, setReservations] = useState<StockReservation[]>([]);
+  const [reservationStats, setReservationStats] = useState({ totalActive: 0, totalReservedUnits: 0, totalExpired: 0 });
+  const [loadingReservations, setLoadingReservations] = useState(false);
+  const [isCleaningReservations, setIsCleaningReservations] = useState(false);
+
+  // Extend Modal State
+  const [extendingOrder, setExtendingOrder] = useState<StockReservation | null>(null);
+  const [extendMinutes, setExtendMinutes] = useState<number>(60);
+  const [extendReason, setExtendReason] = useState<string>('Solicitud de prórroga concedida');
+  const [isExtending, setIsExtending] = useState<boolean>(false);
+
+  const loadReservationData = async () => {
+    try {
+      setLoadingReservations(true);
+      const [cfg, resData] = await Promise.all([
+        fetchInventoryReservationSettings().catch(() => DEFAULT_RESERVATION_STATE),
+        fetchStockReservations().catch(() => ({ reservations: [], stats: { totalActive: 0, totalReservedUnits: 0, totalExpired: 0 } }))
+      ]);
+      if (cfg) setReservationConfig(cfg);
+      if (resData) {
+        setReservations(resData.reservations || []);
+        setReservationStats(resData.stats || { totalActive: 0, totalReservedUnits: 0, totalExpired: 0 });
+      }
+    } catch (err) {
+      console.error('Error cargando datos de reservas:', err);
+    } finally {
+      setLoadingReservations(false);
+    }
+  };
+
+  useEffect(() => {
+    loadReservationData();
+  }, []);
+
+  // Live timer tick for active reservations
+  useEffect(() => {
+    if (activeSubTab !== 'reservations') return;
+    const interval = setInterval(() => {
+      setReservations(prev =>
+        prev.map(r => {
+          if (r.status !== 'active') return r;
+          const expTime = new Date(r.expiresAt).getTime();
+          const remaining = Math.max(0, Math.floor((expTime - Date.now()) / 1000));
+          return {
+            ...r,
+            remainingSeconds: remaining,
+            isExpired: remaining <= 0,
+            status: remaining <= 0 ? 'expired' : r.status
+          };
+        })
+      );
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [activeSubTab]);
+
+  const handleCleanOverdueReservations = async () => {
+    try {
+      setIsCleaningReservations(true);
+      const result = await expireOverdueReservationsApi();
+      if (onShowToast) {
+        onShowToast(result.message || 'Reservas vencidas procesadas correctamente.', 'success');
+      }
+      await loadReservationData();
+    } catch (err: any) {
+      if (onShowToast) {
+        onShowToast(err.message || 'Error liberando reservas vencidas', 'error');
+      }
+    } finally {
+      setIsCleaningReservations(false);
+    }
+  };
+
+  const handleReleaseSingleReservation = async (res: StockReservation) => {
+    if (!confirm(`¿Estás seguro de liberar la reserva del pedido ${res.orderDocumentNumber}? El stock retenido (${res.quantity} unid.) volverá a estar disponible de inmediato.`)) {
+      return;
+    }
+    try {
+      await releaseStockReservationApi({
+        orderId: res.orderId,
+        reason: 'Liberación manual por el administrador desde el panel de reservas'
+      });
+      if (onShowToast) {
+        onShowToast(`Reserva de ${res.orderDocumentNumber} liberada con éxito.`, 'success');
+      }
+      await loadReservationData();
+    } catch (err: any) {
+      if (onShowToast) {
+        onShowToast(err.message || 'Error liberando reserva', 'error');
+      }
+    }
+  };
+
+  const handleConfirmExtend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!extendingOrder) return;
+    try {
+      setIsExtending(true);
+      const result = await extendStockReservationApi({
+        orderId: extendingOrder.orderId,
+        additionalMinutes: extendMinutes,
+        reason: extendReason
+      });
+      if (onShowToast) {
+        onShowToast(result.message || 'Tiempo de reserva extendido exitosamente.', 'success');
+      }
+      setExtendingOrder(null);
+      await loadReservationData();
+    } catch (err: any) {
+      if (onShowToast) {
+        onShowToast(err.message || 'Error extendiendo tiempo de reserva', 'error');
+      }
+    } finally {
+      setIsExtending(false);
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
     GET_SETTINGS()
@@ -141,6 +294,17 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
     setSavedSuccess(false);
     setErrorMsg("");
     try {
+      // Save reservation settings if on reservations tab or always sync
+      if (activeSubTab === 'reservations') {
+        await saveInventoryReservationSettingsApi(reservationConfig);
+        setSavedSuccess(true);
+        if (onShowToast) {
+          onShowToast("Configuración de reservas de stock guardada exitosamente.", "success");
+        }
+        setTimeout(() => setSavedSuccess(false), 3000);
+        return;
+      }
+
       let currentLogo = settings.storeLogo;
       if (pendingLogoFile) {
         setUploadingLogo(true);
@@ -977,6 +1141,416 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
           </div>
         )}
 
+        {activeSubTab === "reservations" && (
+          <div className="space-y-8">
+            {/* Header / Intro */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-5 rounded-2xl border border-slate-200">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 font-display flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-[#E60012]" />
+                  Retención Temporal de Stock & Expiración (TTL)
+                </h3>
+                <p className="text-xs text-slate-500 font-sans mt-0.5">
+                  Aparta el inventario al crear pedidos pendientes y libera automáticamente el stock retenido si el pago no se completa.
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={reservationConfig.enabled}
+                  onChange={(e) =>
+                    setReservationConfig((prev) => ({
+                      ...prev,
+                      enabled: e.target.checked,
+                    }))
+                  }
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#E60012]"></div>
+                <span className="ml-3 text-xs font-extrabold text-slate-900 uppercase font-mono">
+                  {reservationConfig.enabled ? "Activado" : "Desactivado"}
+                </span>
+              </label>
+            </div>
+
+            {/* TTL Configurations */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-6">
+              <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider font-mono flex items-center gap-2">
+                <Timer className="w-4 h-4 text-slate-500" />
+                Tiempos de Retención (TTL) por Método de Pago
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Transferencia Bancaria */}
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white transition-all space-y-2">
+                  <div className="flex items-center gap-2 text-slate-800 font-extrabold text-xs font-display">
+                    <Building2 className="w-4 h-4 text-blue-600" />
+                    <span>Transferencia / Consignación</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-sans">
+                    Bancolombia, Davivienda, etc.
+                  </p>
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="number"
+                      min="5"
+                      value={reservationConfig.paymentMethodTtl.transferencia ?? 720}
+                      onChange={(e) =>
+                        setReservationConfig((prev) => ({
+                          ...prev,
+                          paymentMethodTtl: {
+                            ...prev.paymentMethodTtl,
+                            transferencia: parseInt(e.target.value, 10) || 60,
+                          },
+                        }))
+                      }
+                      className="w-20 px-3 py-2 bg-white rounded-lg border border-slate-300 text-xs font-mono font-bold text-slate-900"
+                    />
+                    <span className="text-xs font-bold text-slate-600 font-mono">
+                      minutos (
+                      {Math.round(
+                        (reservationConfig.paymentMethodTtl.transferencia ?? 720) / 60
+                      )}
+                      h)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Billeteras Digitales */}
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white transition-all space-y-2">
+                  <div className="flex items-center gap-2 text-slate-800 font-extrabold text-xs font-display">
+                    <Smartphone className="w-4 h-4 text-purple-600" />
+                    <span>Nequi / Daviplata</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-sans">
+                    Pagos móviles inmediatos
+                  </p>
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="number"
+                      min="5"
+                      value={reservationConfig.paymentMethodTtl.nequi ?? 120}
+                      onChange={(e) =>
+                        setReservationConfig((prev) => ({
+                          ...prev,
+                          paymentMethodTtl: {
+                            ...prev.paymentMethodTtl,
+                            nequi: parseInt(e.target.value, 10) || 60,
+                            daviplata: parseInt(e.target.value, 10) || 60,
+                          },
+                        }))
+                      }
+                      className="w-20 px-3 py-2 bg-white rounded-lg border border-slate-300 text-xs font-mono font-bold text-slate-900"
+                    />
+                    <span className="text-xs font-bold text-slate-600 font-mono">
+                      minutos (
+                      {Math.round(
+                        (reservationConfig.paymentMethodTtl.nequi ?? 120) / 60
+                      )}
+                      h)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Pasarelas Online */}
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white transition-all space-y-2">
+                  <div className="flex items-center gap-2 text-slate-800 font-extrabold text-xs font-display">
+                    <CreditCard className="w-4 h-4 text-emerald-600" />
+                    <span>Tarjetas / PSE / Wompi</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-sans">
+                    Procesamiento en línea instantáneo
+                  </p>
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="number"
+                      min="5"
+                      value={reservationConfig.paymentMethodTtl.wompi ?? 30}
+                      onChange={(e) =>
+                        setReservationConfig((prev) => ({
+                          ...prev,
+                          paymentMethodTtl: {
+                            ...prev.paymentMethodTtl,
+                            wompi: parseInt(e.target.value, 10) || 30,
+                            tarjeta: parseInt(e.target.value, 10) || 30,
+                            pse: parseInt(e.target.value, 10) || 30,
+                          },
+                        }))
+                      }
+                      className="w-20 px-3 py-2 bg-white rounded-lg border border-slate-300 text-xs font-mono font-bold text-slate-900"
+                    />
+                    <span className="text-xs font-bold text-slate-600 font-mono">
+                      minutos
+                    </span>
+                  </div>
+                </div>
+
+                {/* Contraentrega */}
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white transition-all space-y-2">
+                  <div className="flex items-center gap-2 text-slate-800 font-extrabold text-xs font-display">
+                    <PackageCheck className="w-4 h-4 text-amber-600" />
+                    <span>Pago Contraentrega</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-sans">
+                    Confirmación telefónica previa
+                  </p>
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="number"
+                      min="5"
+                      value={reservationConfig.paymentMethodTtl.contraentrega ?? 1440}
+                      onChange={(e) =>
+                        setReservationConfig((prev) => ({
+                          ...prev,
+                          paymentMethodTtl: {
+                            ...prev.paymentMethodTtl,
+                            contraentrega: parseInt(e.target.value, 10) || 1440,
+                          },
+                        }))
+                      }
+                      className="w-20 px-3 py-2 bg-white rounded-lg border border-slate-300 text-xs font-mono font-bold text-slate-900"
+                    />
+                    <span className="text-xs font-bold text-slate-600 font-mono">
+                      minutos (
+                      {Math.round(
+                        (reservationConfig.paymentMethodTtl.contraentrega ?? 1440) / 60
+                      )}
+                      h)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* TTL General y Acción de Expiración */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-4 border-t border-slate-100">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 font-mono">
+                    TTL General por Defecto (Minutos)
+                  </label>
+                  <input
+                    type="number"
+                    min="5"
+                    value={reservationConfig.defaultTtlMinutes}
+                    onChange={(e) =>
+                      setReservationConfig((prev) => ({
+                        ...prev,
+                        defaultTtlMinutes: parseInt(e.target.value, 10) || 60,
+                      }))
+                    }
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-mono font-bold text-slate-900"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1 font-sans">
+                    Tiempo de retención fallback para métodos de pago no especificados.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 font-mono">
+                    Estado Asignado al Expirar la Reserva
+                  </label>
+                  <select
+                    value={reservationConfig.expiryAction}
+                    onChange={(e) =>
+                      setReservationConfig((prev) => ({
+                        ...prev,
+                        expiryAction: e.target.value as "cancel" | "expire",
+                      }))
+                    }
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-sans font-bold text-slate-900"
+                  >
+                    <option value="cancel">Marcar como &quot;Cancelado&quot;</option>
+                    <option value="expire">Marcar como &quot;Expirado&quot;</option>
+                  </select>
+                  <p className="text-[11px] text-slate-500 mt-1 font-sans">
+                    Estado al que pasa la orden automáticamente al vencer el tiempo sin pago.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Metrics & Manual Action Bar */}
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider font-mono flex items-center gap-2">
+                  <Hourglass className="w-4 h-4 text-[#E60012]" />
+                  Monitor en Vivo de Reservas de Stock
+                </h4>
+                <button
+                  type="button"
+                  onClick={handleCleanOverdueReservations}
+                  disabled={isCleaningReservations}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold uppercase tracking-wider transition-all shadow-xs cursor-pointer disabled:opacity-60"
+                >
+                  <Zap className={`w-3.5 h-3.5 text-amber-400 ${isCleaningReservations ? "animate-spin" : ""}`} />
+                  <span>{isCleaningReservations ? "Procesando..." : "Liberar Reservas Vencidas Ahora"}</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-2xl flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-amber-900 uppercase font-mono">
+                      Reservas Activas
+                    </p>
+                    <p className="text-xl font-black text-amber-950 font-display">
+                      {reservationStats.totalActive}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-blue-50/60 border border-blue-200 rounded-2xl flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-[#0A3088] text-white flex items-center justify-center font-black">
+                    <PackageCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-blue-900 uppercase font-mono">
+                      Unidades Retenidas
+                    </p>
+                    <p className="text-xl font-black text-blue-950 font-display">
+                      {reservationStats.totalReservedUnits}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-slate-400 text-white flex items-center justify-center font-black">
+                    <RotateCcw className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-slate-700 uppercase font-mono">
+                      Expiradas / Liberadas
+                    </p>
+                    <p className="text-xl font-black text-slate-900 font-display">
+                      {reservationStats.totalExpired}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Reservations Table */}
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-mono uppercase text-[10px]">
+                    <tr>
+                      <th className="py-3 px-4">Pedido / Cliente</th>
+                      <th className="py-3 px-4">Repuesto Reservado</th>
+                      <th className="py-3 px-4">Cantidad</th>
+                      <th className="py-3 px-4">Método</th>
+                      <th className="py-3 px-4">Expiración / Restante</th>
+                      <th className="py-3 px-4 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {reservations.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-slate-400 font-sans">
+                          No hay reservas de stock registradas actualmente.
+                        </td>
+                      </tr>
+                    ) : (
+                      reservations.map((res) => {
+                        const remainingSec = res.remainingSeconds ?? 0;
+                        const hours = Math.floor(remainingSec / 3600);
+                        const mins = Math.floor((remainingSec % 3600) / 60);
+                        const secs = remainingSec % 60;
+                        const isExpired = res.isExpired || res.status === "expired";
+                        const isActive = res.status === "active" && !isExpired;
+
+                        return (
+                          <tr key={res.id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="py-3 px-4">
+                              <p className="font-extrabold text-slate-900 font-mono">
+                                {res.orderDocumentNumber}
+                              </p>
+                              <p className="text-[11px] text-slate-500 font-sans">
+                                {res.customerName}
+                              </p>
+                            </td>
+                            <td className="py-3 px-4">
+                              <p className="font-bold text-slate-900 font-display line-clamp-1">
+                                {res.partName}
+                              </p>
+                              {res.partSku && (
+                                <p className="text-[10px] text-slate-400 font-mono">
+                                  SKU: {res.partSku}
+                                </p>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 font-mono font-black text-slate-800">
+                                {res.quantity} {res.quantity === 1 ? "ud" : "uds"}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="capitalize text-slate-700 font-mono text-[11px] font-bold">
+                                {res.paymentMethod}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              {isActive ? (
+                                <div className="space-y-0.5">
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-black font-mono animate-pulse">
+                                    <Clock className="w-3 h-3 text-amber-600" />
+                                    {String(hours).padStart(2, "0")}:{String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
+                                  </span>
+                                  <p className="text-[10px] text-slate-400 font-mono">
+                                    Vence: {formatOrderDate(res.expiresAt)}
+                                  </p>
+                                </div>
+                              ) : res.status === "consumed" ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold font-mono">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  Pago Aprobado (Venta)
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-700 text-[10px] font-bold font-mono">
+                                  <AlertCircle className="w-3 h-3 text-red-500" />
+                                  Expirada / Liberada
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {isActive && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setExtendingOrder(res);
+                                        setExtendMinutes(60);
+                                        setExtendReason("Prórroga concedida a solicitud del cliente");
+                                      }}
+                                      className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold text-[10px] transition-colors cursor-pointer"
+                                      title="Extender tiempo de reserva para este pedido"
+                                    >
+                                      + Extender
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleReleaseSingleReservation(res)}
+                                      className="px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-[10px] transition-colors cursor-pointer"
+                                      title="Liberar reserva inmediatamente"
+                                    >
+                                      Liberar
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeSubTab === "returns" && (
           <div className="space-y-5">
             <p className="text-xs text-slate-600 font-sans">
@@ -1195,6 +1769,112 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
           </button>
         </div>
       </form>
+
+      {/* Extension Modal Dialog */}
+      {extendingOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-black">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 font-display">
+                    Extender Tiempo de Reserva
+                  </h3>
+                  <p className="text-xs text-slate-500 font-mono">
+                    {extendingOrder.orderDocumentNumber} ({extendingOrder.customerName})
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleConfirmExtend} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 font-mono">
+                  Opciones Rápidas de Prórroga
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: "+30 Minutos", mins: 30 },
+                    { label: "+2 Horas", mins: 120 },
+                    { label: "+12 Horas", mins: 720 },
+                    { label: "+24 Horas", mins: 1440 },
+                    { label: "+48 Horas", mins: 2880 },
+                    { label: "+72 Horas", mins: 4320 },
+                  ].map((opt) => (
+                    <button
+                      key={opt.mins}
+                      type="button"
+                      onClick={() => setExtendMinutes(opt.mins)}
+                      className={`py-2 px-2 rounded-xl text-[11px] font-mono font-bold transition-all border cursor-pointer ${
+                        extendMinutes === opt.mins
+                          ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                          : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 font-mono">
+                  Tiempo Adicional Personalizado (Minutos)
+                </label>
+                <input
+                  type="number"
+                  min="5"
+                  value={extendMinutes}
+                  onChange={(e) => setExtendMinutes(parseInt(e.target.value, 10) || 30)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-mono font-bold text-slate-900"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 font-mono">
+                  Motivo de la Prórroga (Opcional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={extendReason}
+                  onChange={(e) => setExtendReason(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-sans text-slate-900 resize-none"
+                  placeholder="Ej: Cliente solicita plazo para realizar transferencia bancaria"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setExtendingOrder(null)}
+                  disabled={isExtending}
+                  className="px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isExtending}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-blue-500/20 cursor-pointer disabled:opacity-60 flex items-center gap-2"
+                >
+                  {isExtending ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Extendiendo...</span>
+                    </>
+                  ) : (
+                    <span>Confirmar Prórroga</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

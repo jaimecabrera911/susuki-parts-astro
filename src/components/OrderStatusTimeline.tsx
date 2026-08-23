@@ -28,7 +28,24 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
     trackingNumber,
     shippingCarrier,
     date,
+    reservationExpiresAt,
   } = order;
+
+  const [remainingSecs, setRemainingSecs] = React.useState<number>(() => {
+    if (!reservationExpiresAt) return 0;
+    return Math.max(0, Math.floor((new Date(reservationExpiresAt).getTime() - Date.now()) / 1000));
+  });
+
+  React.useEffect(() => {
+    if (!reservationExpiresAt) return;
+    const calc = () => {
+      const diff = Math.max(0, Math.floor((new Date(reservationExpiresAt).getTime() - Date.now()) / 1000));
+      setRemainingSecs(diff);
+    };
+    calc();
+    const interval = setInterval(calc, 1000);
+    return () => clearInterval(interval);
+  }, [reservationExpiresAt]);
 
   const statusLower = status.toLowerCase();
 
@@ -41,7 +58,7 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
   let currentStepIndex = 0;
   let isCancelled = false;
 
-  if (statusLower.includes("cancelad") || statusLower.includes("anulad")) {
+  if (statusLower.includes("cancelad") || statusLower.includes("anulad") || statusLower.includes("expirad")) {
     isCancelled = true;
     currentStepIndex = -1;
   } else if (statusLower.includes("entregad") || statusLower.includes("completad")) {
@@ -126,10 +143,10 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
           </div>
           <div>
             <h4 className="font-extrabold text-sm uppercase tracking-wide font-display text-red-950">
-              PEDIDO CANCELADO O ANULADO
+              PEDIDO CANCELADO O EXPIRADO
             </h4>
             <p className="text-xs text-red-700 mt-0.5 font-sans">
-              Esta orden fue cancelada. Si tienes dudas o inquietudes, contáctanos por soporte.
+              El tiempo límite para realizar el pago expiró o la orden fue cancelada y el stock fue liberado. Si deseas adquirir estos repuestos, por favor crea un nuevo pedido.
             </p>
           </div>
         </div>
@@ -137,11 +154,58 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
     );
   }
 
+  const hours = Math.floor(remainingSecs / 3600);
+  const mins = Math.floor((remainingSecs % 3600) / 60);
+  const secs = remainingSecs % 60;
+
   return (
     <div
       id="order-status-timeline"
-      className="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-sm space-y-6 relative overflow-hidden"
+      className="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-sm space-y-5 relative overflow-hidden"
     >
+      {/* Active Stock Reservation Countdown Banner */}
+      {currentStepIndex === 0 && reservationExpiresAt && (
+        <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-300/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black shrink-0 shadow-xs">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-amber-950 uppercase font-mono tracking-wider">
+                  Reserva Temporal de Stock Asegurada
+                </span>
+                {remainingSecs > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] font-black font-mono animate-pulse">
+                    Tiempo Restante
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-amber-900/80 font-sans mt-0.5">
+                {remainingSecs > 0
+                  ? `Realiza el pago antes de que expire el tiempo para garantizar el despacho inmediato de tus repuestos.`
+                  : `El tiempo límite para pagar ha vencido. La reserva ha sido liberada al catálogo.`}
+              </p>
+            </div>
+          </div>
+
+          {remainingSecs > 0 ? (
+            <div className="bg-white px-4 py-2 rounded-xl border border-amber-300 shadow-xs text-center shrink-0 min-w-[120px]">
+              <span className="text-[9px] font-mono font-bold uppercase text-amber-800 block">
+                EXPIRA EN
+              </span>
+              <span className="text-base font-black font-mono text-[#E60012] tracking-wider">
+                {String(hours).padStart(2, "0")}:{String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
+              </span>
+            </div>
+          ) : (
+            <span className="px-3 py-1.5 rounded-xl bg-red-100 text-red-800 text-xs font-mono font-bold">
+              Reserva Vencida
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Header Info - Clean & Distinctive */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-3 relative z-10">
         <div>

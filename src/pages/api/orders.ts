@@ -89,16 +89,49 @@ export const PUT: APIRoute = async ({ request }) => {
     const body = await request.json();
     if (!body.id) throw new Error('ID del pedido es requerido');
 
-    const updatedFields = {
-      status: body.status,
-      paymentReference: body.paymentReference,
-      trackingNumber: body.trackingNumber,
-      shippingCarrier: body.shippingCarrier,
-      trackingUrl: body.trackingUrl,
-      notes: body.notes
-    };
+    // If body has items or is a full order object, use upsertOrder which handles ACID transitions
+    if (Array.isArray(body.items) && body.items.length > 0) {
+      const data = await upsertOrder(db, body);
+      return new Response(JSON.stringify({ success: true, message: `Pedido ${body.id} actualizado exitosamente`, data }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
-    await db.update(orders).set(updatedFields).where(eq(orders.id, body.id));
+    const currentOrders = await db.select().from(orders).where(eq(orders.id, body.id)).limit(1);
+    if (currentOrders.length === 0) throw new Error(`Pedido ${body.id} no encontrado`);
+    const currentOrder = currentOrders[0];
+
+    const { isPaidOrderStatus, isCancelOrderStatus } = await import('../../types');
+
+    const updatedFields: any = {};
+    if (body.status !== undefined) updatedFields.status = body.status;
+    if (body.paymentReference !== undefined) updatedFields.paymentReference = body.paymentReference;
+    if (body.trackingNumber !== undefined) updatedFields.trackingNumber = body.trackingNumber;
+    if (body.shippingCarrier !== undefined) updatedFields.shippingCarrier = body.shippingCarrier;
+    if (body.trackingUrl !== undefined) updatedFields.trackingUrl = body.trackingUrl;
+    if (body.notes !== undefined) updatedFields.notes = body.notes;
+
+    await db.transaction(async (tx) => {
+      const targetStatus = body.status || currentOrder.status;
+      const wasPending = !isPaidOrderStatus(currentOrder.status) && !isCancelOrderStatus(currentOrder.status);
+      const nowPaid = isPaidOrderStatus(targetStatus);
+      const nowCancel = isCancelOrderStatus(targetStatus);
+
+      const shouldConsume = (wasPending && nowPaid) || (nowPaid && currentOrder.reservationStatus === 'active');
+      const shouldRelease = (wasPending && nowCancel) || (nowCancel && currentOrder.reservationStatus === 'active');
+
+      if (shouldConsume) {
+        const { consumeStockReservation } = await import('../../db/writers');
+        await consumeStockReservation(tx, body.id, 'Administrador');
+        updatedFields.reservationStatus = 'consumed';
+      } else if (shouldRelease) {
+        const { releaseStockReservation } = await import('../../db/writers');
+        await releaseStockReservation(tx, body.id, `Estado cambiado a ${targetStatus}`, targetStatus, 'Administrador');
+        updatedFields.reservationStatus = 'released';
+      }
+
+      await tx.update(orders).set(updatedFields).where(eq(orders.id, body.id));
+    });
 
     return new Response(JSON.stringify({ success: true, message: `Pedido ${body.id} actualizado exitosamente` }), {
       headers: { 'Content-Type': 'application/json' }
@@ -118,7 +151,12 @@ export const DELETE: APIRoute = async ({ url }) => {
     const id = url.searchParams.get('id');
     if (!id) throw new Error('Parámetro "id" es requerido');
 
-    await db.delete(orders).where(eq(orders.id, id));
+    // If deleting order that had active reservation, release reserved stock first
+    await db.transaction(async (tx) => {
+      const { releaseStockReservation } = await import('../../db/writers');
+      await releaseStockReservation(tx, id, 'Pedido eliminado', undefined, 'Administrador');
+      await tx.delete(orders).where(eq(orders.id, id));
+    });
 
     return new Response(JSON.stringify({ success: true, message: `Pedido ${id} eliminado` }), {
       headers: { 'Content-Type': 'application/json' }

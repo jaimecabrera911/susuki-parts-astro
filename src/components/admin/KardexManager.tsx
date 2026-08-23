@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Boxes,
   Plus,
@@ -14,11 +14,15 @@ import {
   Package,
   Layers,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Check,
+  ChevronDown
 } from 'lucide-react';
 import type { InventoryMovement, InventoryMovementType, SuzukiPart } from '../../types';
+import { getPrimaryOem, matchesOem } from '../../types';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatOrderDate } from '../../utils/formatDate';
+import { getImageUrl } from '../../utils/imageUrl';
 import { fetchKardex, saveKardexMovementApi, fetchParts } from '../../services/api';
 import { AdminSearchInput } from './AdminSearchInput';
 import { DataTable } from './DataTable';
@@ -106,6 +110,39 @@ export const KardexManager: React.FC<KardexManagerProps> = ({ initialPartId }) =
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Modal product search / autocomplete state
+  const [modalSearchQuery, setModalSearchQuery] = useState('');
+  const [isPartDropdownOpen, setIsPartDropdownOpen] = useState(false);
+  const partDropdownRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (partDropdownRef.current && !partDropdownRef.current.contains(event.target as Node)) {
+        setIsPartDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const modalFilteredParts = useMemo(() => {
+    if (!modalSearchQuery.trim()) return partsList.slice(0, 30);
+    const q = modalSearchQuery.toLowerCase().trim();
+    return partsList.filter((p) => {
+      const nameMatch = p.name?.toLowerCase().includes(q);
+      const skuMatch = p.sku?.toLowerCase().includes(q);
+      const catMatch = p.category?.toLowerCase().includes(q);
+      const oemMatch = matchesOem(p, q);
+      return nameMatch || skuMatch || catMatch || oemMatch;
+    }).slice(0, 30);
+  }, [partsList, modalSearchQuery]);
+
+  const selectedModalPart = useMemo(() => {
+    return partsList.find((p) => p.id === formData.partId);
+  }, [partsList, formData.partId]);
+
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -159,7 +196,8 @@ export const KardexManager: React.FC<KardexManagerProps> = ({ initialPartId }) =
   }, [movements, partsList]);
 
   const handleOpenModal = (partId?: string) => {
-    const defaultPart = partsList.find((p) => p.id === (partId || selectedPartId || partsList[0]?.id));
+    const targetId = partId || selectedPartId || '';
+    const defaultPart = partsList.find((p) => p.id === targetId);
     setFormData({
       partId: defaultPart?.id || '',
       movementType: 'IN_PURCHASE',
@@ -169,6 +207,8 @@ export const KardexManager: React.FC<KardexManagerProps> = ({ initialPartId }) =
       notes: '',
       userName: 'Admin'
     });
+    setModalSearchQuery('');
+    setIsPartDropdownOpen(false);
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -250,6 +290,8 @@ export const KardexManager: React.FC<KardexManagerProps> = ({ initialPartId }) =
       minWidth: '220px',
       sortable: true,
       sortSelector: (m) => m.partName || '',
+      filterable: true,
+      accessor: (m) => m.partName || 'Sin repuesto',
       render: (m) => (
         <div className="flex flex-col">
           <span className="font-bold text-slate-900 line-clamp-1 text-sm">
@@ -276,6 +318,12 @@ export const KardexManager: React.FC<KardexManagerProps> = ({ initialPartId }) =
       minWidth: '170px',
       sortable: true,
       sortSelector: (m) => m.movementType,
+      filterable: true,
+      accessor: (m) => m.movementType,
+      filterOptions: Object.entries(MOVEMENT_TYPE_META).map(([key, meta]) => ({
+        value: key,
+        label: meta.label
+      })),
       render: (m) => {
         const meta = MOVEMENT_TYPE_META[m.movementType] || {
           label: m.movementType,
@@ -296,7 +344,9 @@ export const KardexManager: React.FC<KardexManagerProps> = ({ initialPartId }) =
       label: 'Referencia / Doc.',
       minWidth: '140px',
       sortable: true,
-      sortSelector: (m) => m.referenceDocument || m.referenceType,
+      sortSelector: (m) => m.referenceDocument || m.referenceType || '',
+      filterable: true,
+      accessor: (m) => m.referenceDocument || m.referenceType || 'Sin referencia',
       render: (m) => (
         <div className="flex flex-col">
           {m.referenceDocument ? (
@@ -323,6 +373,8 @@ export const KardexManager: React.FC<KardexManagerProps> = ({ initialPartId }) =
       align: 'center',
       sortable: true,
       sortSelector: (m) => m.quantity,
+      filterable: true,
+      ranges: [{ label: 'Cantidad', value: (m) => m.quantity }],
       render: (m) => {
         const isPositive = m.quantity > 0;
         return (
@@ -347,6 +399,8 @@ export const KardexManager: React.FC<KardexManagerProps> = ({ initialPartId }) =
       align: 'center',
       sortable: true,
       sortSelector: (m) => m.resultingStock,
+      filterable: true,
+      ranges: [{ label: 'Saldo Stock', value: (m) => m.resultingStock }],
       render: (m) => (
         <div className="flex flex-col items-center">
           <span className="font-black text-slate-900 text-sm font-mono">
@@ -365,6 +419,8 @@ export const KardexManager: React.FC<KardexManagerProps> = ({ initialPartId }) =
       align: 'right',
       sortable: true,
       sortSelector: (m) => m.unitCost || 0,
+      filterable: true,
+      ranges: [{ label: 'Costo Prom. ($ COP)', value: (m) => m.unitCost || 0 }],
       render: (m) => (
         <span className="font-mono text-xs font-semibold text-slate-700">
           {formatCurrency(m.unitCost || 0)}
@@ -378,6 +434,8 @@ export const KardexManager: React.FC<KardexManagerProps> = ({ initialPartId }) =
       align: 'right',
       sortable: true,
       sortSelector: (m) => m.totalAmount || 0,
+      filterable: true,
+      ranges: [{ label: 'Total Mov. ($ COP)', value: (m) => m.totalAmount || 0 }],
       render: (m) => (
         <span className="font-mono text-xs font-extrabold text-slate-900">
           {formatCurrency(m.totalAmount || 0)}
@@ -594,24 +652,209 @@ export const KardexManager: React.FC<KardexManagerProps> = ({ initialPartId }) =
                 </div>
               )}
 
-              {/* Repuesto Selector */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Repuesto a Afectar *
-                </label>
-                <select
-                  value={formData.partId}
-                  onChange={(e) => handlePartSelect(e.target.value)}
-                  required
-                  className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:bg-white focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012] outline-none"
-                >
-                  <option value="">-- Seleccionar Repuesto --</option>
-                  {partsList.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.sku ? `[${p.sku}] ` : ''}{p.name} (Stock Actual: {p.stock ?? 0})
-                    </option>
-                  ))}
-                </select>
+              {/* Repuesto Search & Autocomplete Selector */}
+              <div className="space-y-1.5" ref={partDropdownRef}>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Repuesto a Afectar *
+                  </label>
+                  {selectedModalPart && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, partId: '', unitCost: 0 }));
+                        setModalSearchQuery('');
+                        setTimeout(() => searchInputRef.current?.focus(), 50);
+                      }}
+                      className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                    >
+                      Cambiar repuesto
+                    </button>
+                  )}
+                </div>
+
+                {selectedModalPart ? (
+                  /* Visual Selected Product Card */
+                  <div className="p-3 bg-slate-50 border border-slate-200/90 rounded-2xl flex items-center justify-between gap-3 shadow-xs">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs">
+                        {selectedModalPart.image ? (
+                          <img
+                            src={getImageUrl(selectedModalPart.image, 'parts')}
+                            alt={selectedModalPart.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <Package className="w-6 h-6 text-slate-400" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h4 className="text-xs font-black text-slate-900 truncate">
+                            {selectedModalPart.name}
+                          </h4>
+                          {selectedModalPart.category && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-slate-200 text-slate-700 text-[9px] font-bold uppercase font-mono">
+                              {selectedModalPart.category}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono mt-0.5 flex-wrap">
+                          {getPrimaryOem(selectedModalPart) && (
+                            <span className="text-slate-700 font-bold">
+                              OEM: {getPrimaryOem(selectedModalPart)}
+                            </span>
+                          )}
+                          {selectedModalPart.sku && selectedModalPart.sku !== getPrimaryOem(selectedModalPart) && (
+                            <span>SKU: {selectedModalPart.sku}</span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-black ${
+                            (selectedModalPart.stock ?? 0) > 5
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : (selectedModalPart.stock ?? 0) > 0
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-red-100 text-red-800'
+                          }`}>
+                            Stock Actual: {selectedModalPart.stock ?? 0} uds
+                          </span>
+                          {(selectedModalPart.stockReserved ?? 0) > 0 && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-blue-100 text-blue-800 font-bold">
+                              Reservado: {selectedModalPart.stockReserved}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, partId: '', unitCost: 0 }));
+                        setModalSearchQuery('');
+                        setTimeout(() => searchInputRef.current?.focus(), 50);
+                      }}
+                      className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-slate-200 transition-all cursor-pointer shrink-0"
+                      title="Quitar selección"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  /* Autocomplete Search Input + Dropdown */
+                  <div className="relative">
+                    <div className="relative">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        ref={searchInputRef}
+                        type="text"
+                        value={modalSearchQuery}
+                        onChange={(e) => {
+                          setModalSearchQuery(e.target.value);
+                          setIsPartDropdownOpen(true);
+                        }}
+                        onFocus={() => setIsPartDropdownOpen(true)}
+                        placeholder="Buscar por nombre, SKU, referencia OEM o categoría..."
+                        className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl pl-9.5 pr-8 py-2.5 focus:bg-white focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012] outline-none transition-all"
+                      />
+                      {modalSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setModalSearchQuery('');
+                            searchInputRef.current?.focus();
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-200"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Autocomplete Dropdown List */}
+                    {isPartDropdownOpen && (
+                      <div className="absolute left-0 right-0 top-full mt-1.5 max-h-60 overflow-y-auto bg-white rounded-2xl shadow-xl border border-slate-200 z-50 divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-150">
+                        {modalFilteredParts.length > 0 ? (
+                          modalFilteredParts.map((p) => {
+                            const oem = getPrimaryOem(p);
+                            const stock = p.stock ?? 0;
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => {
+                                  handlePartSelect(p.id);
+                                  setIsPartDropdownOpen(false);
+                                  setModalSearchQuery('');
+                                }}
+                                className="w-full p-2.5 text-left hover:bg-slate-50 flex items-center justify-between gap-2.5 transition-colors cursor-pointer group"
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden group-hover:border-slate-300">
+                                    {p.image ? (
+                                      <img
+                                        src={getImageUrl(p.image, 'parts')}
+                                        alt={p.name}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          (e.target as HTMLElement).style.display = 'none';
+                                        }}
+                                      />
+                                    ) : (
+                                      <Package className="w-4 h-4 text-slate-400" />
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-xs font-bold text-slate-900 truncate group-hover:text-[#E60012] transition-colors">
+                                        {p.name}
+                                      </span>
+                                      {p.category && (
+                                        <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[9px] font-mono uppercase font-bold">
+                                          {p.category}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono">
+                                      {oem && <span>OEM: {oem}</span>}
+                                      {p.sku && p.sku !== oem && <span>SKU: {p.sku}</span>}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="text-right shrink-0">
+                                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                                    stock > 5
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : stock > 0
+                                        ? 'bg-amber-100 text-amber-800'
+                                        : 'bg-red-100 text-red-800'
+                                  }`}>
+                                    {stock} uds
+                                  </span>
+                                  <div className="text-[10px] text-slate-500 font-mono font-bold mt-0.5">
+                                    {formatCurrency(p.price || 0)}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })
+                        ) : (
+                          <div className="p-4 text-center text-xs text-slate-500 font-medium">
+                            <AlertTriangle className="w-5 h-5 text-amber-500 mx-auto mb-1 opacity-80" />
+                            No se encontraron repuestos con "{modalSearchQuery}"
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Tipo de Movimiento */}

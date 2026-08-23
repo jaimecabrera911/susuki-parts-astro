@@ -9,13 +9,14 @@ import {
   shippingMethods, shippingZones, shippingZoneStates, shippingMethodZoneRates,
   shippingZoneCities,
   countries, states, cities,
-  inventoryMovements
+  inventoryMovements, stockReservations
 } from './schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or, inArray, lte, gt, desc, sql } from 'drizzle-orm';
 import { DEFAULT_SHIPPING_ZONES, DEFAULT_SHIPPING_METHODS, DEFAULT_COLOMBIAN_CITIES, COLOMBIAN_DEPARTMENTS } from '../data/initialShippingAndCities';
 import { STORE_DEFAULT_LOCATION, STORE_BOOTSTRAP, FOOTER_BOOTSTRAP, getBootstrapShowProductImages } from '../utils/config';
 import { hashPassword } from '../utils/password';
-import type { SiteSettings, PaymentSettings, WompiConfig } from '../types';
+import type { SiteSettings, PaymentSettings, WompiConfig, InventoryReservationSettings, StockReservation } from '../types';
+import { isPaidOrderStatus, isCancelOrderStatus } from '../types';
 
 export function isValidUuid(val: any): boolean {
   return typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
@@ -361,19 +362,24 @@ export async function upsertOrder(db: AppDb, body: any) {
     trackingUrl: body.trackingUrl || null,
     notes: body.notes || '',
     prefix: settings.orderPrefix,
-    documentNumber: normalizeDocumentNumber(body.documentNumber || (isValidUuid(rawId) ? String(Math.floor(100000 + Math.random() * 900000)) : rawId))
+    documentNumber: normalizeDocumentNumber(body.documentNumber || (isValidUuid(rawId) ? String(Math.floor(100000 + Math.random() * 900000)) : rawId)),
+    reservationExpiresAt: body.reservationExpiresAt ? new Date(body.reservationExpiresAt) : null,
+    reservationStatus: body.reservationStatus || 'active'
   };
 
+  const reservationSettings = await getInventoryReservationSettings(db);
+
   await db.transaction(async (tx) => {
-    const existingOrderRows = await tx.select({ id: orders.id }).from(orders).where(eq(orders.id, id)).limit(1);
+    const existingOrderRows = await tx.select().from(orders).where(eq(orders.id, id)).limit(1);
     const isNewOrder = existingOrderRows.length === 0;
+    const previousOrder = isNewOrder ? null : existingOrderRows[0];
 
-    await tx.insert(orders).values(data).onConflictDoUpdate({ target: orders.id, set: data });
-
-    await tx.delete(orderItems).where(eq(orderItems.orderId, id));
     const items = Array.isArray(body.items)
       ? body.items
       : (typeof body.items === 'string' ? parseJson(body.items, []) : []);
+
+    // Resolve part IDs for all items first
+    const resolvedItems: Array<{ partDbId: string | null; part: any; quantity: number; unitPrice: number; lineTotal: number; motorcycle: any }> = [];
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -400,30 +406,121 @@ export async function upsertOrder(db: AppDb, body: any) {
         }
       }
 
-      // Register Kardex movement and decrement stock for newly placed order
-      if (isNewOrder && partDbId) {
-        await recordInventoryMovement(tx, {
-          partId: partDbId,
-          movementType: 'OUT_SALE',
-          quantity: -quantity,
-          unitPrice,
-          referenceType: 'order',
-          referenceId: id,
-          referenceDocument: (data.prefix || 'SZ-ORD') + '-' + (data.documentNumber || id.substring(0, 8).toUpperCase()),
-          notes: `Venta en pedido ${(data.prefix || 'SZ-ORD')}-${data.documentNumber || id.substring(0, 8).toUpperCase()}`,
-          userName: data.customerName
-        });
-      }
-
-      await tx.insert(orderItems).values({
-        id: crypto.randomUUID(),
-        orderId: id,
-        partId: partDbId || (isValidUuid(part.id) ? part.id : null),
+      resolvedItems.push({
+        partDbId,
         part,
         quantity,
         unitPrice,
         lineTotal,
         motorcycle: item.motorcycle || null
+      });
+    }
+
+    if (isNewOrder) {
+      const pendingReservations: Array<{ partDbId: string; quantity: number; reservedStock: number; expiresAt: Date }> = [];
+
+      if (reservationSettings.enabled && !isPaidOrderStatus(data.status)) {
+        // Calculate TTL according to payment method
+        const ttlMinutes = calculateReservationTtlMinutes(reservationSettings, data.paymentMethod);
+        const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
+        data.reservationExpiresAt = expiresAt;
+        data.reservationStatus = 'active';
+
+        // Verify and lock stock with PostgreSQL pessimistic row-locking (FOR UPDATE)
+        for (const it of resolvedItems) {
+          if (!it.partDbId) continue;
+          const partRows = await tx.select().from(parts).where(eq(parts.id, it.partDbId)).for('update');
+          if (partRows.length === 0) {
+            throw new Error(`El repuesto solicitado no fue encontrado en la base de datos.`);
+          }
+          const p = partRows[0];
+          const totalStock = p.stock ?? 0;
+          const reservedStock = p.stockReserved ?? 0;
+          const availableStock = Math.max(0, totalStock - reservedStock);
+
+          if (availableStock < it.quantity) {
+            throw new Error(`Stock insuficiente para "${p.name}". Solicitado: ${it.quantity}, Disponible: ${availableStock} (Total: ${totalStock}, Reservado: ${reservedStock}).`);
+          }
+
+          pendingReservations.push({
+            partDbId: it.partDbId,
+            quantity: it.quantity,
+            reservedStock,
+            expiresAt
+          });
+        }
+      }
+
+      // 1. Insert order first to satisfy foreign key constraints on child tables
+      await tx.insert(orders).values(data).onConflictDoUpdate({ target: orders.id, set: data });
+
+      // 2. Insert reservations and update parts stock_reserved
+      for (const res of pendingReservations) {
+        await tx.update(parts).set({
+          stockReserved: res.reservedStock + res.quantity
+        }).where(eq(parts.id, res.partDbId));
+
+        await tx.insert(stockReservations).values({
+          id: crypto.randomUUID(),
+          orderId: id,
+          partId: res.partDbId,
+          quantity: res.quantity,
+          status: 'active',
+          expiresAt: res.expiresAt,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+      }
+
+      // 3. Immediate physical deduction if order is already paid upon creation
+      if (isPaidOrderStatus(data.status)) {
+        data.reservationStatus = 'consumed';
+        for (const it of resolvedItems) {
+          if (!it.partDbId) continue;
+          await recordInventoryMovement(tx, {
+            partId: it.partDbId,
+            movementType: 'OUT_SALE',
+            quantity: -it.quantity,
+            unitPrice: it.unitPrice,
+            referenceType: 'order',
+            referenceId: id,
+            referenceDocument: (data.prefix || 'SZ-ORD') + '-' + (data.documentNumber || id.substring(0, 8).toUpperCase()),
+            notes: `Venta directa en pedido ${(data.prefix || 'SZ-ORD')}-${data.documentNumber || id.substring(0, 8).toUpperCase()}`,
+            userName: data.customerName
+          });
+        }
+      }
+    } else {
+      // Existing order update: Check status transition
+      if (previousOrder) {
+        const wasPending = !isPaidOrderStatus(previousOrder.status) && !isCancelOrderStatus(previousOrder.status);
+        const nowPaid = isPaidOrderStatus(data.status);
+        const nowCancelled = isCancelOrderStatus(data.status);
+
+        if (wasPending && nowPaid) {
+          await consumeStockReservation(tx, id, 'Administrador');
+          data.reservationStatus = 'consumed';
+        } else if (wasPending && nowCancelled) {
+          await releaseStockReservation(tx, id, `Estado cambiado a ${data.status}`, data.status, 'Administrador');
+          data.reservationStatus = 'released';
+        }
+      }
+
+      await tx.update(orders).set(data).where(eq(orders.id, id));
+    }
+
+    // Replace order items
+    await tx.delete(orderItems).where(eq(orderItems.orderId, id));
+    for (const it of resolvedItems) {
+      await tx.insert(orderItems).values({
+        id: crypto.randomUUID(),
+        orderId: id,
+        partId: it.partDbId || (isValidUuid(it.part.id) ? it.part.id : null),
+        part: it.part,
+        quantity: it.quantity,
+        unitPrice: it.unitPrice,
+        lineTotal: it.lineTotal,
+        motorcycle: it.motorcycle || null
       }).onConflictDoNothing();
     }
   });
@@ -956,6 +1053,7 @@ export async function upsertOrderReturn(db: AppDb, body: any) {
 
     // Automatically mark the order as Cancelado in DB if it's an unpaid cancellation or pre-dispatch cancel
     if (data.isUnpaidCancel || data.isPreDispatchCancel || data.resolutionType === 'cancellation') {
+      await releaseStockReservation(tx, data.orderId, 'Cancelación / Desistimiento de pedido', 'Cancelado', data.customerName || 'Cliente');
       await tx.update(orders).set({ status: 'Cancelado' }).where(eq(orders.id, data.orderId));
     }
 
@@ -1383,6 +1481,401 @@ export async function upsertInventoryMovement(db: AppDb, body: any) {
 export async function deleteInventoryMovement(db: AppDb, id: string) {
   await db.delete(inventoryMovements).where(eq(inventoryMovements.id, id));
   return { id };
+}
+
+// ==========================================
+// INVENTORY RESERVATIONS & TTL SETTINGS
+// ==========================================
+
+export const DEFAULT_INVENTORY_RESERVATION_SETTINGS: InventoryReservationSettings = {
+  enabled: true,
+  defaultTtlMinutes: 60,
+  paymentMethodTtl: {
+    transferencia: 720, // 12 hours
+    bancolombia: 720,
+    davivienda: 720,
+    nequi: 120,        // 2 hours
+    daviplata: 120,    // 2 hours
+    wompi: 30,         // 30 mins
+    tarjeta: 30,       // 30 mins
+    pse: 30,           // 30 mins
+    contraentrega: 1440 // 24 hours
+  },
+  expiryAction: 'cancel'
+};
+
+export async function getInventoryReservationSettings(db: AppDb): Promise<InventoryReservationSettings> {
+  try {
+    const row = await db.select().from(siteSettings).where(eq(siteSettings.key, 'inventory.reservations')).limit(1);
+    if (row.length > 0 && row[0].value) {
+      const val = typeof row[0].value === 'string' ? JSON.parse(row[0].value) : row[0].value;
+      return {
+        enabled: typeof val.enabled === 'boolean' ? val.enabled : DEFAULT_INVENTORY_RESERVATION_SETTINGS.enabled,
+        defaultTtlMinutes: typeof val.defaultTtlMinutes === 'number' && val.defaultTtlMinutes > 0 ? val.defaultTtlMinutes : DEFAULT_INVENTORY_RESERVATION_SETTINGS.defaultTtlMinutes,
+        paymentMethodTtl: { ...DEFAULT_INVENTORY_RESERVATION_SETTINGS.paymentMethodTtl, ...(val.paymentMethodTtl || {}) },
+        expiryAction: val.expiryAction === 'expire' ? 'expire' : 'cancel'
+      };
+    }
+  } catch (err) {
+    console.error('Error fetching inventory reservation settings:', err);
+  }
+  return DEFAULT_INVENTORY_RESERVATION_SETTINGS;
+}
+
+export async function upsertInventoryReservationSettings(db: AppDb, body: Partial<InventoryReservationSettings>): Promise<InventoryReservationSettings> {
+  const current = await getInventoryReservationSettings(db);
+  const updated: InventoryReservationSettings = {
+    enabled: typeof body.enabled === 'boolean' ? body.enabled : current.enabled,
+    defaultTtlMinutes: typeof body.defaultTtlMinutes === 'number' && body.defaultTtlMinutes > 0 ? body.defaultTtlMinutes : current.defaultTtlMinutes,
+    paymentMethodTtl: body.paymentMethodTtl ? { ...current.paymentMethodTtl, ...body.paymentMethodTtl } : current.paymentMethodTtl,
+    expiryAction: body.expiryAction === 'expire' ? 'expire' : 'cancel'
+  };
+
+  const existing = await db.select().from(siteSettings).where(eq(siteSettings.key, 'inventory.reservations')).limit(1);
+  if (existing.length > 0) {
+    await db.update(siteSettings).set({
+      value: updated,
+      updatedAt: new Date()
+    }).where(eq(siteSettings.key, 'inventory.reservations'));
+  } else {
+    await db.insert(siteSettings).values({
+      id: crypto.randomUUID(),
+      key: 'inventory.reservations',
+      value: updated,
+      category: 'inventory',
+      description: 'Configuración de retención temporal y TTL de reservas de inventario',
+      updatedAt: new Date()
+    });
+  }
+
+  return updated;
+}
+
+export function calculateReservationTtlMinutes(settings: InventoryReservationSettings, paymentMethod?: string): number {
+  if (!paymentMethod) return settings.defaultTtlMinutes;
+  const cleanMethod = paymentMethod.toLowerCase().trim();
+  if (settings.paymentMethodTtl[cleanMethod] !== undefined) {
+    return Number(settings.paymentMethodTtl[cleanMethod]);
+  }
+  for (const [key, minutes] of Object.entries(settings.paymentMethodTtl)) {
+    if (cleanMethod.includes(key.toLowerCase()) || key.toLowerCase().includes(cleanMethod)) {
+      return Number(minutes);
+    }
+  }
+  return settings.defaultTtlMinutes;
+}
+
+export async function consumeStockReservation(
+  txOrDb: any,
+  orderId: string,
+  performerName: string = 'Sistema'
+) {
+  const activeRes = await txOrDb
+    .select()
+    .from(stockReservations)
+    .where(and(eq(stockReservations.orderId, orderId), eq(stockReservations.status, 'active')));
+
+  if (activeRes.length === 0) return { consumed: 0 };
+
+  const orderRows = await txOrDb.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  const order = orderRows[0] || null;
+  const docRef = order ? `${order.prefix || 'SZ-ORD'}-${order.documentNumber || order.id.substring(0, 8).toUpperCase()}` : orderId;
+
+  for (const res of activeRes) {
+    const partRows = await txOrDb.select().from(parts).where(eq(parts.id, res.partId)).for('update');
+    if (partRows.length > 0) {
+      const part = partRows[0];
+      const prevReserved = part.stockReserved ?? 0;
+      const newReserved = Math.max(0, prevReserved - res.quantity);
+
+      // Decrement reserved stock
+      await txOrDb.update(parts).set({
+        stockReserved: newReserved
+      }).where(eq(parts.id, res.partId));
+
+      // Record Kardex movement and safely deduct physical stock once
+      await recordInventoryMovement(txOrDb, {
+        partId: res.partId,
+        movementType: 'OUT_SALE',
+        quantity: -res.quantity,
+        unitPrice: part.price ?? 0,
+        referenceType: 'order',
+        referenceId: orderId,
+        referenceDocument: docRef,
+        notes: `Venta confirmada / pago aprobado en pedido ${docRef}`,
+        userName: order?.customerName || performerName
+      });
+    }
+
+    await txOrDb.update(stockReservations).set({
+      status: 'consumed',
+      updatedAt: new Date()
+    }).where(eq(stockReservations.id, res.id));
+  }
+
+  await txOrDb.update(orders).set({
+    reservationStatus: 'consumed'
+  }).where(eq(orders.id, orderId));
+
+  return { consumed: activeRes.length };
+}
+
+export async function releaseStockReservation(
+  txOrDb: any,
+  orderId: string,
+  reason: string = 'Reserva cancelada / expirada',
+  newOrderStatus?: string,
+  performerName: string = 'Sistema'
+) {
+  const activeRes = await txOrDb
+    .select()
+    .from(stockReservations)
+    .where(and(eq(stockReservations.orderId, orderId), eq(stockReservations.status, 'active')));
+
+  const orderRows = await txOrDb.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  const order = orderRows[0] || null;
+
+  for (const res of activeRes) {
+    const partRows = await txOrDb.select().from(parts).where(eq(parts.id, res.partId)).for('update');
+    if (partRows.length > 0) {
+      const part = partRows[0];
+      const prevReserved = part.stockReserved ?? 0;
+      const newReserved = Math.max(0, prevReserved - res.quantity);
+
+      await txOrDb.update(parts).set({
+        stockReserved: newReserved
+      }).where(eq(parts.id, res.partId));
+    }
+
+    const isExpired = reason.toLowerCase().includes('expir') || reason.toLowerCase().includes('vencid');
+    await txOrDb.update(stockReservations).set({
+      status: isExpired ? 'expired' : 'released',
+      updatedAt: new Date()
+    }).where(eq(stockReservations.id, res.id));
+  }
+
+  const isExpired = reason.toLowerCase().includes('expir') || reason.toLowerCase().includes('vencid');
+  const updateOrderData: any = {
+    reservationStatus: isExpired ? 'expired' : 'released'
+  };
+  if (newOrderStatus) {
+    updateOrderData.status = newOrderStatus;
+  }
+
+  if (order) {
+    const timeStamp = new Date().toLocaleString('es-CO');
+    const existingNotes = order.notes || '';
+    const noteEntry = `[${timeStamp}] Liberación de reserva: ${reason} (por ${performerName}).`;
+    updateOrderData.notes = existingNotes ? `${existingNotes}\n${noteEntry}` : noteEntry;
+  }
+
+  await txOrDb.update(orders).set(updateOrderData).where(eq(orders.id, orderId));
+
+  return { released: activeRes.length };
+}
+
+export async function extendStockReservation(
+  db: AppDb,
+  params: {
+    orderId: string;
+    additionalMinutes: number;
+    reason?: string;
+    adminName?: string;
+  }
+) {
+  const { orderId, additionalMinutes, reason = 'Solicitud de prórroga del cliente', adminName = 'Administrador' } = params;
+  if (!orderId) throw new Error('ID del pedido es requerido');
+  if (!additionalMinutes || additionalMinutes <= 0) throw new Error('El tiempo adicional en minutos debe ser mayor a 0');
+
+  let result: any = null;
+
+  await db.transaction(async (tx) => {
+    const orderRows = await tx.select().from(orders).where(eq(orders.id, orderId)).for('update');
+    if (orderRows.length === 0) throw new Error(`Pedido con ID ${orderId} no encontrado`);
+    const order = orderRows[0];
+
+    const reservations = await tx.select().from(stockReservations).where(eq(stockReservations.orderId, orderId));
+    
+    // Base time: maximum between current expiry and now
+    const baseDate = order.reservationExpiresAt && new Date(order.reservationExpiresAt).getTime() > Date.now()
+      ? new Date(order.reservationExpiresAt).getTime()
+      : Date.now();
+    
+    const newExpiresAt = new Date(baseDate + additionalMinutes * 60 * 1000);
+
+    const activeRes = reservations.filter(r => r.status === 'active');
+    if (activeRes.length === 0 && (order.reservationStatus === 'expired' || order.reservationStatus === 'released' || order.status === 'Cancelado' || order.status === 'Expirado')) {
+      // Re-reserve items if available
+      const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+      for (const it of items) {
+        if (!it.partId) continue;
+        const partRows = await tx.select().from(parts).where(eq(parts.id, it.partId)).for('update');
+        if (partRows.length > 0) {
+          const part = partRows[0];
+          const available = Math.max(0, (part.stock ?? 0) - (part.stockReserved ?? 0));
+          if (available < it.quantity) {
+            throw new Error(`No es posible reactivar la reserva: "${part.name}" solo tiene ${available} unidades disponibles.`);
+          }
+          await tx.update(parts).set({
+            stockReserved: (part.stockReserved ?? 0) + it.quantity
+          }).where(eq(parts.id, it.partId));
+
+          await tx.insert(stockReservations).values({
+            id: crypto.randomUUID(),
+            orderId,
+            partId: it.partId,
+            quantity: it.quantity,
+            status: 'active',
+            expiresAt: newExpiresAt,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
+        }
+      }
+      await tx.update(orders).set({
+        status: 'Pendiente de pago'
+      }).where(eq(orders.id, orderId));
+    } else {
+      for (const res of activeRes) {
+        await tx.update(stockReservations).set({
+          expiresAt: newExpiresAt,
+          status: 'active',
+          updatedAt: new Date()
+        }).where(eq(stockReservations.id, res.id));
+      }
+    }
+
+    const timeStamp = new Date().toLocaleString('es-CO');
+    const hours = (additionalMinutes / 60).toFixed(1);
+    const noteEntry = `[${timeStamp}] Prórroga de reserva: +${additionalMinutes} min (~${hours}h) hasta ${newExpiresAt.toLocaleString('es-CO')}. Motivo: ${reason}. Autorizado por: ${adminName}.`;
+    const existingNotes = order.notes || '';
+    const updatedNotes = existingNotes ? `${existingNotes}\n${noteEntry}` : noteEntry;
+
+    await tx.update(orders).set({
+      reservationExpiresAt: newExpiresAt,
+      reservationStatus: 'active',
+      notes: updatedNotes
+    }).where(eq(orders.id, orderId));
+
+    result = {
+      orderId,
+      newExpiresAt: newExpiresAt.toISOString(),
+      additionalMinutes,
+      message: `Reserva extendida exitosamente hasta ${newExpiresAt.toLocaleString('es-CO')}`
+    };
+  });
+
+  return result;
+}
+
+export async function expireOverdueReservations(db: AppDb) {
+  const now = new Date();
+  const settings = await getInventoryReservationSettings(db);
+  if (!settings.enabled) return { expiredCount: 0, ordersProcessed: [] };
+
+  const overdueReservations = await db
+    .select()
+    .from(stockReservations)
+    .where(and(eq(stockReservations.status, 'active'), lte(stockReservations.expiresAt, now)));
+
+  if (overdueReservations.length === 0) return { expiredCount: 0, ordersProcessed: [] };
+
+  const orderIds = Array.from(new Set(overdueReservations.map(r => r.orderId)));
+  const processed: string[] = [];
+
+  const targetOrderStatus = settings.expiryAction === 'expire' ? 'Expirado' : 'Cancelado';
+
+  for (const orderId of orderIds) {
+    try {
+      await db.transaction(async (tx) => {
+        const orderRows = await tx.select().from(orders).where(eq(orders.id, orderId)).for('update');
+        if (orderRows.length === 0) return;
+        const order = orderRows[0];
+
+        const isPending = !order.status.toLowerCase().includes('pagad') &&
+                          !order.status.toLowerCase().includes('enviad') &&
+                          !order.status.toLowerCase().includes('entregad') &&
+                          !order.status.toLowerCase().includes('complet');
+
+        if (isPending) {
+          await releaseStockReservation(
+            tx,
+            orderId,
+            'Expiración automática por tiempo de retención (TTL) vencido',
+            targetOrderStatus,
+            'Sistema (Cron Automático)'
+          );
+          processed.push(orderId);
+        } else {
+          await consumeStockReservation(tx, orderId, 'Sistema');
+        }
+      });
+    } catch (err) {
+      console.error(`Error procesando expiración de pedido ${orderId}:`, err);
+    }
+  }
+
+  return {
+    expiredCount: processed.length,
+    ordersProcessed: processed
+  };
+}
+
+export async function getActiveStockReservations(db: AppDb): Promise<StockReservation[]> {
+  try {
+    await expireOverdueReservations(db);
+  } catch {}
+
+  const allReservations = await db
+    .select({
+      id: stockReservations.id,
+      orderId: stockReservations.orderId,
+      partId: stockReservations.partId,
+      quantity: stockReservations.quantity,
+      status: stockReservations.status,
+      expiresAt: stockReservations.expiresAt,
+      createdAt: stockReservations.createdAt,
+      updatedAt: stockReservations.updatedAt,
+      orderCustomer: orders.customerName,
+      orderPaymentMethod: orders.paymentMethod,
+      orderStatus: orders.status,
+      orderPrefix: orders.prefix,
+      orderDocNumber: orders.documentNumber,
+      partName: parts.name,
+      partSku: parts.sku,
+      partImage: parts.image
+    })
+    .from(stockReservations)
+    .leftJoin(orders, eq(stockReservations.orderId, orders.id))
+    .leftJoin(parts, eq(stockReservations.partId, parts.id))
+    .orderBy(desc(stockReservations.createdAt));
+
+  const now = Date.now();
+
+  return allReservations.map(r => {
+    const expTime = r.expiresAt ? new Date(r.expiresAt).getTime() : now;
+    const remainingSeconds = Math.max(0, Math.floor((expTime - now) / 1000));
+    const isExpired = remainingSeconds <= 0;
+
+    return {
+      id: r.id,
+      orderId: r.orderId,
+      partId: r.partId,
+      partName: r.partName || 'Repuesto',
+      partSku: r.partSku || '',
+      partImage: r.partImage || '',
+      orderDocumentNumber: `${r.orderPrefix || 'SZ-ORD'}-${r.orderDocNumber || r.orderId.substring(0, 8).toUpperCase()}`,
+      customerName: r.orderCustomer || 'Cliente',
+      paymentMethod: r.orderPaymentMethod || 'transferencia',
+      quantity: r.quantity,
+      status: (isExpired && r.status === 'active' ? 'expired' : r.status) as any,
+      expiresAt: r.expiresAt?.toISOString() || new Date().toISOString(),
+      createdAt: r.createdAt?.toISOString() || new Date().toISOString(),
+      updatedAt: r.updatedAt?.toISOString() || new Date().toISOString(),
+      isExpired,
+      remainingSeconds
+    };
+  });
 }
 
 

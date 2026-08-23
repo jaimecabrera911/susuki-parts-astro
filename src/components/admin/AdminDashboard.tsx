@@ -993,13 +993,25 @@ export const AdminDashboard: React.FC = () => {
                   ? "Gestión de Categorías & Subcategorías"
                   : activeTab === "parts"
                     ? "Catálogo de Repuestos"
-                    : activeTab === "schematics"
-                      ? "Despieces Explosión"
-                      : activeTab === "orders"
-                        ? "Gestión de Pedidos"
-                        : activeTab === "users"
-                          ? "Gestión de Usuarios"
-                          : "Métricas & Informes"
+                    : activeTab === "kardex"
+                      ? "Kardex & Control de Inventario"
+                      : activeTab === "schematics"
+                        ? "Despieces Explosión"
+                        : activeTab === "orders"
+                          ? "Gestión de Pedidos"
+                          : activeTab === "returns"
+                            ? "Devoluciones & RMA"
+                            : activeTab === "users"
+                              ? "Gestión de Usuarios"
+                              : activeTab === "shipping"
+                                ? "Métodos de Envío"
+                                : activeTab === "payments"
+                                  ? "Medios de Pago"
+                                  : activeTab === "settings"
+                                    ? "Configuración de Tienda"
+                                    : activeTab === "coupons"
+                                      ? "Cupones & Descuentos"
+                                      : "Métricas & Informes"
           }
           subtitle={
             activeTab === "brands"
@@ -1010,15 +1022,25 @@ export const AdminDashboard: React.FC = () => {
                   ? "Administra la estructura jerárquica de categorías principales y subcategorías de repuestos"
                   : activeTab === "parts"
                     ? "Administra el catálogo oficial de repuestos OEM, precios, existencias y matriz de compatibilidad"
-                    : activeTab === "schematics"
-                      ? "Administra diagramas exploded-view y puntos hotspots interactivos vinculados a repuestos"
-                      : activeTab === "orders"
-                        ? "Administra el procesamiento de pedidos, guías de envío y estados de logística"
-                        : activeTab === "users"
-                          ? "Administra las cuentas de usuarios registrados, roles y permisos de acceso"
-                          : getStoreName()
-                            ? `Sistema administrativo ${getStoreName()}`
-                            : "Sistema administrativo"
+                    : activeTab === "kardex"
+                      ? "Historial de movimientos, auditoría de entradas/salidas, valoración de existencias y costo promedio"
+                      : activeTab === "schematics"
+                        ? "Administra diagramas exploded-view y puntos hotspots interactivos vinculados a repuestos"
+                        : activeTab === "orders"
+                          ? "Administra el procesamiento de pedidos, guías de envío y estados de logística"
+                          : activeTab === "returns"
+                            ? "Administración de garantías, devoluciones de producto y reembolsos a clientes"
+                            : activeTab === "users"
+                              ? "Administra las cuentas de usuarios registrados, roles y permisos de acceso"
+                              : activeTab === "shipping"
+                                ? "Configuración de transportadoras, zonas de despacho, ciudades y tarifas"
+                                : activeTab === "payments"
+                                  ? "Configuración de pasarelas de pago, Wompi, transferencias y reservas temporales de stock"
+                                  : activeTab === "settings"
+                                    ? "Configuración general, SEO, branding, localización y políticas de la tienda"
+                                    : activeTab === "coupons"
+                                      ? "Administración de promociones, códigos de descuento y campañas comerciales"
+                                      : "Estadísticas de ventas, pedidos, rotación de inventario y comportamiento de clientes"
           }
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -1272,6 +1294,7 @@ export const AdminDashboard: React.FC = () => {
             activeTab !== "models" &&
             activeTab !== "categories" &&
             activeTab !== "parts" &&
+            activeTab !== "kardex" &&
             activeTab !== "schematics" &&
             activeTab !== "orders" &&
             activeTab !== "returns" &&

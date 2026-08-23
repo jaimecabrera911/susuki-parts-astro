@@ -519,8 +519,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     let finalOrder = newOrder;
 
     try {
-      // 1. Save to Neon DB via API
+      // 1. Save to Neon DB via API (handles ACID stock reservation)
       const res = await saveOrderApi(newOrder);
+      if (!res?.success) {
+        setErrorMessage(res?.error || "No fue posible procesar tu pedido. Verifica la disponibilidad de inventario.");
+        setIsSubmitting(false);
+        return;
+      }
       if (res?.data) {
         finalOrder = { ...newOrder, ...res.data };
       }
@@ -531,8 +536,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
         "sz_user_orders",
         JSON.stringify([finalOrder, ...stored.filter((o: any) => o.id !== finalOrder.id)]),
       );
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error guardando pedido en BD:", err);
+      setErrorMessage(err?.message || "Ocurrió un error al procesar el pedido. Por favor intenta nuevamente.");
+      setIsSubmitting(false);
+      return;
     }
 
     setCompletedOrder(finalOrder);

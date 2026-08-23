@@ -511,6 +511,105 @@ export async function deleteKardexMovementApi(id: string) {
   return json.data;
 }
 
+// INVENTORY RESERVATIONS API METHODS
+
+export async function fetchStockReservations() {
+  const res = await fetch('/api/inventory/reservations', {
+    headers: getAuthHeaders()
+  });
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Error cargando reservas de stock');
+  return {
+    reservations: json.data || [],
+    stats: json.stats || { totalActive: 0, totalReservedUnits: 0, totalExpired: 0 }
+  };
+}
+
+export async function fetchInventoryReservationSettings() {
+  const res = await fetch('/api/inventory/reservations?action=settings', {
+    headers: getAuthHeaders()
+  });
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Error cargando configuración de reservas');
+  return json.data;
+}
+
+export async function saveInventoryReservationSettingsApi(settings: any) {
+  const res = await fetch('/api/inventory/reservations', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify({
+      action: 'settings',
+      settings
+    })
+  });
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Error guardando configuración de reservas');
+  return json.data;
+}
+
+export async function expireOverdueReservationsApi() {
+  const res = await fetch('/api/inventory/reservations', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify({
+      action: 'expire_overdue'
+    })
+  });
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Error ejecutando expiración de reservas');
+  return json;
+}
+
+export async function extendStockReservationApi(params: {
+  orderId: string;
+  additionalMinutes: number;
+  reason?: string;
+}) {
+  const res = await fetch('/api/inventory/reservations', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify({
+      action: 'extend',
+      ...params
+    })
+  });
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Error extendiendo tiempo de reserva');
+  return json;
+}
+
+export async function releaseStockReservationApi(params: {
+  orderId: string;
+  reason?: string;
+  status?: string;
+}) {
+  const res = await fetch('/api/inventory/reservations', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify({
+      action: 'release',
+      ...params
+    })
+  });
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Error liberando reserva de stock');
+  return json;
+}
+
+
 
 
 

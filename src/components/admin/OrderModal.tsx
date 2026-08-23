@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, ShoppingCart, User, MapPin, Truck, ShieldCheck, CheckCircle2, Clock, Package, AlertCircle, FileText, ExternalLink, Lock, Globe, Send, MessageSquare, Eye, Edit } from 'lucide-react';
 import type { Order, OrderStatus, OrderMessage } from '../../types';
+import { isPaidOrderStatus } from '../../types';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDocumentNumber } from '../../utils/formatDocumentNumber';
 import { formatOrderDate } from '../../utils/formatDate';
-import { fetchDefaultCarrierName, sendOrderMessageApi } from '../../services/api';
+import { fetchDefaultCarrierName, sendOrderMessageApi, extendStockReservationApi } from '../../services/api';
 import { parseOrderNotes, formatOrderMessageTime } from '../../utils/orderNotes';
 import { getStoredUser } from '../../utils/auth';
 import { getCarrierTrackingUrl } from '../../utils/tracking';
@@ -57,6 +58,60 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [trackingNumber, setTrackingNumber] = useState<string>(order.trackingNumber || '');
   const [trackingUrl, setTrackingUrl] = useState<string>(order.trackingUrl || '');
   const [notes, setNotes] = useState<string>(order.notes || '');
+
+  // Stock Reservation Extension State
+  const [currentExpiresAt, setCurrentExpiresAt] = useState<string | undefined>(order.reservationExpiresAt);
+  const [showExtendPanel, setShowExtendPanel] = useState<boolean>(false);
+  const [extendMinutes, setExtendMinutes] = useState<number>(60);
+  const [extendReason, setExtendReason] = useState<string>('Solicitud de prórroga concedida por administrador');
+  const [isExtendingRes, setIsExtendingRes] = useState<boolean>(false);
+  const [remainingResSecs, setRemainingResSecs] = useState<number>(0);
+
+  useEffect(() => {
+    setCurrentExpiresAt(order.reservationExpiresAt);
+  }, [order.reservationExpiresAt]);
+
+  useEffect(() => {
+    if (!currentExpiresAt) return;
+    const calculateRemaining = () => {
+      const diff = Math.max(0, Math.floor((new Date(currentExpiresAt).getTime() - Date.now()) / 1000));
+      setRemainingResSecs(diff);
+    };
+    calculateRemaining();
+    const timer = setInterval(calculateRemaining, 1000);
+    return () => clearInterval(timer);
+  }, [currentExpiresAt]);
+
+  const handleExtendReservation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!order.id || isExtendingRes) return;
+    setIsExtendingRes(true);
+    try {
+      const res = await extendStockReservationApi({
+        orderId: order.id,
+        additionalMinutes: extendMinutes,
+        reason: extendReason
+      });
+      if (res.success && res.data?.newExpiresAt) {
+        setCurrentExpiresAt(res.data.newExpiresAt);
+        setShowExtendPanel(false);
+        const timeStamp = new Date().toLocaleString('es-CO');
+        const noteText = `[${timeStamp}] Prórroga de reserva: +${extendMinutes} min hasta ${new Date(res.data.newExpiresAt).toLocaleString('es-CO')}. Motivo: ${extendReason}.`;
+        const updatedNotes = notes ? `${notes}\n${noteText}` : noteText;
+        setNotes(updatedNotes);
+        onSaveOrder({
+          ...order,
+          reservationExpiresAt: res.data.newExpiresAt,
+          reservationStatus: 'active',
+          notes: updatedNotes
+        });
+      }
+    } catch (err) {
+      console.error('Error extendiendo reserva:', err);
+    } finally {
+      setIsExtendingRes(false);
+    }
+  };
 
   // Admin Order Chat & Private Notes State
   const [orderMessages, setOrderMessages] = useState<OrderMessage[]>([]);
@@ -248,6 +303,155 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             </div>
 
           </div>
+
+          {/* Stock Reservation & TTL Banner */}
+          {(currentExpiresAt || order.reservationStatus) && (
+            <div className={`p-4 rounded-2xl border space-y-3 ${
+              order.reservationStatus === 'consumed' || isPaidOrderStatus(order.status)
+                ? 'bg-emerald-50/70 border-emerald-200/80'
+                : order.reservationStatus === 'released'
+                  ? 'bg-red-50/70 border-red-200/80'
+                  : 'bg-amber-50/70 border-amber-200/80'
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl text-white flex items-center justify-center font-black shrink-0 shadow-xs ${
+                    order.reservationStatus === 'consumed' || isPaidOrderStatus(order.status)
+                      ? 'bg-emerald-600'
+                      : order.reservationStatus === 'released'
+                        ? 'bg-red-600'
+                        : 'bg-amber-500'
+                  }`}>
+                    {order.reservationStatus === 'consumed' || isPaidOrderStatus(order.status) ? (
+                      <CheckCircle2 className="w-5 h-5" />
+                    ) : (
+                      <Clock className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-slate-900 uppercase font-mono tracking-wider">
+                        Reserva Temporal de Inventario
+                      </span>
+                      {order.reservationStatus === 'consumed' || isPaidOrderStatus(order.status) ? (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold font-mono">
+                          ✓ Stock Descontado (Venta)
+                        </span>
+                      ) : remainingResSecs > 0 ? (
+                        <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] font-black font-mono animate-pulse">
+                          ⏳ Activa ({Math.floor(remainingResSecs / 3600)}h {Math.floor((remainingResSecs % 3600) / 60)}m {remainingResSecs % 60}s)
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 text-[10px] font-bold font-mono">
+                          ⚠ Expirada / Liberada
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-600 font-sans mt-0.5">
+                      {order.reservationStatus === 'consumed' || isPaidOrderStatus(order.status)
+                        ? 'El pago fue confirmado y las unidades se descontaron definitivamente del inventario físico.'
+                        : currentExpiresAt ? `Límite de pago: ${formatOrderDate(currentExpiresAt)}` : 'Sin fecha límite registrada.'}
+                    </p>
+                  </div>
+                </div>
+
+                {order.reservationStatus !== 'consumed' && !isPaidOrderStatus(order.status) && (
+                  <button
+                    type="button"
+                    onClick={() => setShowExtendPanel(!showExtendPanel)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold uppercase tracking-wider transition-all shadow-xs cursor-pointer"
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>{showExtendPanel ? 'Cerrar Panel' : '⏳ Extender Reserva'}</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Inline Extension Form */}
+              {showExtendPanel && (
+                <div className="pt-3 border-t border-amber-200/60 bg-white/80 p-4 rounded-xl space-y-3">
+                  <span className="text-xs font-bold text-slate-800 uppercase font-mono block">
+                    Conceder Prórroga de Tiempo al Cliente
+                  </span>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {[
+                      { label: '+30 Min', mins: 30 },
+                      { label: '+2 Horas', mins: 120 },
+                      { label: '+12 Horas', mins: 720 },
+                      { label: '+24 Horas', mins: 1440 },
+                      { label: '+48 Horas', mins: 2880 },
+                      { label: '+72 Horas', mins: 4320 },
+                    ].map((btn) => (
+                      <button
+                        key={btn.mins}
+                        type="button"
+                        onClick={() => setExtendMinutes(btn.mins)}
+                        className={`py-1.5 px-2 rounded-lg text-[10px] font-mono font-bold transition-all border cursor-pointer ${
+                          extendMinutes === btn.mins
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                            : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                        }`}
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase font-mono mb-1">
+                        Minutos adicionales personalizados
+                      </label>
+                      <input
+                        type="number"
+                        min="5"
+                        value={extendMinutes}
+                        onChange={(e) => setExtendMinutes(parseInt(e.target.value, 10) || 30)}
+                        className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-mono font-bold text-slate-900 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase font-mono mb-1">
+                        Motivo / Justificación
+                      </label>
+                      <input
+                        type="text"
+                        value={extendReason}
+                        onChange={(e) => setExtendReason(e.target.value)}
+                        className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-sans text-slate-900 bg-white"
+                        placeholder="Ej: Cliente solicitó plazo por transferencia"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowExtendPanel(false)}
+                      className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg font-bold"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleExtendReservation}
+                      disabled={isExtendingRes}
+                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold uppercase rounded-lg shadow-xs cursor-pointer disabled:opacity-60 flex items-center gap-1.5"
+                    >
+                      {isExtendingRes ? (
+                        <>
+                          <Clock className="w-3.5 h-3.5 animate-spin" />
+                          <span>Guardando...</span>
+                        </>
+                      ) : (
+                        <span>Aplicar Prórroga</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Items Purchased Table */}
           <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-3 shadow-xs">

@@ -67,14 +67,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       status: (await fetchDefaultStatusName()) || "Pendiente de pago",
     };
 
+    let finalOrder = order;
     try {
-      await saveOrderApi(order);
+      const res = await saveOrderApi(order);
+      if (res?.data) {
+        finalOrder = { ...order, ...res.data };
+      }
     } catch (err) {
       console.error("Error guardando orden en BD:", err);
     }
 
-    setCompletedOrder(order);
-    onOrderComplete(order);
+    setCompletedOrder(finalOrder);
+    onOrderComplete(finalOrder);
     setIsSubmitting(false);
   };
 

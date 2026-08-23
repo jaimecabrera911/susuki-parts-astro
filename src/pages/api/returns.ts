@@ -77,7 +77,22 @@ export const POST: APIRoute = async ({ request }) => {
       throw new Error('Faltan datos obligatorios para registrar la devolución (orderId, customerName, email, reason)');
     }
 
-    // Check if order exists and validate return window if orderDate is passed
+    // 1. Fetch order from DB to verify real status and payment state
+    const orderRows = await db.select().from(orders).where(eq(orders.id, body.orderId)).limit(1);
+    if (orderRows.length === 0) {
+      throw new Error(`El pedido solicitado no existe en la base de datos.`);
+    }
+
+    const orderRecord = orderRows[0];
+    const statusLower = (orderRecord.status || '').toLowerCase();
+    const isUnpaid = statusLower.includes('pendiente') || statusLower.includes('cancelad') || statusLower.includes('expirad') || statusLower.includes('anulad');
+
+    // 2. Reject financial refunds/returns on unpaid orders
+    if (isUnpaid && !body.isUnpaidCancel && body.resolutionType !== 'cancellation') {
+      throw new Error(`No es posible solicitar devolución ni reembolso de dinero para un pedido en estado "${orderRecord.status}". El pedido aún no ha sido pagado.`);
+    }
+
+    // 3. Check return window if orderDate is passed
     if (body.orderDate) {
       const orderTime = new Date(body.orderDate).getTime();
       if (!isNaN(orderTime)) {

@@ -172,6 +172,52 @@ export const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
     }
   };
 
+  const statusLower = (order.status || '').toLowerCase();
+  const isUnpaid = statusLower.includes('pendiente') || statusLower.includes('cancelad') || statusLower.includes('expirad') || statusLower.includes('anulad');
+
+  const handleCancelUnpaidOrder = async () => {
+    try {
+      setSubmitting(true);
+      setErrorMessage('');
+      const payload = {
+        orderId: order.id,
+        orderDate: order.date,
+        customerName: order.customerName,
+        email: order.email,
+        phone: order.phone,
+        documentId: order.documentId || '',
+        reason: 'Anulación de pedido no pagado por solicitud del cliente',
+        resolutionType: 'cancellation',
+        isUnpaidCancel: true,
+        refundAmount: 0,
+        bonusAmount: 0,
+        evidencePhotos: [],
+        itemDetailsJson: order.items || [],
+        itemsJson: order.items || [],
+        notes: 'Cancelación voluntaria de reserva sin cobro.'
+      };
+
+      const res = await fetch('/api/returns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Error anulando el pedido.');
+      }
+
+      setCreatedRmaId(data.data?.id || 'SZ-CAN-CONFIRMED');
+      setStep(4);
+      onSuccess();
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Ocurrió un error anulando el pedido');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div
       id="return-request-modal"
@@ -202,34 +248,90 @@ export const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
           </button>
         </div>
 
-        {/* Wizard Progress Bar */}
-        {step < 4 && (
-          <div className="px-6 pt-4 pb-2 bg-white border-b border-slate-100">
-            <div className="flex items-center justify-between text-xs font-mono font-bold text-slate-400 mb-2">
-              <span className={step >= 1 ? 'text-[#0A3088]' : ''}>1. Repuestos</span>
-              <span className={step >= 2 ? 'text-[#0A3088]' : ''}>2. Motivo & Evidencia</span>
-              <span className={step >= 3 ? 'text-[#0A3088]' : ''}>3. Solución & Beneficio</span>
+        {/* Unpaid Order Guard View */}
+        {isUnpaid && step < 4 ? (
+          <div className="p-8 text-center space-y-5">
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto shadow-xs">
+              <ShieldAlert className="w-8 h-8" />
             </div>
-            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-[#0A3088] to-[#E60012] transition-all duration-300"
-                style={{ width: `${(step / 3) * 100}%` }}
-              />
+            <div>
+              <span className="text-xs font-mono font-bold uppercase px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                Estado: {order.status}
+              </span>
+              <h4 className="text-lg font-black text-slate-900 font-display mt-3">
+                Pedido sin Pago Confirmado
+              </h4>
+              <p className="text-xs text-slate-600 max-w-md mx-auto mt-2 font-sans leading-relaxed">
+                No es posible tramitar reembolsos de dinero ni garantías sobre un pedido que aún no ha sido pagado. 
+                {statusLower.includes('pendiente') 
+                  ? ' Si deseas desistir de la compra, puedes anular la orden para liberar de inmediato el stock retenido sin ningún costo.'
+                  : ' Esta orden ya fue cancelada o expirada previamente.'}
+              </p>
+            </div>
+
+            {errorMessage && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs text-left">
+                {errorMessage}
+              </div>
+            )}
+
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold uppercase hover:bg-slate-50 transition-colors"
+              >
+                Cerrar
+              </button>
+              {statusLower.includes('pendiente') && (
+                <button
+                  type="button"
+                  onClick={handleCancelUnpaidOrder}
+                  disabled={submitting}
+                  className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-red-500/20 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                >
+                  {submitting ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Anulando...</span>
+                    </>
+                  ) : (
+                    <span>🚫 Anular Pedido ($0 COP)</span>
+                  )}
+                </button>
+              )}
             </div>
           </div>
-        )}
+        ) : (
+          <>
+            {/* Wizard Progress Bar */}
+            {step < 4 && (
+              <div className="px-6 pt-4 pb-2 bg-white border-b border-slate-100">
+                <div className="flex items-center justify-between text-xs font-mono font-bold text-slate-400 mb-2">
+                  <span className={step >= 1 ? 'text-[#0A3088]' : ''}>1. Repuestos</span>
+                  <span className={step >= 2 ? 'text-[#0A3088]' : ''}>2. Motivo & Evidencia</span>
+                  <span className={step >= 3 ? 'text-[#0A3088]' : ''}>3. Solución & Beneficio</span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-[#0A3088] to-[#E60012] transition-all duration-300"
+                    style={{ width: `${(step / 3) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
 
-        {/* Modal Body */}
-        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-          {errorMessage && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-xs font-medium flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 flex-shrink-0 text-red-600 mt-0.5" />
-              <div>{errorMessage}</div>
-            </div>
-          )}
+            {/* Modal Body */}
+            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+              {errorMessage && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-xs font-medium flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 flex-shrink-0 text-red-600 mt-0.5" />
+                  <div>{errorMessage}</div>
+                </div>
+              )}
 
-          {/* STEP 1: Select Items */}
-          {step === 1 && (
+              {/* STEP 1: Select Items */}
+              {step === 1 && (
             <div className="space-y-4">
               <div>
                 <h4 className="text-base font-black text-slate-900 font-display">Selecciona los repuestos a devolver</h4>
@@ -613,6 +715,8 @@ export const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
               </button>
             )}
           </div>
+        )}
+        </>
         )}
 
       </div>

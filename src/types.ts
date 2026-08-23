@@ -77,19 +77,56 @@ export const getAvailabilityStatus = (
   return part.stock > 0 ? 'in_stock' : 'on_order';
 };
 
-/** Referencia OEM principal (primera en el array). */
-export const getPrimaryOem = (part: Pick<SuzukiPart, 'oemNumbers'>): string =>
-  part.oemNumbers[0] ?? '';
+/** Referencia OEM principal (primera en el array) con fallback seguro a oemNumber, sku o vacío. */
+export const getPrimaryOem = (part?: Partial<SuzukiPart> | { oemNumbers?: string[]; sku?: string } | null): string => {
+  if (!part) return '';
+  if (Array.isArray(part.oemNumbers) && part.oemNumbers.length > 0 && part.oemNumbers[0]) {
+    return part.oemNumbers[0];
+  }
+  if (typeof (part as any).oemNumber === 'string' && (part as any).oemNumber) {
+    return (part as any).oemNumber;
+  }
+  return part.sku || '';
+};
 
 /**
  * Busca si un texto coincide con CUALQUIER referencia OEM o código interno SKU del repuesto.
  * Búsqueda case-insensitive, trimming de espacios.
  */
-export const matchesOem = (part: Pick<SuzukiPart, 'oemNumbers' | 'sku'>, query: string): boolean => {
+export const matchesOem = (part?: Partial<SuzukiPart> | { oemNumbers?: string[]; sku?: string } | null, query?: string): boolean => {
+  if (!query) return true;
   const q = query.trim().toLowerCase();
   if (!q) return true;
+  if (!part) return false;
   if (part.sku && part.sku.toLowerCase().includes(q)) return true;
-  return part.oemNumbers.some(oem => oem.toLowerCase().includes(q));
+  if (Array.isArray(part.oemNumbers)) {
+    return part.oemNumbers.some(oem => typeof oem === 'string' && oem.toLowerCase().includes(q));
+  }
+  if (typeof (part as any).oemNumber === 'string') {
+    return (part as any).oemNumber.toLowerCase().includes(q);
+  }
+  return false;
+};
+
+/**
+ * Determina si el estado de una orden corresponde a un pedido con pago/procesamiento activo (no pendiente ni cancelado).
+ */
+export const isPaidOrderStatus = (statusStr?: string | null): boolean => {
+  if (!statusStr) return false;
+  const s = statusStr.trim().toLowerCase();
+  if (s.includes('pendiente') || s.includes('cancel') || s.includes('expir') || s.includes('rechaz') || s.includes('anulad')) {
+    return false;
+  }
+  return s.includes('pago') || s.includes('pagad') || s.includes('confirmad') || s.includes('preparaci') || s.includes('despach') || s.includes('enviad') || s.includes('tránsito') || s.includes('transito') || s.includes('entregad') || s.includes('complet') || s.includes('aprobad') || s.includes('verificad');
+};
+
+/**
+ * Determina si el estado de una orden corresponde a una orden cancelada, expirada o anulada.
+ */
+export const isCancelOrderStatus = (statusStr?: string | null): boolean => {
+  if (!statusStr) return false;
+  const s = statusStr.trim().toLowerCase();
+  return s.includes('cancel') || s.includes('expir') || s.includes('rechaz') || s.includes('anulad');
 };
 
 export interface SuzukiPart {
@@ -102,6 +139,7 @@ export interface SuzukiPart {
   price: number;
   cost?: number;
   stock: number;
+  stockReserved?: number;
   image: string;
   images?: string[];
   description: string;
@@ -383,6 +421,34 @@ export interface Order {
   trackingNumber?: string;
   trackingUrl?: string;
   notes?: string;
+  reservationExpiresAt?: string;
+  reservationStatus?: 'active' | 'consumed' | 'released' | 'expired';
+}
+
+export interface StockReservation {
+  id: string;
+  orderId: string;
+  partId: string;
+  partName?: string;
+  partSku?: string;
+  partImage?: string;
+  orderDocumentNumber?: string;
+  customerName?: string;
+  paymentMethod?: string;
+  quantity: number;
+  status: 'active' | 'consumed' | 'released' | 'expired';
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+  isExpired?: boolean;
+  remainingSeconds?: number;
+}
+
+export interface InventoryReservationSettings {
+  enabled: boolean;
+  defaultTtlMinutes: number;
+  paymentMethodTtl: Record<string, number>;
+  expiryAction: 'cancel' | 'expire';
 }
 
 export interface OrderReturnItem {

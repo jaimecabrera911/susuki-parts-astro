@@ -6,7 +6,7 @@ import RDTable, {
   type PaginationOptions,
 } from 'react-data-table-component';
 import 'react-data-table-component/css';
-import { ListFilter, Check, X, Inbox, SlidersHorizontal, ArrowUpDown, Minus, Calendar } from 'lucide-react';
+import { ListFilter, Check, X, Inbox, SlidersHorizontal, ArrowUpDown, Minus, Calendar, Search } from 'lucide-react';
 import { formatThousands } from '../../utils/formatCurrency';
 
 createTheme(
@@ -183,7 +183,8 @@ export function DataTable<T>({
   actionsWidth,
   actionsAlign = 'left',
 }: DataTableProps<T>) {
-  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
+  const [filterSearchQuery, setFilterSearchQuery] = useState('');
   const [rangeFilters, setRangeFilters] = useState<Record<string, RangeBounds[]>>({});
   const [rangeDrafts, setRangeDrafts] = useState<Record<string, RangeDraft[]>>({});
   const [dateFilters, setDateFilters] = useState<Record<string, DateRangeBounds>>({});
@@ -192,6 +193,11 @@ export function DataTable<T>({
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  const hasActiveColumnFilter = (col: DataTableColumn<T>): boolean => {
+    const selected = columnFilters[col.key];
+    return Boolean(selected && selected.length > 0 && !selected.includes(ALL_VALUE));
+  };
 
   const hasActiveRange = (col: DataTableColumn<T>): boolean =>
     (rangeFilters[col.key] ?? []).some((b) => b.min !== undefined || b.max !== undefined);
@@ -202,8 +208,7 @@ export function DataTable<T>({
   const activeFilterCount = useMemo(
     () =>
       columns.filter((c) => {
-        const selectActive = columnFilters[c.key] && columnFilters[c.key] !== ALL_VALUE;
-        return Boolean(selectActive) || hasActiveRange(c) || hasActiveDateRange(c);
+        return hasActiveColumnFilter(c) || hasActiveRange(c) || hasActiveDateRange(c);
       }).length,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [columns, columnFilters, rangeFilters, dateFilters],
@@ -244,9 +249,11 @@ export function DataTable<T>({
             if (bounds.max !== undefined && v > bounds.max) return false;
           }
         }
-        const val = columnFilters[col.key];
-        if (!val || val === ALL_VALUE) continue;
-        if (!toMatch(row, col, val)) return false;
+        const selectedVals = columnFilters[col.key];
+        if (selectedVals && selectedVals.length > 0 && !selectedVals.includes(ALL_VALUE)) {
+          const matchesAny = selectedVals.some((v) => toMatch(row, col, v));
+          if (!matchesAny) return false;
+        }
       }
       return true;
     });
@@ -289,9 +296,16 @@ export function DataTable<T>({
   };
 
   const getSelectedLabel = (col: DataTableColumn<T>): string => {
-    const val = columnFilters[col.key];
-    const found = getMenuOptions(col).find((o) => o.value === val);
-    return found ? found.label : val;
+    const selected = columnFilters[col.key] || [];
+    if (selected.length === 0 || selected.includes(ALL_VALUE)) return 'Todos';
+    const options = getMenuOptions(col);
+    if (selected.length === 1) {
+      const found = options.find((o) => o.value === selected[0]);
+      return found ? found.label : selected[0];
+    }
+    const firstOpt = options.find((o) => o.value === selected[0]);
+    const firstLabel = firstOpt ? firstOpt.label : selected[0];
+    return `${firstLabel} (+${selected.length - 1})`;
   };
 
   const openFilterMenu = (e: React.MouseEvent<HTMLButtonElement>, colKey: string) => {
@@ -300,19 +314,59 @@ export function DataTable<T>({
       setMenuPos(null);
       return;
     }
+    setFilterSearchQuery('');
     const rect = e.currentTarget.getBoundingClientRect();
-    const menuHeight = 240;
+    const menuHeight = 320;
+    const menuWidth = 280;
     const top = rect.bottom + 4 + menuHeight > window.innerHeight
       ? Math.max(8, rect.top - menuHeight)
       : rect.bottom + 4;
-    setMenuPos({ top, left: Math.max(8, Math.min(rect.left, window.innerWidth - 240)) });
+    setMenuPos({ top, left: Math.max(8, Math.min(rect.left, window.innerWidth - menuWidth)) });
     setOpenCol(colKey);
   };
 
-  const selectFilter = (colKey: string, value: string) => {
-    setColumnFilters((prev) => ({ ...prev, [colKey]: value }));
-    setOpenCol(null);
-    setMenuPos(null);
+  const toggleFilterOption = (colKey: string, value: string) => {
+    if (value === ALL_VALUE) {
+      setColumnFilters((prev) => {
+        const next = { ...prev };
+        delete next[colKey];
+        return next;
+      });
+      return;
+    }
+
+    setColumnFilters((prev) => {
+      const current = (prev[colKey] || []).filter((v) => v !== ALL_VALUE);
+      let next: string[];
+      if (current.includes(value)) {
+        next = current.filter((v) => v !== value);
+      } else {
+        next = [...current, value];
+      }
+      if (next.length === 0) {
+        const copy = { ...prev };
+        delete copy[colKey];
+        return copy;
+      }
+      return { ...prev, [colKey]: next };
+    });
+  };
+
+  const selectAllVisible = (colKey: string, visibleValues: string[]) => {
+    const cleanVals = visibleValues.filter((v) => v !== ALL_VALUE);
+    setColumnFilters((prev) => {
+      const current = (prev[colKey] || []).filter((v) => v !== ALL_VALUE);
+      const set = new Set([...current, ...cleanVals]);
+      return { ...prev, [colKey]: Array.from(set) };
+    });
+  };
+
+  const clearColumnFilter = (colKey: string) => {
+    setColumnFilters((prev) => {
+      const next = { ...prev };
+      delete next[colKey];
+      return next;
+    });
   };
 
   const setRangeDraft = (colKey: string, index: number, field: 'min' | 'max', raw: string) => {
@@ -465,7 +519,7 @@ export function DataTable<T>({
               aria-expanded={openCol === col.key}
               onClick={(e) => openFilterMenu(e, col.key)}
               className={`p-1 rounded-md transition-colors cursor-pointer ${
-                (columnFilters[col.key] && columnFilters[col.key] !== ALL_VALUE) || hasActiveRange(col) || hasActiveDateRange(col)
+                hasActiveColumnFilter(col) || hasActiveRange(col) || hasActiveDateRange(col)
                   ? 'text-[#E60012] bg-red-50'
                   : 'text-slate-400 hover:text-[#E60012] hover:bg-slate-100'
               }`}
@@ -513,7 +567,7 @@ export function DataTable<T>({
             Filtros activos:
           </span>
           {columns
-            .filter((c) => columnFilters[c.key] && columnFilters[c.key] !== ALL_VALUE)
+            .filter((c) => hasActiveColumnFilter(c))
             .map((c) => (
               <span
                 key={c.key}
@@ -526,7 +580,7 @@ export function DataTable<T>({
                 <button
                   type="button"
                   aria-label={`Quitar filtro de ${typeof c.label === 'string' ? c.label : c.key}`}
-                  onClick={() => selectFilter(c.key, ALL_VALUE)}
+                  onClick={() => clearColumnFilter(c.key)}
                   className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-red-100 transition-colors cursor-pointer"
                 >
                   <X className="w-3 h-3" />
@@ -639,8 +693,8 @@ export function DataTable<T>({
         <div
           ref={menuRef}
           role="menu"
-          className="fixed z-[100] bg-white border border-slate-200 rounded-xl shadow-xl shadow-slate-900/10 py-1.5 max-h-80 overflow-y-auto custom-scrollbar"
-          style={{ top: menuPos.top, left: menuPos.left, minWidth: 220, maxWidth: 290 }}
+          className="fixed z-[100] bg-white border border-slate-200 rounded-2xl shadow-2xl shadow-slate-900/15 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
+          style={{ top: menuPos.top, left: menuPos.left, minWidth: 260, maxWidth: 320, maxHeight: 380 }}
         >
           {(() => {
             const col = columns.find((c) => c.key === openCol);
@@ -749,7 +803,7 @@ export function DataTable<T>({
             if (col.ranges && col.ranges.length > 0) {
               const drafts = rangeDrafts[openCol] ?? [];
               return (
-                <div className="px-2 py-1.5 space-y-3">
+                <div className="px-3 py-2.5 space-y-3 min-w-[240px]">
                   {col.ranges.map((field, i) => {
                     const draft = drafts[i] ?? { min: '', max: '' };
                     const bounds = rangeFilters[openCol]?.[i];
@@ -798,30 +852,140 @@ export function DataTable<T>({
                 </div>
               );
             }
-            return getMenuOptions(col).map((opt) => {
-              const selected = columnFilters[openCol] === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  role="menuitem"
-                  onClick={() => selectFilter(openCol, opt.value)}
-                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs transition-colors cursor-pointer ${
-                    selected
-                      ? 'bg-red-50 text-[#E60012] font-bold'
-                      : 'text-slate-700 font-semibold hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="truncate">{opt.label}</span>
-                  <span className="inline-flex items-center gap-1.5 shrink-0">
-                    <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
-                      {opt.count}
-                    </span>
-                    {selected && <Check className="w-3.5 h-3.5 text-[#E60012]" />}
+
+            // Multi-select discrete list with Search Input
+            const allOptions = getMenuOptions(col);
+            const q = filterSearchQuery.toLowerCase().trim();
+            const filteredOptions = q.length > 0
+              ? allOptions.filter(
+                  (opt) =>
+                    opt.value === ALL_VALUE ||
+                    opt.label.toLowerCase().includes(q) ||
+                    opt.value.toLowerCase().includes(q)
+                )
+              : allOptions;
+
+            const selectedValues = columnFilters[openCol] || [];
+            const isAllSelected = selectedValues.length === 0 || selectedValues.includes(ALL_VALUE);
+
+            return (
+              <div className="flex flex-col max-h-[380px]">
+                {/* Search Bar in Dropdown */}
+                <div className="p-2.5 bg-slate-50/80 border-b border-slate-200/80 space-y-2 shrink-0">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={filterSearchQuery}
+                      onChange={(e) => setFilterSearchQuery(e.target.value)}
+                      placeholder="Buscar opción..."
+                      className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012] transition-all font-medium"
+                      autoFocus
+                    />
+                    {filterSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setFilterSearchQuery('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-700 rounded"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] font-bold px-0.5">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        selectAllVisible(
+                          openCol,
+                          filteredOptions.map((o) => o.value)
+                        )
+                      }
+                      className="text-[#E60012] hover:underline cursor-pointer"
+                    >
+                      Seleccionar visibles
+                    </button>
+                    {hasActiveColumnFilter(col) && (
+                      <button
+                        type="button"
+                        onClick={() => clearColumnFilter(openCol)}
+                        className="text-slate-500 hover:text-red-600 hover:underline cursor-pointer"
+                      >
+                        Limpiar ({selectedValues.length})
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Options List */}
+                <div className="overflow-y-auto py-1 divide-y divide-slate-50 custom-scrollbar flex-1 max-h-[220px]">
+                  {filteredOptions.length > 0 ? (
+                    filteredOptions.map((opt) => {
+                      const isAll = opt.value === ALL_VALUE;
+                      const isChecked = isAll
+                        ? isAllSelected
+                        : selectedValues.includes(opt.value);
+
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          role="menuitem"
+                          onClick={() => toggleFilterOption(openCol, opt.value)}
+                          className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 text-left text-xs transition-colors cursor-pointer group ${
+                            isChecked
+                              ? 'bg-red-50/50 text-slate-900 font-bold'
+                              : 'text-slate-700 hover:bg-slate-50 font-medium'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div
+                              className={`w-4 h-4 rounded flex items-center justify-center transition-all shrink-0 ${
+                                isChecked
+                                  ? 'bg-[#E60012] text-white shadow-2xs'
+                                  : 'border border-slate-300 bg-white group-hover:border-slate-400'
+                              }`}
+                            >
+                              {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                            </div>
+                            <span className="truncate" title={opt.label}>
+                              {opt.label}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded shrink-0">
+                            {opt.count}
+                          </span>
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="p-4 text-center text-xs text-slate-400 font-medium">
+                      No se encontraron opciones para "{filterSearchQuery}"
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Action */}
+                <div className="p-2 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between gap-2 shrink-0">
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    {selectedValues.length === 0 || isAllSelected
+                      ? 'Mostrando todos'
+                      : `${selectedValues.length} seleccionados`}
                   </span>
-                </button>
-              );
-            });
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenCol(null);
+                      setMenuPos(null);
+                    }}
+                    className="px-3 py-1 bg-[#E60012] hover:bg-[#c4000f] text-white text-xs font-bold rounded-lg transition-colors shadow-2xs cursor-pointer"
+                  >
+                    Listo
+                  </button>
+                </div>
+              </div>
+            );
           })()}
         </div>
       )}
