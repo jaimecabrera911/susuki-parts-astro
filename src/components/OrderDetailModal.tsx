@@ -25,12 +25,14 @@ import {
   MessageSquare,
   Clock,
   AlertTriangle,
+  Globe,
 } from "lucide-react";
-import { getPrimaryOem } from "../types";
+import { getPrimaryOem, getEstimatedDeliveryTime, getCartShippingSummary } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatOrderDate } from "../utils/formatDate";
 import { formatDocumentNumber } from "../utils/formatDocumentNumber";
 import { shouldShowProductImages } from "../utils/config";
+import { useSiteSettings } from "./SiteSettingsProvider";
 import { ProductImageEmptyState } from "./ProductImageEmptyState";
 import type { PaymentSettings, BankAccount } from "../types";
 import {
@@ -63,6 +65,8 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [isCancellingOrder, setIsCancellingOrder] = useState(false);
   const [remainingPaymentSecs, setRemainingPaymentSecs] = useState<number>(0);
+  const { settings } = useSiteSettings();
+  const shippingSummary = getCartShippingSummary(order?.items || [], settings);
 
   // Order Chat state
   const [orderMessages, setOrderMessages] = useState<any[]>([]);
@@ -511,6 +515,24 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               </span>
             </div>
 
+            {/* Mixed Order Consolidated Notice */}
+            {shippingSummary.isMixed && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl flex items-start gap-2.5 text-xs text-blue-900">
+                <Truck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <span className="font-extrabold text-[11px] uppercase tracking-wide text-blue-950 block font-mono">
+                    Despacho Consolidado para este Pedido
+                  </span>
+                  <p className="text-[11px] text-blue-800 font-sans leading-relaxed">
+                    {shippingSummary.mixedPolicyMessage}
+                  </p>
+                  <span className="inline-block text-[10px] font-mono font-bold text-blue-900 mt-0.5">
+                    ⏱️ Estimado total de entrega: {shippingSummary.maxLeadTimeDays}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
               {order.items?.map((it: any, idx: number) => {
                 const partObj = it.part || it;
@@ -559,6 +581,26 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                         <h4 className="font-black text-slate-900 mt-1 text-xs sm:text-sm font-display leading-snug">
                           {partName}
                         </h4>
+
+                        {/* Delivery lead time badge */}
+                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border ${
+                            partObj?.availability === 'international'
+                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              : partObj?.availability === 'on_order'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}>
+                            {partObj?.availability === 'international' ? (
+                              <Globe className="w-2.5 h-2.5 text-blue-600" />
+                            ) : partObj?.availability === 'on_order' ? (
+                              <Clock className="w-2.5 h-2.5 text-amber-600" />
+                            ) : (
+                              <Truck className="w-2.5 h-2.5 text-emerald-600" />
+                            )}
+                            <span>{getEstimatedDeliveryTime(partObj, settings)}</span>
+                          </span>
+                        </div>
                       </div>
 
                       {/* Compatibility Status Badge (The Traffic Light Rule) */}

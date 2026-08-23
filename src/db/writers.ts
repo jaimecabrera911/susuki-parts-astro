@@ -83,6 +83,8 @@ export async function formatParts(db: AppDb, rows: any[]) {
       note: r.note
     })),
     diagramHotspot: p.diagramHotspot ?? null,
+    leadTimeMinDays: p.leadTimeMinDays ?? null,
+    leadTimeMaxDays: p.leadTimeMaxDays ?? null,
     active: p.active !== false,
     taxable: p.taxable !== false,
     priceIncludesTax: p.priceIncludesTax === true
@@ -190,6 +192,8 @@ export async function upsertPart(db: AppDb, body: any) {
       schematicId: body.schematicId ? ensureUuid(body.schematicId) : null,
       diagramHotspot: body.diagramHotspot || null,
       availability: body.availability || 'in_stock',
+      leadTimeMinDays: body.leadTimeMinDays != null ? Number(body.leadTimeMinDays) : null,
+      leadTimeMaxDays: body.leadTimeMaxDays != null ? Number(body.leadTimeMaxDays) : null,
       active: body.active !== false,
       taxable: body.taxable !== false,
       priceIncludesTax: body.priceIncludesTax === true
@@ -364,7 +368,10 @@ export async function upsertOrder(db: AppDb, body: any) {
     prefix: settings.orderPrefix,
     documentNumber: normalizeDocumentNumber(body.documentNumber || (isValidUuid(rawId) ? String(Math.floor(100000 + Math.random() * 900000)) : rawId)),
     reservationExpiresAt: body.reservationExpiresAt ? new Date(body.reservationExpiresAt) : null,
-    reservationStatus: body.reservationStatus || 'active'
+    reservationStatus: body.reservationStatus || 'active',
+    estimatedDeliveryMinDate: body.estimatedDeliveryMinDate || null,
+    estimatedDeliveryMaxDate: body.estimatedDeliveryMaxDate || null,
+    estimatedDeliveryFormatted: body.estimatedDeliveryFormatted || null
   };
 
   const reservationSettings = await getInventoryReservationSettings(db);
@@ -1107,6 +1114,7 @@ export async function getSiteSettings(db: AppDb): Promise<SiteSettings> {
   const footer = settingsMap.get('store.footer') || {};
   const product = settingsMap.get('store.product') || {};
   const specsConfig = settingsMap.get('store.specs') || {};
+  const shipping = settingsMap.get('store.shipping') || {};
   const defaultSpecs = Array.isArray(specsConfig.defaultSpecs) ? specsConfig.defaultSpecs : [];
 
   return {
@@ -1130,6 +1138,14 @@ export async function getSiteSettings(db: AppDb): Promise<SiteSettings> {
     orderPrefix: typeof documents.orderPrefix === 'string' && documents.orderPrefix.trim() ? documents.orderPrefix.trim() : 'SZ-ORD',
     returnPrefix: typeof documents.returnPrefix === 'string' && documents.returnPrefix.trim() ? documents.returnPrefix.trim() : 'SZ-RET',
     defaultSpecs,
+    shippingWorkingDaysMode: (shipping.workingDaysMode as any) || STORE_BOOTSTRAP.shipping.workingDaysMode,
+    shippingInStockMinDays: typeof shipping.inStockMinDays === 'number' ? shipping.inStockMinDays : STORE_BOOTSTRAP.shipping.inStockMinDays,
+    shippingInStockMaxDays: typeof shipping.inStockMaxDays === 'number' ? shipping.inStockMaxDays : STORE_BOOTSTRAP.shipping.inStockMaxDays,
+    shippingInternationalMinDays: typeof shipping.internationalMinDays === 'number' ? shipping.internationalMinDays : STORE_BOOTSTRAP.shipping.internationalMinDays,
+    shippingInternationalMaxDays: typeof shipping.internationalMaxDays === 'number' ? shipping.internationalMaxDays : STORE_BOOTSTRAP.shipping.internationalMaxDays,
+    shippingOnOrderMinDays: typeof shipping.onOrderMinDays === 'number' ? shipping.onOrderMinDays : STORE_BOOTSTRAP.shipping.onOrderMinDays,
+    shippingOnOrderMaxDays: typeof shipping.onOrderMaxDays === 'number' ? shipping.onOrderMaxDays : STORE_BOOTSTRAP.shipping.onOrderMaxDays,
+    shippingMixedPolicy: typeof shipping.mixedPolicy === 'string' && shipping.mixedPolicy.trim() ? shipping.mixedPolicy.trim() : STORE_BOOTSTRAP.shipping.mixedPolicy,
     socialLinks: { ...STORE_BOOTSTRAP.socialLinks, ...social },
     footerConfig: { ...FOOTER_BOOTSTRAP, ...footer },
     updatedAt: new Date().toISOString()
@@ -1185,6 +1201,17 @@ export async function upsertSiteSettings(db: AppDb, body: any) {
     defaultSpecs,
   };
 
+  const shipping = {
+    workingDaysMode: typeof body.shippingWorkingDaysMode === 'string' && body.shippingWorkingDaysMode ? body.shippingWorkingDaysMode : (existing.shippingWorkingDaysMode || STORE_BOOTSTRAP.shipping.workingDaysMode),
+    inStockMinDays: typeof body.shippingInStockMinDays === 'number' ? body.shippingInStockMinDays : (existing.shippingInStockMinDays ?? STORE_BOOTSTRAP.shipping.inStockMinDays),
+    inStockMaxDays: typeof body.shippingInStockMaxDays === 'number' ? body.shippingInStockMaxDays : (existing.shippingInStockMaxDays ?? STORE_BOOTSTRAP.shipping.inStockMaxDays),
+    internationalMinDays: typeof body.shippingInternationalMinDays === 'number' ? body.shippingInternationalMinDays : (existing.shippingInternationalMinDays ?? STORE_BOOTSTRAP.shipping.internationalMinDays),
+    internationalMaxDays: typeof body.shippingInternationalMaxDays === 'number' ? body.shippingInternationalMaxDays : (existing.shippingInternationalMaxDays ?? STORE_BOOTSTRAP.shipping.internationalMaxDays),
+    onOrderMinDays: typeof body.shippingOnOrderMinDays === 'number' ? body.shippingOnOrderMinDays : (existing.shippingOnOrderMinDays ?? STORE_BOOTSTRAP.shipping.onOrderMinDays),
+    onOrderMaxDays: typeof body.shippingOnOrderMaxDays === 'number' ? body.shippingOnOrderMaxDays : (existing.shippingOnOrderMaxDays ?? STORE_BOOTSTRAP.shipping.onOrderMaxDays),
+    mixedPolicy: typeof body.shippingMixedPolicy === 'string' && body.shippingMixedPolicy.trim() ? body.shippingMixedPolicy.trim() : (existing.shippingMixedPolicy || STORE_BOOTSTRAP.shipping.mixedPolicy),
+  };
+
   const social = body.socialLinks && typeof body.socialLinks === 'object'
     ? body.socialLinks
     : (existing.socialLinks ?? {});
@@ -1205,6 +1232,7 @@ export async function upsertSiteSettings(db: AppDb, body: any) {
     { key: 'store.returns', value: returns, category: 'logistics', description: 'Políticas de garantía y devoluciones' },
     { key: 'store.documents', value: documents, category: 'general', description: 'Prefijos de numeración de pedidos y devoluciones' },
     { key: 'store.specs', value: specs, category: 'catalog', description: 'Especificaciones técnicas por defecto para repuestos' },
+    { key: 'store.shipping', value: shipping, category: 'logistics', description: 'Tiempos de entrega y políticas de despacho' },
     { key: 'store.social', value: social, category: 'social', description: 'Enlaces a redes sociales y canales de atención' },
     { key: 'store.footer', value: footer, category: 'general', description: 'Pie de página y avisos legales' },
     { key: 'store.product', value: product, category: 'general', description: 'Elemento principal mostrado en el detalle de producto' },

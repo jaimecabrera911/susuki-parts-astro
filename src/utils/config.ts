@@ -23,6 +23,16 @@ export const STORE_BOOTSTRAP = {
     country: 'Colombia',
     department: 'Bogotá D.C.',
     city: 'Bogotá D.C.'
+  },
+  shipping: {
+    workingDaysMode: 'mon_fri' as const,
+    inStockMinDays: 2,
+    inStockMaxDays: 4,
+    internationalMinDays: 10,
+    internationalMaxDays: 20,
+    onOrderMinDays: 15,
+    onOrderMaxDays: 30,
+    mixedPolicy: 'Envío consolidado: Tu pedido se despachará en un solo paquete una vez arriben todas las piezas importadas.'
   }
 };
 
@@ -83,6 +93,14 @@ export const emptySiteSettings = (): SiteSettings => ({
   returnPrefix: '',
   defaultSpecs: [],
   footerConfig: undefined,
+  shippingWorkingDaysMode: 'mon_fri',
+  shippingInStockMinDays: 0,
+  shippingInStockMaxDays: 0,
+  shippingInternationalMinDays: 0,
+  shippingInternationalMaxDays: 0,
+  shippingOnOrderMinDays: 0,
+  shippingOnOrderMaxDays: 0,
+  shippingMixedPolicy: '',
   updatedAt: ''
 });
 

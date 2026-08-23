@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { X, ShieldCheck, CheckCircle2, Printer } from "lucide-react";
+import { X, ShieldCheck, CheckCircle2, Printer, Truck, Globe, Clock } from "lucide-react";
 import type { CartItem, ActiveMotorcycle } from "../types";
+import { getCartShippingSummary } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatDocumentNumber } from "../utils/formatDocumentNumber";
 import { saveOrderApi, fetchDefaultStatusName } from "../services/api";
+import { useSiteSettings } from "./SiteSettingsProvider";
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -42,12 +44,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     };
   }, [isOpen, onClose]);
 
+  const { settings } = useSiteSettings();
   if (!isOpen) return null;
 
   const total = cartItems.reduce(
     (acc, item) => acc + item.part.price * item.quantity,
     0,
   );
+
+  const shippingSummary = getCartShippingSummary(cartItems, settings);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,6 +149,34 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 </div>
               </div>
             )}
+
+            {/* Shipping & Delivery Estimate Badge / Mixed Banner */}
+            <div className={`p-4 rounded-xl mb-6 border text-xs flex items-start gap-3 ${
+              shippingSummary.isMixed
+                ? 'bg-blue-50/80 border-blue-200 text-blue-950'
+                : 'bg-slate-50 border-slate-200 text-slate-800'
+            }`}>
+              <Truck className={`w-5 h-5 shrink-0 mt-0.5 ${shippingSummary.isMixed ? 'text-blue-600' : 'text-emerald-600'}`} />
+              <div className="space-y-1 w-full">
+                <div className="flex justify-between items-center">
+                  <span className="font-extrabold uppercase font-mono text-[11px] tracking-wider text-slate-900">
+                    {shippingSummary.isMixed ? 'Envío Consolidado (Pedido Mixto)' : 'Tiempo de Despacho Estimado'}
+                  </span>
+                  <span className="font-mono font-black text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md text-[11px]">
+                    {shippingSummary.maxLeadTimeDays}
+                  </span>
+                </div>
+                {shippingSummary.isMixed ? (
+                  <p className="text-[11px] text-blue-800 font-sans leading-relaxed">
+                    {shippingSummary.mixedPolicyMessage}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-slate-500 font-sans">
+                    Tiempo estimado de preparación y despacho para los {cartItems.length} {cartItems.length === 1 ? 'repuesto' : 'repuestos'}.
+                  </p>
+                )}
+              </div>
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>

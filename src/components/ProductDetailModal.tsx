@@ -15,6 +15,7 @@ import {
   Plus,
   Minus,
   EyeOff,
+  Truck,
 } from "lucide-react";
 import { FaMotorcycle } from "react-icons/fa";
 import { FaCartPlus } from "react-icons/fa6";
@@ -24,9 +25,11 @@ import type {
   ExplodedDiagram,
   SuzukiModel,
 } from "../types";
+import { getEstimatedDeliveryTime } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { getProductWhatsAppUrl } from "../utils/whatsapp";
 import { shouldShowProductImages } from "../utils/config";
+import { useSiteSettings } from "./SiteSettingsProvider";
 import { ProductImageEmptyState } from "./ProductImageEmptyState";
 import { IoChatbubbleEllipses } from "react-icons/io5";
 
@@ -62,6 +65,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const [copiedOem, setCopiedOem] = useState<string | null>(null);
   const [showAllOems, setShowAllOems] = useState(false);
   const [quantity, setQuantity] = useState<number>(1);
+  const { settings } = useSiteSettings();
 
   useEffect(() => {
     setQuantity(1);
@@ -496,9 +500,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <Wrench className="w-3.5 h-3.5 text-[#0A3088] shrink-0" />
                 <span className="font-bold text-slate-800 truncate">Ajuste Exacto</span>
               </div>
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/80 p-1.5 rounded-lg">
-                <CheckCircle2 className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                <span className="font-bold text-slate-800 truncate">Envío Nacional</span>
+              <div className="flex items-center gap-1.5 bg-emerald-50/70 border border-emerald-200/80 p-1.5 rounded-lg">
+                <Truck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="font-bold text-emerald-900 truncate" title={`Tiempo estimado de despacho: ${getEstimatedDeliveryTime(part, settings)}`}>
+                  {getEstimatedDeliveryTime(part, settings)}
+                </span>
               </div>
             </div>
 

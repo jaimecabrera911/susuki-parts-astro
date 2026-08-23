@@ -71,6 +71,8 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
   const [stockInput, setStockInput] = useState<string>(formatThousands(10));
   const [availability, setAvailability] =
     useState<AvailabilityStatus>("in_stock");
+  const [leadTimeMinDays, setLeadTimeMinDays] = useState<number | ''>('');
+  const [leadTimeMaxDays, setLeadTimeMaxDays] = useState<number | ''>('');
   const [active, setActive] = useState<boolean>(true);
   const [gallery, setGallery] = useState<string[]>([]);
   const [description, setDescription] = useState("");
@@ -190,6 +192,8 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
         partToEdit.availability ||
           (partToEdit.stock > 0 ? "in_stock" : "on_order"),
       );
+      setLeadTimeMinDays(partToEdit.leadTimeMinDays ?? '');
+      setLeadTimeMaxDays(partToEdit.leadTimeMaxDays ?? '');
       setActive(partToEdit.active !== false);
       setGallery(
         partToEdit.images && partToEdit.images.length > 0
@@ -219,6 +223,8 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
         initialData.availability ||
           ((initialData.stock ?? 10) > 0 ? "in_stock" : "on_order"),
       );
+      setLeadTimeMinDays(initialData.leadTimeMinDays ?? '');
+      setLeadTimeMaxDays(initialData.leadTimeMaxDays ?? '');
       setActive(initialData.active !== false);
       setGallery(
         initialData.images && initialData.images.length > 0
@@ -253,6 +259,8 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       setPriceIncludesTax(false);
       setStock(0);
       setAvailability("in_stock");
+      setLeadTimeMinDays('');
+      setLeadTimeMaxDays('');
       setActive(true);
       setGallery([]);
       setDescription("");
@@ -471,6 +479,8 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
         priceIncludesTax,
         stock,
         availability,
+        leadTimeMinDays: leadTimeMinDays !== '' ? Number(leadTimeMinDays) : null,
+        leadTimeMaxDays: leadTimeMaxDays !== '' ? Number(leadTimeMaxDays) : null,
         active,
         image: uploaded[0] || "",
         images: uploaded,
@@ -751,6 +761,40 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                 <option value="international">Envío Internacional</option>
                 <option value="on_order">Bajo Pedido</option>
               </select>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-mono flex items-center justify-between">
+                <span>Tiempo de Despacho Específico (Opcional)</span>
+                <span className="text-[10px] font-normal text-slate-400 font-sans">
+                  Dejar vacío = usa config global de tienda
+                </span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1 font-mono">Mínimo (días)</label>
+                  <input
+                    type="number" min={1} max={365}
+                    value={leadTimeMinDays}
+                    onChange={(e) => setLeadTimeMinDays(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="Ej. 5"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1 font-mono">Máximo (días)</label>
+                  <input
+                    type="number" min={1} max={365}
+                    value={leadTimeMaxDays}
+                    onChange={(e) => setLeadTimeMaxDays(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="Ej. 8"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 font-mono"
+                  />
+                </div>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1 font-sans">
+                Si se deja vacío, el repuesto usará automáticamente los días configurados en Ajustes &rarr; Envíos para {availability === 'in_stock' ? 'En Stock' : availability === 'international' ? 'Internacional' : 'Bajo Pedido'}.
+              </p>
             </div>
           </div>
 

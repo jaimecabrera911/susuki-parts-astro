@@ -35,6 +35,9 @@ import {
   Smartphone,
   PackageCheck,
   AlertCircle,
+  Truck,
+  Globe,
+  Package,
 } from "lucide-react";
 import { FaFacebookF, FaInstagram, FaYoutube } from "react-icons/fa";
 import type {
@@ -62,10 +65,11 @@ import { formatCurrency } from "../../utils/formatCurrency";
 import { formatOrderDate } from "../../utils/formatDate";
 import { LocationSelector } from "../LocationSelector";
 
-type SettingsTab = "general" | "specs" | "taxes" | "reservations" | "returns" | "documents" | "footer";
+type SettingsTab = "general" | "shipping" | "specs" | "taxes" | "reservations" | "returns" | "documents" | "footer";
 
 const SUBTABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "General", icon: Settings },
+  { id: "shipping", label: "Envíos & Tiempos", icon: Truck },
   { id: "specs", label: "Especificaciones", icon: Sliders },
   { id: "taxes", label: "Impuestos (IVA)", icon: Percent },
   { id: "reservations", label: "Reservas de Stock", icon: Clock },
@@ -104,6 +108,14 @@ const EMPTY_SETTINGS: SiteSettings = {
   returnPrefix: "",
   defaultSpecs: [],
   footerConfig: EMPTY_FOOTER,
+  shippingWorkingDaysMode: 'mon_fri',
+  shippingInStockMinDays: 2,
+  shippingInStockMaxDays: 4,
+  shippingInternationalMinDays: 10,
+  shippingInternationalMaxDays: 20,
+  shippingOnOrderMinDays: 15,
+  shippingOnOrderMaxDays: 30,
+  shippingMixedPolicy: "Envío consolidado: Tu pedido se despachará en un solo paquete una vez arriben todas las piezas importadas.",
 };
 
 interface SettingsManagerProps {
@@ -872,6 +884,295 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onShowToast })
             </div>
           </div>
         )}
+
+        {activeSubTab === "shipping" && (() => {
+          // Compute live delivery previews
+          const mode = (settings.shippingWorkingDaysMode as any) || 'mon_fri';
+          const modeLabel = mode === 'mon_fri' ? 'días hábiles' : mode === 'mon_sat' ? 'días (Lun-Sáb)' : 'días calendario';
+
+          function addWD(days: number): Date {
+            const d = new Date(); d.setHours(0,0,0,0);
+            let n = 0;
+            while (n < days) {
+              d.setDate(d.getDate() + 1);
+              const dow = d.getDay();
+              if (mode === 'mon_fri' && (dow === 0 || dow === 6)) continue;
+              if (mode === 'mon_sat' && dow === 0) continue;
+              n++;
+            }
+            return d;
+          }
+          function fmtDate(d: Date) {
+            return d.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' });
+          }
+
+          const inStockMin = settings.shippingInStockMinDays ?? 2;
+          const inStockMax = settings.shippingInStockMaxDays ?? 4;
+          const intlMin = settings.shippingInternationalMinDays ?? 10;
+          const intlMax = settings.shippingInternationalMaxDays ?? 20;
+          const orderMin = settings.shippingOnOrderMinDays ?? 15;
+          const orderMax = settings.shippingOnOrderMaxDays ?? 30;
+
+          const inStockLabel = `${inStockMin}-${inStockMax} ${modeLabel}`;
+          const intlLabel = `${intlMin}-${intlMax} ${modeLabel}`;
+          const orderLabel = `${orderMin}-${orderMax} ${modeLabel}`;
+
+          const inStockPreview = `${fmtDate(addWD(inStockMin))} – ${fmtDate(addWD(inStockMax))}`;
+          const intlPreview = `${fmtDate(addWD(intlMin))} – ${fmtDate(addWD(intlMax))}`;
+          const orderPreview = `${fmtDate(addWD(orderMin))} – ${fmtDate(addWD(orderMax))}`;
+
+          return (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 font-display flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-[#E60012]" />
+                  Tiempos de Entrega &amp; Políticas de Despacho
+                </h3>
+                <p className="text-xs text-slate-500 font-sans mt-0.5">
+                  Define los rangos de días por tipo de disponibilidad. El sistema calculará y mostrará las fechas exactas al cliente.
+                </p>
+              </div>
+            </div>
+
+            {/* Modo de días laborables */}
+            <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-3">
+              <span className="text-xs font-bold text-slate-900 font-display flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-[#E60012]" />
+                Modo de Cálculo de Días Laborables
+              </span>
+              <p className="text-xs text-slate-500 font-sans">
+                Define qué días se cuentan para avanzar en el conteo de entrega.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {([
+                  { value: 'mon_fri', label: 'Lunes a Viernes', sub: 'Días hábiles estándar' },
+                  { value: 'mon_sat', label: 'Lunes a Sábado', sub: 'Comercio / envíos 6 días' },
+                  { value: 'all_days', label: 'Domingo a Domingo', sub: 'Días calendario continuos' },
+                ] as const).map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => set('shippingWorkingDaysMode', opt.value)}
+                    className={`p-3 rounded-xl border-2 text-left transition-all ${
+                      mode === opt.value
+                        ? 'border-[#E60012] bg-red-50'
+                        : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+                    }`}
+                  >
+                    <p className={`text-xs font-bold font-mono ${ mode === opt.value ? 'text-[#E60012]' : 'text-slate-800'}`}>{opt.label}</p>
+                    <p className="text-[10px] text-slate-500 font-sans mt-0.5">{opt.sub}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Grid de 3 tarjetas de Disponibilidad */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {/* 1. En Stock / Nacional */}
+              <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between gap-4">
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                      <Package className="w-4 h-4 text-emerald-600" />
+                      En Stock (Nacional)
+                    </span>
+                    <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">
+                      {inStockLabel}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1 font-mono">Mínimo (días)</label>
+                      <input
+                        type="number" min={1} max={365}
+                        value={inStockMin}
+                        onChange={(e) => set('shippingInStockMinDays', Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-[#E60012] focus:border-[#E60012]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1 font-mono">Máximo (días)</label>
+                      <input
+                        type="number" min={1} max={365}
+                        value={inStockMax}
+                        onChange={(e) => set('shippingInStockMaxDays', Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-[#E60012] focus:border-[#E60012]"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-emerald-700 font-mono font-bold mt-2 bg-emerald-50 px-2 py-1 rounded-lg">
+                    📅 Hoy llegaría: {inStockPreview}
+                  </p>
+                  <p className="text-[11px] text-slate-500 font-sans mt-1 leading-relaxed">
+                    Aplica a repuestos con inventario disponible en bodega nacional.
+                  </p>
+                </div>
+              </div>
+
+              {/* 2. Envío Internacional */}
+              <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between gap-4">
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                      <Globe className="w-4 h-4 text-blue-600" />
+                      Internacional
+                    </span>
+                    <span className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-lg">
+                      {intlLabel}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1 font-mono">Mínimo (días)</label>
+                      <input
+                        type="number" min={1} max={365}
+                        value={intlMin}
+                        onChange={(e) => set('shippingInternationalMinDays', Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-[#E60012] focus:border-[#E60012]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1 font-mono">Máximo (días)</label>
+                      <input
+                        type="number" min={1} max={365}
+                        value={intlMax}
+                        onChange={(e) => set('shippingInternationalMaxDays', Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-[#E60012] focus:border-[#E60012]"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-blue-700 font-mono font-bold mt-2 bg-blue-50 px-2 py-1 rounded-lg">
+                    📅 Hoy llegaría: {intlPreview}
+                  </p>
+                  <p className="text-[11px] text-slate-500 font-sans mt-1 leading-relaxed">
+                    Piezas originales importadas desde bodegas autorizadas Suzuki.
+                  </p>
+                </div>
+              </div>
+
+              {/* 3. Bajo Pedido */}
+              <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between gap-4">
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-amber-600" />
+                      Bajo Pedido
+                    </span>
+                    <span className="text-[10px] font-mono font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg">
+                      {orderLabel}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1 font-mono">Mínimo (días)</label>
+                      <input
+                        type="number" min={1} max={365}
+                        value={orderMin}
+                        onChange={(e) => set('shippingOnOrderMinDays', Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-[#E60012] focus:border-[#E60012]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1 font-mono">Máximo (días)</label>
+                      <input
+                        type="number" min={1} max={365}
+                        value={orderMax}
+                        onChange={(e) => set('shippingOnOrderMaxDays', Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-[#E60012] focus:border-[#E60012]"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-amber-700 font-mono font-bold mt-2 bg-amber-50 px-2 py-1 rounded-lg">
+                    📅 Hoy llegaría: {orderPreview}
+                  </p>
+                  <p className="text-[11px] text-slate-500 font-sans mt-1 leading-relaxed">
+                    Piezas especiales de baja rotación, directamente desde fábrica.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Política de Envíos Mixtos */}
+            <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-slate-900 font-display flex items-center gap-1.5">
+                  <Truck className="w-4 h-4 text-[#E60012]" />
+                  Aviso para Pedidos Mixtos (Local + Internacional / Bajo Pedido)
+                </span>
+                <span className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
+                  Envío Consolidado
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-sans">
+                Este mensaje aparece en el carrito y checkout cuando hay productos locales mezclados con internacionales o bajo pedido.
+              </p>
+              <textarea
+                rows={3}
+                value={settings.shippingMixedPolicy || ""}
+                onChange={(e) => set("shippingMixedPolicy", e.target.value)}
+                placeholder="Ej. Envío consolidado: Tu pedido se despachará en un solo paquete una vez arriben todas las piezas importadas."
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#E60012] focus:border-[#E60012] text-xs font-sans text-slate-900 resize-none"
+              />
+            </div>
+
+            {/* Previsualización en Vivo */}
+            <div className="p-5 bg-white border border-emerald-200 rounded-2xl shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold uppercase tracking-widest text-emerald-700 font-mono flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Previsualización (Cómo lo ve el Cliente)
+                </span>
+                <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                  Simulación en vivo
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-1">
+                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block font-mono">En Stock:</span>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-mono font-bold">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Llega entre el {inStockPreview}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-mono">{inStockLabel}</p>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-1">
+                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block font-mono">Internacional:</span>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 border border-blue-300 text-xs font-mono font-bold">
+                    <Globe className="w-3.5 h-3.5" />
+                    <span>Llega entre el {intlPreview}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-mono">{intlLabel}</p>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-1">
+                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block font-mono">Bajo Pedido:</span>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 border border-amber-300 text-xs font-mono font-bold">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Llega entre el {orderPreview}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-mono">{orderLabel}</p>
+                </div>
+              </div>
+
+              {/* Banner Mixto */}
+              <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3">
+                <Truck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <span className="text-[11px] font-extrabold text-blue-800 font-mono">Aviso en Carrito / Checkout (Pedido Mixto):</span>
+                  <p className="text-xs text-slate-700 font-sans leading-relaxed">
+                    {settings.shippingMixedPolicy || "Envío consolidado: Tu pedido se despachará en un solo paquete una vez arriben todas las piezas importadas."}
+                  </p>
+                  <span className="inline-block text-[10px] font-mono text-emerald-700 font-bold mt-1">
+                    ⏱️ Estimado total: {orderPreview} ({orderLabel})
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          );
+        })()}
+
 
         {activeSubTab === "specs" && (
           <div className="space-y-6">

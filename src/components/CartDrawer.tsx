@@ -8,14 +8,18 @@ import {
   MessageSquare,
   Eye,
   Store,
+  Truck,
+  Globe,
+  Clock,
 } from "lucide-react";
 import { FaBasketShopping, FaCartShopping } from "react-icons/fa6";
 import { AiTwotoneSafetyCertificate } from "react-icons/ai";
 import type { CartItem, ActiveMotorcycle, SuzukiPart, ShippingMethod } from "../types";
-import { getPrimaryOem } from "../types";
+import { getPrimaryOem, getCartShippingSummary, getEstimatedDeliveryTime } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { getCartWhatsAppUrl } from "../utils/whatsapp";
 import { shouldShowProductImages } from "../utils/config";
+import { useSiteSettings } from "./SiteSettingsProvider";
 import { ProductImageEmptyState } from "./ProductImageEmptyState";
 import { IoChatbubbleEllipses } from "react-icons/io5";
 import { fetchShippingMethods } from "../services/api";
@@ -77,12 +81,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     };
   }, [isOpen, onClose]);
 
+  const { settings } = useSiteSettings();
   if (!isOpen) return null;
 
   const total = cartItems.reduce(
     (acc, item) => acc + item.part.price * item.quantity,
     0,
   );
+
+  const shippingSummary = getCartShippingSummary(cartItems, settings);
 
   return (
     <div
@@ -229,6 +236,26 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         </span>
                       </div>
 
+                      {/* Delivery lead time badge */}
+                      <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border ${
+                          item.part.availability === 'international'
+                            ? 'bg-blue-50 text-blue-700 border-blue-200'
+                            : item.part.availability === 'on_order'
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        }`}>
+                          {item.part.availability === 'international' ? (
+                            <Globe className="w-2.5 h-2.5 text-blue-600" />
+                          ) : item.part.availability === 'on_order' ? (
+                            <Clock className="w-2.5 h-2.5 text-amber-600" />
+                          ) : (
+                            <Truck className="w-2.5 h-2.5 text-emerald-600" />
+                          )}
+                          <span>{getEstimatedDeliveryTime(item.part, settings)}</span>
+                        </span>
+                      </div>
+
                       <div className="text-xs font-mono font-black text-slate-900 mt-1.5">
                         {formatCurrency(item.part.price)}
                       </div>
@@ -326,6 +353,24 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   </div>
                 );
               })()}
+
+              {/* Mixed Cart Consolidated Shipping Notice */}
+              {shippingSummary.isMixed && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl flex items-start gap-2.5 text-xs text-blue-900">
+                  <Truck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold text-[11px] uppercase tracking-wide text-blue-950 block font-mono">
+                      Aviso de Envío Consolidado
+                    </span>
+                    <p className="text-[11px] text-blue-800 font-sans leading-relaxed">
+                      {shippingSummary.mixedPolicyMessage}
+                    </p>
+                    <span className="inline-block text-[10px] font-mono font-bold text-blue-900 mt-0.5">
+                      ⏱️ Despacho estimado del paquete: {shippingSummary.maxLeadTimeDays}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-between items-center text-sm font-black text-slate-900 pt-1">
                 <span>SUBTOTAL REPUESTOS:</span>

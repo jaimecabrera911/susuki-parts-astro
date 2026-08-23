@@ -82,6 +82,8 @@ export const parts = pgTable('parts', {
   schematicId: uuid('schematic_id').references(() => schematics.id, { onDelete: 'set null' }),
   diagramHotspot: jsonb('diagram_hotspot'),
   availability: text('availability').notNull().default('in_stock'),
+  leadTimeMinDays: integer('lead_time_min_days'),
+  leadTimeMaxDays: integer('lead_time_max_days'),
   active: boolean('active').notNull().default(true),
   taxable: boolean('taxable').notNull().default(true),
   priceIncludesTax: boolean('price_includes_tax').notNull().default(false)
@@ -228,7 +230,10 @@ export const orders = pgTable('orders', {
   prefix: text('prefix').notNull().default('SZ-ORD'),
   documentNumber: text('document_number'),
   reservationExpiresAt: timestamp('reservation_expires_at'),
-  reservationStatus: text('reservation_status').notNull().default('active') // 'active' | 'consumed' | 'released' | 'expired'
+  reservationStatus: text('reservation_status').notNull().default('active'), // 'active' | 'consumed' | 'released' | 'expired'
+  estimatedDeliveryMinDate: text('estimated_delivery_min_date'),
+  estimatedDeliveryMaxDate: text('estimated_delivery_max_date'),
+  estimatedDeliveryFormatted: text('estimated_delivery_formatted')
 }, (table) => ({
   emailIdx: index('idx_orders_email').on(table.email),
   statusIdx: index('idx_orders_status').on(table.status),
