@@ -162,6 +162,43 @@ export interface VinLookupResult {
   message?: string;
 }
 
+export type DashboardModule =
+  | 'brands'
+  | 'models'
+  | 'categories'
+  | 'parts'
+  | 'schematics'
+  | 'orders'
+  | 'returns'
+  | 'users'
+  | 'shipping'
+  | 'payments'
+  | 'settings'
+  | 'coupons'
+  | 'metrics';
+
+export interface UserPermission {
+  id?: string;
+  userId?: string;
+  module: DashboardModule;
+  canRead: boolean;
+  canWrite: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Role {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  isSystem?: boolean;
+  active?: boolean;
+  permissions: UserPermission[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface UserProfile {
   id: string;
   fullName: string;
@@ -176,7 +213,9 @@ export interface UserProfile {
   favoritePartIds: string[];
   createdAt: string;
   avatarUrl?: string;
-  role?: 'customer' | 'admin';
+  role?: string;
+  roleId?: string;
+  permissions?: UserPermission[];
   active?: boolean;
   notes?: string;
 }

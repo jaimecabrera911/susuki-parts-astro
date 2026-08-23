@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { X, User, CheckCircle2, Eye, EyeOff } from "lucide-react";
-import type { UserProfile } from "../../types";
+import { X, User, CheckCircle2, Eye, EyeOff, Shield, ShieldCheck, ShieldAlert, Check } from "lucide-react";
+import type { UserProfile, Role, UserPermission } from "../../types";
 import { LocationSelector } from "../LocationSelector";
-import { fetchCities } from "../../services/api";
+import { fetchCities, fetchRoles } from "../../services/api";
 import { getDefaultLocation } from "../../utils/config";
 
 interface UserModalProps {
@@ -10,6 +10,7 @@ interface UserModalProps {
   onClose: () => void;
   userToEdit: UserProfile | null;
   onSaveUser: (savedUser: UserProfile) => void;
+  availableRoles?: Role[];
 }
 
 export const UserModal: React.FC<UserModalProps> = ({
@@ -17,6 +18,7 @@ export const UserModal: React.FC<UserModalProps> = ({
   onClose,
   userToEdit,
   onSaveUser,
+  availableRoles = []
 }) => {
   if (!isOpen) return null;
 
@@ -33,8 +35,11 @@ export const UserModal: React.FC<UserModalProps> = ({
   const [city, setCity] = useState(userToEdit?.city || getDefaultLocation().city);
   const [address, setAddress] = useState(userToEdit?.address || "");
   const [postalCode, setPostalCode] = useState(userToEdit?.postalCode || "");
-  const [role, setRole] = useState<"customer" | "admin">(
+  const [role, setRole] = useState<string>(
     userToEdit?.role || "customer",
+  );
+  const [roleId, setRoleId] = useState<string>(
+    userToEdit?.roleId || ""
   );
   const [active, setActive] = useState<boolean>(
     userToEdit?.active !== undefined ? userToEdit.active : true,
@@ -51,6 +56,7 @@ export const UserModal: React.FC<UserModalProps> = ({
       active: boolean;
     }[]
   >([]);
+  const [roles, setRoles] = useState<Role[]>(availableRoles);
 
   useEffect(() => {
     fetchCities()
@@ -61,7 +67,15 @@ export const UserModal: React.FC<UserModalProps> = ({
       .catch((err) =>
         console.error("Error cargando ciudades en modal usuario:", err),
       );
-  }, []);
+
+    if (availableRoles.length === 0) {
+      fetchRoles()
+        .then((data: Role[]) => {
+          if (data && data.length > 0) setRoles(data);
+        })
+        .catch((err) => console.error("Error cargando roles en modal usuario:", err));
+    }
+  }, [availableRoles]);
 
   useEffect(() => {
     if (userToEdit) {
@@ -75,6 +89,7 @@ export const UserModal: React.FC<UserModalProps> = ({
       setAddress(userToEdit.address);
       setPostalCode(userToEdit.postalCode);
       setRole(userToEdit.role || "customer");
+      setRoleId(userToEdit.roleId || "");
       setActive(userToEdit.active !== undefined ? userToEdit.active : true);
       setNotes(userToEdit.notes || "");
     } else {
@@ -88,15 +103,35 @@ export const UserModal: React.FC<UserModalProps> = ({
       setAddress("");
       setPostalCode("");
       setRole("customer");
+      setRoleId("");
       setActive(true);
       setNotes("");
       setPassword("");
     }
   }, [userToEdit]);
 
+  const handleRoleSelection = (selectedRoleSlug: string) => {
+    setRole(selectedRoleSlug);
+    const matchedRole = roles.find((r) => r.slug === selectedRoleSlug);
+    if (matchedRole) {
+      setRoleId(matchedRole.id);
+    } else {
+      setRoleId("");
+    }
+  };
+
+  const selectedRoleObj = roles.find((r) => r.slug === role || r.id === roleId);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const id = userToEdit?.id || crypto.randomUUID();
+    
+    // Assign permissions from the selected role
+    let assignedPermissions: UserPermission[] = userToEdit?.permissions || [];
+    if (selectedRoleObj && selectedRoleObj.permissions) {
+      assignedPermissions = selectedRoleObj.permissions;
+    }
+
     const saved: UserProfile = {
       id,
       fullName: fullName.trim(),
@@ -113,6 +148,8 @@ export const UserModal: React.FC<UserModalProps> = ({
         userToEdit?.avatarUrl ||
         "https://ep-young-sun-ay6bvrv0.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1/users/avatar.jpg",
       role,
+      roleId: selectedRoleObj?.id || roleId,
+      permissions: assignedPermissions,
       active,
       notes: notes.trim(),
     };
@@ -259,20 +296,74 @@ export const UserModal: React.FC<UserModalProps> = ({
               />
             </div>
 
-            <div>
-              <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase mb-1">
-                Rol de Usuario *
+            <div className="md:col-span-2">
+              <label className="block text-[10px] font-mono font-bold text-slate-600 uppercase mb-1 flex items-center justify-between">
+                <span>Rol / Grupo de Permisos *</span>
+                {role === 'customer' ? (
+                  <span className="text-[10px] text-slate-400 font-bold">Sin acceso al Dashboard</span>
+                ) : (
+                  <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3" /> Acceso al Dashboard Habilitado
+                  </span>
+                )}
               </label>
               <select
                 value={role}
-                onChange={(e) =>
-                  setRole(e.target.value as "customer" | "admin")
-                }
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
+                onChange={(e) => handleRoleSelection(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
               >
-                <option value="customer">Cliente Registrado</option>
-                <option value="admin">Administrador del Sistema</option>
+                <optgroup label="Clientes">
+                  <option value="customer">👤 Cliente Registrado (Solo Compras en Tienda)</option>
+                </optgroup>
+                <optgroup label="Administración & Roles del Dashboard">
+                  {roles.length > 0 ? (
+                    roles.map((r) => (
+                      <option key={r.id} value={r.slug}>
+                        🛡️ {r.name} {r.description ? `(${r.description})` : ''}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="superadmin">🛡️ Super Administrador (Control Total)</option>
+                      <option value="admin">🛡️ Administrador del Sistema</option>
+                    </>
+                  )}
+                </optgroup>
               </select>
+
+              {/* Informative banner according to selected role */}
+              {role === 'customer' ? (
+                <div className="mt-2 p-2.5 bg-slate-100 rounded-xl border border-slate-200 flex items-center gap-2 text-slate-600 text-xs">
+                  <User className="w-4 h-4 text-slate-400 shrink-0" />
+                  <span>Este usuario es un cliente de la tienda y no puede acceder al panel administrativo.</span>
+                </div>
+              ) : selectedRoleObj ? (
+                <div className="mt-2 p-3 bg-red-50/70 rounded-xl border border-red-100 text-xs text-slate-700 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-slate-900 flex items-center gap-1.5 font-display">
+                      <Shield className="w-3.5 h-3.5 text-[#E60012]" />
+                      Permisos de {selectedRoleObj.name}:
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-500">
+                      {selectedRoleObj.permissions?.filter(p => p.canRead).length || 0} módulos autorizados
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {selectedRoleObj.permissions?.filter(p => p.canRead).map((p) => (
+                      <span
+                        key={p.module}
+                        className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border ${
+                          p.canWrite
+                            ? 'bg-red-100/80 text-red-800 border-red-200'
+                            : 'bg-blue-50 text-blue-800 border-blue-200'
+                        }`}
+                      >
+                        {p.module} {p.canWrite ? '(Lectura/Escritura)' : '(Solo Ver)'}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <div>
@@ -282,9 +373,9 @@ export const UserModal: React.FC<UserModalProps> = ({
               <select
                 value={active ? "true" : "false"}
                 onChange={(e) => setActive(e.target.value === "true")}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#E60012]"
               >
-                <option value="true">Activa (Permite Compras)</option>
+                <option value="true">Activa (Permite Iniciar Sesión)</option>
                 <option value="false">Inactiva / Bloqueada</option>
               </select>
             </div>

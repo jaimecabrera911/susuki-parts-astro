@@ -35,10 +35,12 @@ import { formatThousands } from "../../utils/formatCurrency";
 interface PartDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (part: SuzukiPart) => void;
+  onSave: (part: SuzukiPart) => Promise<any> | void;
   partToEdit: SuzukiPart | null;
   models: SuzukiModel[];
   categories: Category[];
+  initialData?: Partial<SuzukiPart> | null;
+  zIndex?: string;
 }
 
 export const PartDrawer: React.FC<PartDrawerProps> = ({
@@ -48,6 +50,8 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
   partToEdit,
   models,
   categories,
+  initialData,
+  zIndex,
 }) => {
   const [sku, setSku] = useState("");
   const [name, setName] = useState("");
@@ -190,6 +194,42 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       setDescription(partToEdit.description || "");
       setSpecs(partToEdit.specs || []);
       setCompatibility(partToEdit.compatibility || []);
+    } else if (initialData) {
+      setSku(initialData.sku || "");
+      setName(initialData.name || "");
+      const [p, ...sec] = initialData.oemNumbers || [];
+      setPrimaryOem(p || "");
+      setSecondaryOems(sec || []);
+      setSecondaryOemInput("");
+      const defaultSlug = initialData.category || categories[0]?.slug || "";
+      setCategory(defaultSlug);
+      setPrice(initialData.price ?? 50000);
+      setTaxable(initialData.taxable !== false);
+      setPriceIncludesTax(initialData.priceIncludesTax === true);
+      setStock(initialData.stock ?? 10);
+      setAvailability(
+        initialData.availability ||
+          ((initialData.stock ?? 10) > 0 ? "in_stock" : "on_order"),
+      );
+      setGallery(
+        initialData.images && initialData.images.length > 0
+          ? initialData.images
+          : initialData.image
+            ? [initialData.image]
+            : [],
+      );
+      setDescription(initialData.description || "");
+      const initialSpecs =
+        initialData.specs && initialData.specs.length > 0
+          ? initialData.specs
+          : configuredDefaultSpecs.length > 0
+            ? configuredDefaultSpecs.map((d) => ({
+                label: d.label,
+                value: d.defaultValue || "",
+              }))
+            : [];
+      setSpecs(initialSpecs);
+      setCompatibility(initialData.compatibility || []);
     } else {
       setSku("");
       setName("");
@@ -216,7 +256,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       setCompatibility([]);
     }
     setError("");
-  }, [partToEdit, isOpen, configuredDefaultSpecs.length, categories]);
+  }, [partToEdit, initialData, isOpen, configuredDefaultSpecs.length, categories]);
 
   useEffect(() => {
     setPriceInput(formatThousands(price));
@@ -413,10 +453,10 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
         compatibility,
       };
 
-      onSave(newPart);
+      await onSave(newPart);
       onClose();
     } catch (err: any) {
-      setError(err?.message || "No se pudieron subir las imágenes.");
+      setError(err?.message || "No se pudo guardar el repuesto.");
     } finally {
       setUploading(false);
     }
@@ -425,7 +465,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
   return (
     <div
       id="part-drawer"
-      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 md:p-6 overflow-y-auto"
+      className={`fixed inset-0 ${zIndex || "z-50"} bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 md:p-6 overflow-y-auto`}
     >
       <div className="w-full max-w-[95vw] md:max-w-4xl lg:max-w-5xl bg-white border border-slate-200 rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}

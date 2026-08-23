@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 import type { AdminTab } from './AdminSidebar';
+import { hasModulePermission, getStoredUser } from '../../utils/auth';
 
 interface AdminMobileMenuProps {
   isOpen: boolean;
@@ -57,6 +58,8 @@ export const AdminMobileMenu: React.FC<AdminMobileMenuProps> = ({
   onPrimaryAction,
   primaryActionLabel,
 }) => {
+  const currentUser = getStoredUser();
+  const visibleMenuItems = menuItems.filter(item => hasModulePermission(currentUser, item.id, 'read'));
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
@@ -137,7 +140,7 @@ export const AdminMobileMenu: React.FC<AdminMobileMenuProps> = ({
 
         {/* Menu Items */}
         <div className="flex-1 overflow-y-auto p-3 space-y-1">
-          {menuItems.map((item) => {
+          {visibleMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (

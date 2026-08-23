@@ -28,6 +28,7 @@ import { SchematicViewModal } from "./SchematicViewModal";
 import { OrderModal } from "./OrderModal";
 import { UserModal } from "./UserModal";
 import { ConfirmDeleteModal } from "./ConfirmDeleteModal";
+import { RoleModal } from "./RoleModal";
 import {
   fetchBrands,
   fetchModels,
@@ -37,6 +38,7 @@ import {
   fetchOrders,
   fetchUsers,
   fetchReturns,
+  fetchRoles,
   saveBrandApi,
   deleteBrandApi,
   saveModelApi,
@@ -51,6 +53,8 @@ import {
   deleteCategoryApi,
   saveUserApi,
   deleteUserApi,
+  saveRoleApi,
+  deleteRoleApi,
   saveReturnApi,
   deleteReturnApi,
 } from "../../services/api";
@@ -64,6 +68,7 @@ import type {
   ExplodedDiagram,
   Order,
   UserProfile,
+  Role,
 } from "../../types";
 import {
   CheckCircle2,
@@ -72,7 +77,7 @@ import {
   Users,
   ShieldAlert,
 } from "lucide-react";
-import { getStoredLogin, getStoredUser, isAdminUser } from "../../utils/auth";
+import { getStoredLogin, getStoredUser, isAdminUser, hasModulePermission } from "../../utils/auth";
 import { SiteSettingsProvider } from "../SiteSettingsProvider";
 
 const getTabFromUrl = (): AdminTab => {
@@ -141,6 +146,10 @@ export const AdminDashboard: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [returnsList, setReturnsList] = useState<any[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+
+  // Current logged in user profile
+  const currentUser = getStoredUser();
 
   // Toast notification state
   const [toast, setToast] = useState<{
@@ -186,6 +195,9 @@ export const AdminDashboard: React.FC = () => {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
 
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [roleToEdit, setRoleToEdit] = useState<Role | null>(null);
+
   // Confirm delete modal state
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
@@ -203,13 +215,40 @@ export const AdminDashboard: React.FC = () => {
 
   const [isLoadingData, setIsLoadingData] = useState(true);
 
+  // Ensure activeTab is authorized for current user, otherwise redirect to first authorized tab
+  useEffect(() => {
+    if (!authorized) return;
+    const validTabs: AdminTab[] = [
+      "brands",
+      "models",
+      "categories",
+      "parts",
+      "schematics",
+      "orders",
+      "returns",
+      "users",
+      "shipping",
+      "payments",
+      "settings",
+      "coupons",
+      "metrics",
+    ];
+
+    if (!hasModulePermission(currentUser, activeTab, 'read')) {
+      const firstAllowed = validTabs.find(tab => hasModulePermission(currentUser, tab, 'read'));
+      if (firstAllowed && firstAllowed !== activeTab) {
+        handleSetActiveTab(firstAllowed);
+      }
+    }
+  }, [activeTab, authorized]);
+
   // Load all data from Neon DB API on mount — no localStorage, no mocks
   useEffect(() => {
     if (!authorized) return;
     async function loadLiveData() {
       setIsLoadingData(true);
       try {
-        const [b, m, c, p, s, o, r, u] = await Promise.all([
+        const [b, m, c, p, s, o, r, u, ro] = await Promise.all([
           fetchBrands(),
           fetchModels(),
           fetchCategories(),
@@ -218,6 +257,7 @@ export const AdminDashboard: React.FC = () => {
           fetchOrders(),
           fetchReturns(),
           fetchUsers(),
+          fetchRoles(),
         ]);
         setBrands(b);
         setModels(m);
@@ -227,6 +267,7 @@ export const AdminDashboard: React.FC = () => {
         setOrders(o);
         setReturnsList(r);
         setUsers(u);
+        setRoles(ro);
       } catch (err) {
         console.error("Error loading data from DB API:", err);
       } finally {
@@ -280,7 +321,59 @@ export const AdminDashboard: React.FC = () => {
         } finally {
           setDeleteModal(null);
         }
-      },
+      }
+    });
+  };
+
+  const handleSaveRole = async (savedRole: Partial<Role>) => {
+    const exists = roles.some((r) => r.id === savedRole.id);
+    try {
+      const res = await saveRoleApi(savedRole, exists);
+      if (res && res.success !== false) {
+        if (exists) {
+          setRoles(roles.map((r) => (r.id === savedRole.id ? { ...r, ...savedRole } as Role : r)));
+          showToast(`Rol "${savedRole.name}" actualizado con éxito.`);
+        } else {
+          setRoles([...roles, savedRole as Role]);
+          showToast(`Rol "${savedRole.name}" creado con éxito.`);
+        }
+        setIsRoleModalOpen(false);
+      } else {
+        showToast(`Error al guardar rol: ${res?.error || "Desconocido"}`, "error");
+      }
+    } catch (e: any) {
+      console.error("API Error:", e);
+      showToast(`Error al guardar rol: ${e?.message || e}`, "error");
+    }
+  };
+
+  const handleDeleteRole = (id: string) => {
+    const role = roles.find((r) => r.id === id);
+    if (!role) return;
+    if (role.isSystem) {
+      showToast("No se pueden eliminar roles de sistema.", "error");
+      return;
+    }
+    setDeleteModal({
+      isOpen: true,
+      title: "¿Eliminar rol / grupo de permisos?",
+      description: "¿Estás seguro de que deseas eliminar permanentemente este rol?",
+      itemName: role.name,
+      itemSubtitle: `Identificador: ${role.slug}`,
+      warningText: "Los usuarios asignados a este rol perderán los permisos específicos configurados.",
+      onConfirm: async () => {
+        setDeleteModal((prev) => (prev ? { ...prev, isLoading: true } : null));
+        try {
+          await deleteRoleApi(id);
+          setRoles((prev) => prev.filter((r) => r.id !== id));
+          showToast(`Rol "${role.name}" eliminado.`, "info");
+        } catch (e: any) {
+          console.error("API Error:", e);
+          showToast(`Error al eliminar rol: ${e?.message || e}`, "error");
+        } finally {
+          setDeleteModal(null);
+        }
+      }
     });
   };
 
@@ -588,16 +681,26 @@ export const AdminDashboard: React.FC = () => {
   // --- PART HANDLERS ---
   const handleSavePart = async (savedPart: SuzukiPart) => {
     const exists = parts.some((p) => p.id === savedPart.id);
-    if (exists) {
-      setParts(parts.map((p) => (p.id === savedPart.id ? savedPart : p)));
-      showToast(`Repuesto "${savedPart.name}" actualizado con éxito.`);
-    } else {
-      setParts([...parts, savedPart]);
-      showToast(`Repuesto "${savedPart.name}" creado con éxito.`);
+    try {
+      const res = await savePartApi(savedPart, exists);
+      if (res && res.success !== false) {
+        if (exists) {
+          setParts(parts.map((p) => (p.id === savedPart.id ? savedPart : p)));
+          showToast(`Repuesto "${savedPart.name}" actualizado con éxito.`, "success");
+        } else {
+          setParts([...parts, savedPart]);
+          showToast(`Repuesto "${savedPart.name}" creado con éxito en el catálogo.`, "success");
+        }
+        return res;
+      } else {
+        showToast(`Error al guardar repuesto: ${res?.error || "Error desconocido"}`, "error");
+        throw new Error(res?.error || "Error al guardar repuesto");
+      }
+    } catch (e: any) {
+      console.error("API Error guardando repuesto:", e);
+      showToast(`Error al guardar repuesto en base de datos: ${e?.message || e}`, "error");
+      throw e;
     }
-    await savePartApi(savedPart, exists).catch((e) =>
-      console.error("API Error:", e),
-    );
   };
 
   const handleDuplicatePart = async (sourcePart: SuzukiPart) => {
@@ -853,6 +956,7 @@ export const AdminDashboard: React.FC = () => {
         ordersCount={orders.length}
         returnsCount={returnsList.length}
         usersCount={users.length}
+        currentUser={currentUser}
       />
 
       {/* Main Content Area */}
@@ -1100,8 +1204,10 @@ export const AdminDashboard: React.FC = () => {
           {activeTab === "users" && (
             <UsersManager
               users={users}
+              roles={roles}
               searchQuery={searchQuery}
               isLoading={isLoadingData}
+              canWrite={hasModulePermission(currentUser, 'users', 'write')}
               onAddUser={() => {
                 setUserToEdit(null);
                 setIsUserModalOpen(true);
@@ -1111,6 +1217,15 @@ export const AdminDashboard: React.FC = () => {
                 setIsUserModalOpen(true);
               }}
               onDeleteUser={handleDeleteUser}
+              onAddRole={() => {
+                setRoleToEdit(null);
+                setIsRoleModalOpen(true);
+              }}
+              onEditRole={(r) => {
+                setRoleToEdit(r);
+                setIsRoleModalOpen(true);
+              }}
+              onDeleteRole={handleDeleteRole}
             />
           )}
 
@@ -1229,6 +1344,8 @@ export const AdminDashboard: React.FC = () => {
         schematicToEdit={schematicToEdit}
         models={models}
         parts={parts}
+        categories={categories}
+        onSavePart={handleSavePart}
       />
 
       <SchematicViewModal
@@ -1261,6 +1378,14 @@ export const AdminDashboard: React.FC = () => {
         onClose={() => setIsUserModalOpen(false)}
         userToEdit={userToEdit}
         onSaveUser={handleSaveUser}
+        availableRoles={roles}
+      />
+
+      <RoleModal
+        isOpen={isRoleModalOpen}
+        onClose={() => setIsRoleModalOpen(false)}
+        roleToEdit={roleToEdit}
+        onSaveRole={handleSaveRole}
       />
 
       <ReturnModal

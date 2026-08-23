@@ -17,7 +17,15 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
     optimizeDeps: {
-      include: ['react-data-table-component'],
+      include: [
+        'react-data-table-component',
+        'react-icons/fa',
+        'react-icons/fa6',
+        'react-icons/ai',
+        'react-icons/tb',
+        'react-icons/io5',
+        'react-icons/bi'
+      ],
     },
   },
 });

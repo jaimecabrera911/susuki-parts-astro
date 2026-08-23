@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../../db/client';
-import { users, userFavorites } from '../../../db/schema';
+import { users, userFavorites, userPermissions, roles, rolePermissions } from '../../../db/schema';
 import { eq } from 'drizzle-orm';
 import { verifyJwtToken } from '../../../utils/jwt';
 
@@ -44,6 +44,33 @@ export const GET: APIRoute = async ({ request }) => {
     const favorites = await db.select().from(userFavorites).where(eq(userFavorites.userId, user.id));
     const favoritePartIds = favorites.map(f => f.partId);
 
+    const rawPermissions = await db.select().from(userPermissions).where(eq(userPermissions.userId, user.id));
+    let permissions = rawPermissions.map(p => ({
+      id: p.id,
+      userId: p.userId,
+      module: p.module,
+      canRead: p.canRead,
+      canWrite: p.canWrite,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt
+    }));
+
+    if (permissions.length === 0 && user.role && user.role !== 'customer') {
+      const matchedRoles = await db.select().from(roles).where(eq(roles.slug, user.role));
+      if (matchedRoles.length > 0) {
+        const rolePerms = await db.select().from(rolePermissions).where(eq(rolePermissions.roleId, matchedRoles[0].id));
+        permissions = rolePerms.map(p => ({
+          id: p.id,
+          userId: user.id,
+          module: p.module,
+          canRead: p.canRead,
+          canWrite: p.canWrite,
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt
+        }));
+      }
+    }
+
     const userProfile = {
       id: user.id,
       fullName: user.fullName,
@@ -58,7 +85,8 @@ export const GET: APIRoute = async ({ request }) => {
       role: user.role,
       active: user.active,
       notes: user.notes,
-      favoritePartIds
+      favoritePartIds,
+      permissions
     };
 
     return new Response(

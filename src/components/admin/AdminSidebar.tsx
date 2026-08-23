@@ -15,6 +15,8 @@ import { FaMotorcycle } from 'react-icons/fa';
 
 import { Tag, RotateCcw, Settings, CreditCard } from 'lucide-react';
 import { getStoreLogo, getStoreName, getStoreTagline } from '../../utils/config';
+import { hasModulePermission, getStoredUser } from '../../utils/auth';
+import type { UserProfile } from '../../types';
 import logoImg from '../../assets/logo.png';
 
 const logoUrl = typeof logoImg === 'string' ? logoImg : (logoImg?.src || '/src/assets/logo.png');
@@ -34,6 +36,7 @@ interface AdminSidebarProps {
   usersCount?: number;
   shippingCount?: number;
   couponsCount?: number;
+  currentUser?: UserProfile | null;
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
@@ -48,14 +51,16 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   returnsCount = 0,
   usersCount = 0,
   shippingCount = 0,
-  couponsCount = 0
+  couponsCount = 0,
+  currentUser
 }) => {
   const storeLogo = getStoreLogo();
   const storeName = getStoreName();
   const storeTagline = getStoreTagline();
   const logoToShow = storeLogo || logoUrl;
+  const userToUse = currentUser || getStoredUser();
 
-  const menuItems = [
+  const allMenuItems = [
     {
       id: 'brands' as AdminTab,
       label: 'MARCAS',
@@ -122,6 +127,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       icon: BarChart3
     }
   ];
+
+  const menuItems = allMenuItems.filter(item => hasModulePermission(userToUse, item.id, 'read'));
 
   return (
     <aside id="admin-sidebar" className="hidden lg:flex w-64 bg-white border-r border-slate-200 text-slate-900 flex-col justify-between h-screen sticky top-0 z-30 select-none shadow-xs">

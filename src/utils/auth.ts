@@ -1,4 +1,4 @@
-import type { UserProfile } from '../types';
+import type { UserProfile, DashboardModule } from '../types';
 
 export function getStoredLogin(): boolean {
   if (typeof window === 'undefined') return false;
@@ -54,10 +54,38 @@ export function getAuthHeaders(): Record<string, string> {
   };
 }
 
+export function isSuperAdminUser(user?: UserProfile | null): boolean {
+  return !!user && user.role === 'superadmin';
+}
+
 export function isAdminUser(user?: UserProfile | null): boolean {
-  return !!user && user.role === 'admin';
+  return !!user && Boolean(user.role) && user.role !== 'customer';
 }
 
 export function isLoggedInUser(user?: UserProfile | null): boolean {
   return !!user && !!user.id;
+}
+
+export function hasModulePermission(
+  user?: UserProfile | null,
+  module?: string,
+  action: 'read' | 'write' = 'read'
+): boolean {
+  if (!user) return false;
+  if (user.role === 'customer') return false;
+  if (user.role === 'superadmin') return true;
+
+  // Backward compatibility: If no permissions array is defined for a legacy admin, default to full access
+  if (user.role === 'admin' && (!user.permissions || user.permissions.length === 0)) {
+    return true;
+  }
+
+  // If user has permissions array configured from their role or user permissions:
+  if (user.permissions && user.permissions.length > 0) {
+    const perm = user.permissions.find(p => p.module === module);
+    if (!perm) return false;
+    return action === 'write' ? Boolean(perm.canWrite) : Boolean(perm.canRead);
+  }
+
+  return false;
 }
