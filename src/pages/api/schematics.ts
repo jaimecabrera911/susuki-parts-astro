@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
-import { schematics, schematicHotspots, schematicApplicableModels } from '../../db/schema';
+import { schematics, schematicHotspots, schematicApplicableModels, parts } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import { upsertSchematic } from '../../db/writers';
 
@@ -95,13 +95,24 @@ export const DELETE: APIRoute = async ({ url }) => {
     const id = url.searchParams.get('id');
     if (!id) throw new Error('Parámetro "id" es requerido');
 
+    // Desvincular repuestos que apunten a este despiece
+    await db.update(parts).set({ schematicId: null }).where(eq(parts.schematicId, id));
+
+    // Eliminar hotspots asociados
+    await db.delete(schematicHotspots).where(eq(schematicHotspots.schematicId, id));
+
+    // Eliminar modelos aplicables asociados
+    await db.delete(schematicApplicableModels).where(eq(schematicApplicableModels.schematicId, id));
+
+    // Eliminar el despiece
     await db.delete(schematics).where(eq(schematics.id, id));
 
-    return new Response(JSON.stringify({ success: true, message: `Despiece ${id} eliminado` }), {
+    return new Response(JSON.stringify({ success: true, message: `Despiece ${id} eliminado exitosamente` }), {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
-    return new Response(JSON.stringify({ success: false, error: error.message }), {
+    console.error('Error en DELETE /api/schematics:', error?.message || error);
+    return new Response(JSON.stringify({ success: false, error: error.message || 'Error al eliminar el despiece' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }
     });

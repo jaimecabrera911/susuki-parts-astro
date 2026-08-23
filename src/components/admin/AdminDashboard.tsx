@@ -27,6 +27,7 @@ import { SchematicDrawer } from "./SchematicDrawer";
 import { SchematicViewModal } from "./SchematicViewModal";
 import { OrderModal } from "./OrderModal";
 import { UserModal } from "./UserModal";
+import { ConfirmDeleteModal } from "./ConfirmDeleteModal";
 import {
   fetchBrands,
   fetchModels,
@@ -185,6 +186,21 @@ export const AdminDashboard: React.FC = () => {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
 
+  // Confirm delete modal state
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    description?: string;
+    itemName?: string;
+    itemSubtitle?: string;
+    itemImage?: string;
+    warningText?: string;
+    confirmText?: string;
+    cancelText?: string;
+    isLoading?: boolean;
+    onConfirm: () => Promise<void> | void;
+  } | null>(null);
+
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   // Load all data from Neon DB API on mount — no localStorage, no mocks
@@ -241,14 +257,31 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleDeleteUser = async (id: string) => {
+  const handleDeleteUser = (id: string) => {
     const user = users.find((u) => u.id === id);
     if (!user) return;
-    if (confirm(`¿Estás seguro de eliminar al usuario "${user.fullName}"?`)) {
-      setUsers(users.filter((u) => u.id !== id));
-      showToast(`Usuario "${user.fullName}" eliminado.`, "info");
-      await deleteUserApi(id).catch((e) => console.error("API Error:", e));
-    }
+    setDeleteModal({
+      isOpen: true,
+      title: "¿Eliminar usuario?",
+      description: "¿Estás seguro de que deseas eliminar permanentemente a este usuario?",
+      itemName: user.fullName,
+      itemSubtitle: `Email: ${user.email} • Rol: ${user.role}`,
+      itemImage: user.avatarUrl,
+      warningText: "El usuario ya no podrá acceder a su cuenta ni a su historial.",
+      onConfirm: async () => {
+        setDeleteModal((prev) => (prev ? { ...prev, isLoading: true } : null));
+        try {
+          await deleteUserApi(id);
+          setUsers((prev) => prev.filter((u) => u.id !== id));
+          showToast(`Usuario "${user.fullName}" eliminado.`, "info");
+        } catch (e: any) {
+          console.error("API Error:", e);
+          showToast(`Error al eliminar usuario: ${e?.message || e}`, "error");
+        } finally {
+          setDeleteModal(null);
+        }
+      },
+    });
   };
 
   const showToast = (
@@ -296,18 +329,31 @@ export const AdminDashboard: React.FC = () => {
       );
   };
 
-  const handleDeleteBrand = async (id: string) => {
+  const handleDeleteBrand = (id: string) => {
     const brand = brands.find((b) => b.id === id);
     if (!brand) return;
-    if (
-      confirm(
-        `¿Estás seguro de eliminar la marca "${brand.name}"? Los modelos asociados podrían quedar sin marca.`,
-      )
-    ) {
-      setBrands(brands.filter((b) => b.id !== id));
-      showToast(`Marca "${brand.name}" eliminada.`, "info");
-      await deleteBrandApi(id).catch((e) => console.error("API Error:", e));
-    }
+    setDeleteModal({
+      isOpen: true,
+      title: "¿Eliminar marca?",
+      description: "¿Estás seguro de que deseas eliminar esta marca?",
+      itemName: brand.name,
+      itemSubtitle: `País: ${brand.country || "N/A"}`,
+      itemImage: brand.logo,
+      warningText: "Los modelos asociados a esta marca podrían quedar sin fabricante asignado.",
+      onConfirm: async () => {
+        setDeleteModal((prev) => (prev ? { ...prev, isLoading: true } : null));
+        try {
+          await deleteBrandApi(id);
+          setBrands((prev) => prev.filter((b) => b.id !== id));
+          showToast(`Marca "${brand.name}" eliminada.`, "info");
+        } catch (e: any) {
+          console.error("API Error:", e);
+          showToast(`Error al eliminar marca: ${e?.message || e}`, "error");
+        } finally {
+          setDeleteModal(null);
+        }
+      },
+    });
   };
 
   // --- MODEL HANDLERS ---
@@ -372,14 +418,31 @@ export const AdminDashboard: React.FC = () => {
       );
   };
 
-  const handleDeleteModel = async (id: string) => {
+  const handleDeleteModel = (id: string) => {
     const model = models.find((m) => m.id === id);
     if (!model) return;
-    if (confirm(`¿Estás seguro de eliminar el modelo "${model.name}"?`)) {
-      setModels(models.filter((m) => m.id !== id));
-      showToast(`Modelo "${model.name}" eliminado.`, "info");
-      await deleteModelApi(id).catch((e) => console.error("API Error:", e));
-    }
+    setDeleteModal({
+      isOpen: true,
+      title: "¿Eliminar modelo?",
+      description: "¿Estás seguro de que deseas eliminar este modelo de motocicleta?",
+      itemName: model.name,
+      itemSubtitle: `Categoría: ${model.category || "General"} • Versiones: ${model.versions?.join(", ") || "N/A"}`,
+      itemImage: model.image,
+      warningText: "Los repuestos y despieces vinculados a este modelo perderán la compatibilidad específica.",
+      onConfirm: async () => {
+        setDeleteModal((prev) => (prev ? { ...prev, isLoading: true } : null));
+        try {
+          await deleteModelApi(id);
+          setModels((prev) => prev.filter((m) => m.id !== id));
+          showToast(`Modelo "${model.name}" eliminado.`, "info");
+        } catch (e: any) {
+          console.error("API Error:", e);
+          showToast(`Error al eliminar modelo: ${e?.message || e}`, "error");
+        } finally {
+          setDeleteModal(null);
+        }
+      },
+    });
   };
 
   // --- CATEGORY HANDLERS ---
@@ -421,18 +484,30 @@ export const AdminDashboard: React.FC = () => {
       );
   };
 
-  const handleDeleteCategory = async (id: string) => {
+  const handleDeleteCategory = (id: string) => {
     const cat = categories.find((c) => c.id === id);
     if (!cat) return;
-    if (
-      confirm(
-        `¿Estás seguro de eliminar la categoría "${cat.name}" y sus subcategorías?`,
-      )
-    ) {
-      setCategories(categories.filter((c) => c.id !== id));
-      showToast(`Categoría "${cat.name}" eliminada.`, "info");
-      await deleteCategoryApi(id).catch((e) => console.error("API Error:", e));
-    }
+    setDeleteModal({
+      isOpen: true,
+      title: "¿Eliminar categoría?",
+      description: "¿Estás seguro de que deseas eliminar esta categoría?",
+      itemName: cat.name,
+      itemSubtitle: `Slug: /categoria/${cat.slug}`,
+      warningText: "Las subcategorías asociadas se eliminarán y los repuestos asignados deberán reubicarse.",
+      onConfirm: async () => {
+        setDeleteModal((prev) => (prev ? { ...prev, isLoading: true } : null));
+        try {
+          await deleteCategoryApi(id);
+          setCategories((prev) => prev.filter((c) => c.id !== id && c.parentId !== id));
+          showToast(`Categoría "${cat.name}" eliminada.`, "info");
+        } catch (e: any) {
+          console.error("API Error:", e);
+          showToast(`Error al eliminar categoría: ${e?.message || e}`, "error");
+        } finally {
+          setDeleteModal(null);
+        }
+      },
+    });
   };
 
   // --- SCHEMATIC-TO-MODEL LINKING HANDLERS ---
@@ -571,14 +646,31 @@ export const AdminDashboard: React.FC = () => {
       );
   };
 
-  const handleDeletePart = async (id: string) => {
+  const handleDeletePart = (id: string) => {
     const part = parts.find((p) => p.id === id);
     if (!part) return;
-    if (confirm(`¿Estás seguro de eliminar el repuesto "${part.name}"?`)) {
-      setParts(parts.filter((p) => p.id !== id));
-      showToast(`Repuesto "${part.name}" eliminado del catálogo.`, "info");
-      await deletePartApi(id).catch((e) => console.error("API Error:", e));
-    }
+    setDeleteModal({
+      isOpen: true,
+      title: "¿Eliminar repuesto?",
+      description: "¿Estás seguro de que deseas eliminar este repuesto del catálogo?",
+      itemName: part.name,
+      itemSubtitle: `OEM: ${part.oemNumbers?.[0] || "N/A"} • SKU: ${part.sku || "N/A"}`,
+      itemImage: part.images?.[0],
+      warningText: "El repuesto se eliminará del catálogo general, listas de compatibilidad y despieces asociados.",
+      onConfirm: async () => {
+        setDeleteModal((prev) => (prev ? { ...prev, isLoading: true } : null));
+        try {
+          await deletePartApi(id);
+          setParts((prev) => prev.filter((p) => p.id !== id));
+          showToast(`Repuesto "${part.name}" eliminado del catálogo.`, "info");
+        } catch (e: any) {
+          console.error("API Error:", e);
+          showToast(`Error al eliminar repuesto: ${e?.message || e}`, "error");
+        } finally {
+          setDeleteModal(null);
+        }
+      },
+    });
   };
 
   // --- SCHEMATIC HANDLERS ---
@@ -622,16 +714,34 @@ export const AdminDashboard: React.FC = () => {
     );
   };
 
-  const handleDeleteSchematic = async (id: string) => {
+  const handleDeleteSchematic = (id: string) => {
     const schematic = schematics.find((s) => s.id === id);
     if (!schematic) return;
-    if (
-      confirm(`¿Estás seguro de eliminar el despiece "${schematic.title}"?`)
-    ) {
-      setSchematics(schematics.filter((s) => s.id !== id));
-      showToast(`Despiece "${schematic.title}" eliminado.`, "info");
-      await deleteSchematicApi(id).catch((e) => console.error("API Error:", e));
-    }
+    setDeleteModal({
+      isOpen: true,
+      title: "¿Eliminar despiece?",
+      description: "¿Estás seguro de que deseas eliminar este diagrama de despiece?",
+      itemName: schematic.title,
+      itemSubtitle: `Sección: ${schematic.section || "General"} • ${schematic.hotspots?.length || 0} puntos hotspot`,
+      itemImage: schematic.diagramImage,
+      warningText: "Se desvincularán los repuestos y se eliminarán los puntos interactivos asociados a este despiece.",
+      onConfirm: async () => {
+        setDeleteModal((prev) => (prev ? { ...prev, isLoading: true } : null));
+        try {
+          const res = await deleteSchematicApi(id);
+          if (res && res.success === false) {
+            throw new Error(res.error || "Error al eliminar el despiece");
+          }
+          setSchematics((prev) => prev.filter((s) => s.id !== id));
+          showToast(`Despiece "${schematic.title}" eliminado con éxito.`, "info");
+        } catch (e: any) {
+          console.error("API Error:", e);
+          showToast(`Error al eliminar despiece: ${e?.message || e}`, "error");
+        } finally {
+          setDeleteModal(null);
+        }
+      },
+    });
   };
 
   const handleSaveReturn = async (updated: any) => {
@@ -653,17 +763,31 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleDeleteReturn = async (id: string) => {
-    if (!confirm(`¿Estás seguro de eliminar el registro de devolución ${id}?`)) return;
-    try {
-      const res = await deleteReturnApi(id);
-      if (res.success) {
-        setReturnsList((prev) => prev.filter((r) => r.id !== id));
-        showToast(`Devolución ${id} eliminada`);
-      }
-    } catch (e) {
-      console.error("Error eliminando devolución:", e);
-    }
+  const handleDeleteReturn = (id: string) => {
+    setDeleteModal({
+      isOpen: true,
+      title: "¿Eliminar devolución?",
+      description: `¿Estás seguro de que deseas eliminar el registro de devolución / garantía #${id}?`,
+      itemName: `Registro #${id}`,
+      warningText: "Esta acción no se puede deshacer y el historial de esta solicitud de garantía se borrará.",
+      onConfirm: async () => {
+        setDeleteModal((prev) => (prev ? { ...prev, isLoading: true } : null));
+        try {
+          const res = await deleteReturnApi(id);
+          if (res.success) {
+            setReturnsList((prev) => prev.filter((r) => r.id !== id));
+            showToast(`Devolución ${id} eliminada.`);
+          } else {
+            showToast(`Error: ${res.error || "No se pudo eliminar"}`, "error");
+          }
+        } catch (e: any) {
+          console.error("Error eliminando devolución:", e);
+          showToast(`Error al eliminar: ${e?.message || e}`, "error");
+        } finally {
+          setDeleteModal(null);
+        }
+      },
+    });
   };
 
   const handlePrimaryAction = () => {
@@ -1145,6 +1269,26 @@ export const AdminDashboard: React.FC = () => {
         returnItem={returnToEdit}
         onSaveReturn={handleSaveReturn}
       />
+
+      {/* Confirmation Delete Modal */}
+      {deleteModal && (
+        <ConfirmDeleteModal
+          isOpen={deleteModal.isOpen}
+          title={deleteModal.title}
+          description={deleteModal.description}
+          itemName={deleteModal.itemName}
+          itemSubtitle={deleteModal.itemSubtitle}
+          itemImage={deleteModal.itemImage}
+          warningText={deleteModal.warningText}
+          confirmText={deleteModal.confirmText}
+          cancelText={deleteModal.cancelText}
+          isLoading={deleteModal.isLoading}
+          onConfirm={deleteModal.onConfirm}
+          onClose={() => {
+            if (!deleteModal.isLoading) setDeleteModal(null);
+          }}
+        />
+      )}
 
       {/* Mobile Bottom Dock (admin) */}
       <AdminMobileDock

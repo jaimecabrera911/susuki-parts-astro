@@ -585,22 +585,24 @@ export default function App() {
   };
 
   // Cart Handlers
-  const handleAddToCart = (part: SuzukiPart) => {
+  const handleAddToCart = (part: SuzukiPart, quantity: number = 1) => {
     if (!activeMotorcycle) {
       setIsGarageModalOpen(true);
       return;
     }
+
+    const qtyToAdd = Math.max(1, quantity || 1);
 
     setCartItems((prev) => {
       const existing = prev.find((item) => item.part.id === part.id);
       if (existing) {
         return prev.map((item) =>
           item.part.id === part.id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: item.quantity + qtyToAdd }
             : item,
         );
       } else {
-        return [...prev, { part, quantity: 1, motorcycle: activeMotorcycle }];
+        return [...prev, { part, quantity: qtyToAdd, motorcycle: activeMotorcycle }];
       }
     });
 

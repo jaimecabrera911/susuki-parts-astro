@@ -5,7 +5,8 @@ import { getPrimaryOem, getAvailabilityStatus, AVAILABILITY_META } from '../type
 import {
   Layers, ArrowLeft, Filter, Search, CheckCircle2, AlertTriangle,
   Eye, Info, ChevronRight, X, ArrowRightLeft,
-  ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2
+  ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2,
+  Plus, Minus
 } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 import { FaCartPlus } from 'react-icons/fa6';
@@ -18,7 +19,7 @@ const motoLoadUrl = typeof motoLoadImg === 'string' ? motoLoadImg : (motoLoadImg
 
 interface ExplodedViewProps {
   activeMotorcycle: ActiveMotorcycle | null;
-  onAddToCart: (part: SuzukiPart) => void;
+  onAddToCart: (part: SuzukiPart, quantity?: number) => void;
   onOpenPartDetail: (part: SuzukiPart) => void;
   onOpenGarageModal: () => void;
   initialSchematicId?: string;
@@ -87,6 +88,11 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   const [pinSize, setPinSize] = useState<'large' | 'normal' | 'compact'>('compact');
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [fullscreenZoom, setFullscreenZoom] = useState<number>(1);
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+
+  const getPartQuantity = (partId: string) => quantities[partId] || 1;
+  const setPartQuantity = (partId: string, q: number) =>
+    setQuantities((prev) => ({ ...prev, [partId]: Math.max(1, q) }));
 
   // Drag to pan state for schematic viewport
   const containerRef = useRef<HTMLDivElement>(null);
@@ -882,7 +888,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                   <th className="px-3 py-2.5 font-extrabold bg-slate-50">Repuesto / OEM</th>
                   <th className="px-3 py-2.5 font-extrabold text-right bg-slate-50">Precio</th>
                   <th className="px-3 py-2.5 font-extrabold text-center bg-slate-50">Estado</th>
-                  <th className="px-3 py-2.5 font-extrabold text-right bg-slate-50">Acción</th>
+                  <th className="px-3 py-2.5 font-extrabold text-right bg-slate-50">Cant. / Acción</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -891,6 +897,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                   const compat = isPartCompatible(part);
                   const availability: AvailabilityStatus = getAvailabilityStatus(part);
                   const meta = AVAILABILITY_META[availability];
+                  const currentQty = getPartQuantity(part.id);
                   return (
                     <tr
                       key={part.id}
@@ -936,7 +943,29 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                         </div>
                       </td>
                       <td className="px-3 py-3 text-right">
-                        <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <div className="inline-flex items-center gap-1.5 justify-end" onClick={(e) => e.stopPropagation()}>
+                          <div className="inline-flex items-center border border-slate-200 rounded-lg bg-slate-50 p-0.5 shadow-2xs">
+                            <button
+                              type="button"
+                              onClick={() => setPartQuantity(part.id, currentQty - 1)}
+                              disabled={currentQty <= 1}
+                              aria-label="Disminuir cantidad"
+                              className="w-6 h-6 rounded flex items-center justify-center bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed text-xs transition-colors cursor-pointer"
+                            >
+                              <Minus className="w-2.5 h-2.5" />
+                            </button>
+                            <span className="w-6 text-center font-mono font-black text-xs text-slate-900 select-none">
+                              {currentQty}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setPartQuantity(part.id, currentQty + 1)}
+                              aria-label="Aumentar cantidad"
+                              className="w-6 h-6 rounded flex items-center justify-center bg-white text-slate-700 hover:bg-slate-100 text-xs transition-colors cursor-pointer"
+                            >
+                              <Plus className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
                           <button
                             type="button"
                             onClick={() => onOpenPartDetail(part)}
@@ -948,10 +977,10 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                           </button>
                           <button
                             type="button"
-                            onClick={() => onAddToCart(part)}
+                            onClick={() => onAddToCart(part, currentQty)}
                             disabled={!!activeMotorcycle && compat === false}
                             className="w-8 h-8 flex items-center justify-center bg-[#E60012] hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
-                            title="Añadir al carrito"
+                            title={`Añadir ${currentQty} al carrito`}
                           >
                             <FaCartPlus className="w-3.5 h-3.5" aria-hidden="true" />
                           </button>
@@ -1164,16 +1193,47 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 pt-4 border-t border-slate-800">
+                <div className="flex flex-col gap-3 pt-4 border-t border-slate-800">
+                  <div className="flex items-center justify-between p-3 bg-slate-800/80 rounded-xl border border-slate-700">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cantidad</span>
+                      <span className="text-xs font-mono font-bold text-white">
+                        Subtotal: {formatCurrency(selectedPart.price * getPartQuantity(selectedPart.id))}
+                      </span>
+                    </div>
+                    <div className="flex items-center border border-slate-600 rounded-lg bg-slate-900 p-0.5 shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => setPartQuantity(selectedPart.id, getPartQuantity(selectedPart.id) - 1)}
+                        disabled={getPartQuantity(selectedPart.id) <= 1}
+                        aria-label="Disminuir cantidad"
+                        className="w-7 h-7 rounded flex items-center justify-center bg-slate-800 text-white hover:bg-slate-700 disabled:opacity-40 transition-colors cursor-pointer"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="w-8 text-center font-mono font-black text-sm text-white select-none">
+                        {getPartQuantity(selectedPart.id)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setPartQuantity(selectedPart.id, getPartQuantity(selectedPart.id) + 1)}
+                        aria-label="Aumentar cantidad"
+                        className="w-7 h-7 rounded flex items-center justify-center bg-slate-800 text-white hover:bg-slate-700 transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => {
-                      onAddToCart(selectedPart);
+                      onAddToCart(selectedPart, getPartQuantity(selectedPart.id));
                     }}
                     className="w-full py-3 bg-[#E60012] hover:bg-red-700 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md"
                   >
                     <FaCartPlus className="w-4 h-4" />
-                    <span>Añadir al Carrito</span>
+                    <span>Añadir al Carrito ({getPartQuantity(selectedPart.id)})</span>
                   </button>
                   <button
                     type="button"
@@ -1341,9 +1401,15 @@ const SelectedPartStrip: React.FC<{
   itemNumber: number;
   compatible: boolean | null;
   activeMotorcycle: ActiveMotorcycle | null;
-  onAddToCart: (part: SuzukiPart) => void;
+  onAddToCart: (part: SuzukiPart, quantity?: number) => void;
   onClose: () => void;
 }> = ({ part, itemNumber, compatible, activeMotorcycle, onAddToCart, onClose }) => {
+  const [quantity, setQuantity] = useState(1);
+
+  useEffect(() => {
+    setQuantity(1);
+  }, [part.id]);
+
   const availability = getAvailabilityStatus(part);
   const meta = AVAILABILITY_META[availability];
   return (
@@ -1390,15 +1456,39 @@ const SelectedPartStrip: React.FC<{
                 </span>
               )
             )}
-            <button
-              type="button"
-              onClick={() => onAddToCart(part)}
-              disabled={!!activeMotorcycle && compatible === false}
-              className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 bg-[#E60012] hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-[10px] font-extrabold uppercase tracking-wider rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
-            >
-              <FaCartPlus className="w-3 h-3" aria-hidden="true" />
-              Añadir
-            </button>
+            <div className="ml-auto inline-flex items-center gap-2">
+              <div className="inline-flex items-center border border-slate-200 rounded-lg bg-slate-50 p-0.5 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                  disabled={quantity <= 1}
+                  aria-label="Disminuir cantidad"
+                  className="w-6 h-6 rounded flex items-center justify-center bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed text-xs transition-colors cursor-pointer"
+                >
+                  <Minus className="w-2.5 h-2.5" />
+                </button>
+                <span className="w-6 text-center font-mono font-black text-xs text-slate-900 select-none">
+                  {quantity}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setQuantity(q => q + 1)}
+                  aria-label="Aumentar cantidad"
+                  className="w-6 h-6 rounded flex items-center justify-center bg-white text-slate-700 hover:bg-slate-100 text-xs transition-colors cursor-pointer"
+                >
+                  <Plus className="w-2.5 h-2.5" />
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => onAddToCart(part, quantity)}
+                disabled={!!activeMotorcycle && compatible === false}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#E60012] hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-extrabold uppercase tracking-wider rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+              >
+                <FaCartPlus className="w-3.5 h-3.5" aria-hidden="true" />
+                Añadir {quantity > 1 ? `(${quantity})` : ''}
+              </button>
+            </div>
           </div>
         </div>
       </div>

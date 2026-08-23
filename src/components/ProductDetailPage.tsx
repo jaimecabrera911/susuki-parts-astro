@@ -13,6 +13,8 @@ import {
   ChevronDown,
   ChevronUp,
   HelpCircle,
+  Plus,
+  Minus,
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { FaMotorcycle } from "react-icons/fa";
@@ -40,7 +42,7 @@ interface ProductDetailPageProps {
   schematics?: ExplodedDiagram[];
   models?: SuzukiModel[];
   onBack: () => void;
-  onAddToCart: (part: SuzukiPart) => void;
+  onAddToCart: (part: SuzukiPart, quantity?: number) => void;
   onOpenGarageModal: () => void;
   onViewSchematics: (schematicId: string, partId: string) => void;
   onSelectRelatedPart: (part: SuzukiPart) => void;
@@ -61,6 +63,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const [copied, setCopied] = useState(false);
   const [copiedOem, setCopiedOem] = useState<string | null>(null);
   const [showAllOems, setShowAllOems] = useState(false);
+  const [quantity, setQuantity] = useState<number>(1);
+
+  useEffect(() => {
+    setQuantity(1);
+  }, [part.id]);
 
   const handleCopyOem = (oem: string) => {
     navigator.clipboard.writeText(oem).then(() => {
@@ -534,8 +541,50 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </div>
             </div>
 
-            {/* Bottom Actions Bar — reorganizado con stock en card lateral */}
+            {/* Bottom Actions Bar */}
             <div className="pt-6 border-t border-slate-200 space-y-4">
+              {activeMotorcycle && isCompatible && (
+                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200 shadow-2xs">
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Cantidad</span>
+                    <span className="text-xs font-black text-slate-900 font-mono">
+                      Subtotal: {formatCurrency(part.price * quantity)}
+                    </span>
+                  </div>
+                  <div className="flex items-center border border-slate-300 rounded-xl bg-white p-1 shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                      disabled={quantity <= 1}
+                      aria-label="Disminuir cantidad"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <input
+                      type="number"
+                      min={1}
+                      max={part.stock > 0 ? part.stock : 99}
+                      value={quantity}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        if (!isNaN(val) && val >= 1) setQuantity(val);
+                      }}
+                      className="w-12 text-center font-mono font-black text-sm bg-transparent border-none focus:outline-none text-slate-900"
+                      aria-label="Cantidad de repuestos"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setQuantity((q) => q + 1)}
+                      aria-label="Aumentar cantidad"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <a
                   href={getProductWhatsAppUrl(part, activeMotorcycle)}
@@ -573,11 +622,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 ) : (
                   <button
                     type="button"
-                    onClick={() => onAddToCart(part)}
+                    onClick={() => onAddToCart(part, quantity)}
                     className="w-full py-3 px-4 min-h-[44px] bg-[#E60012] hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
                   >
                     <FaCartPlus className="w-4 h-4" aria-hidden="true" />
-                    <span>Añadir al Carrito</span>
+                    <span>Añadir al Carrito {quantity > 1 ? `(${quantity})` : ''}</span>
                   </button>
                 )}
               </div>

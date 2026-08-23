@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Tag, Plus, Edit2, Trash2, CheckCircle2, XCircle, Search, ToggleLeft, ToggleRight, DollarSign, Percent } from 'lucide-react';
 import type { Coupon } from '../../types';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 export const CouponsManager: React.FC = () => {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -10,6 +11,8 @@ export const CouponsManager: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
+  const [deleteConfirmCoupon, setDeleteConfirmCoupon] = useState<Coupon | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [formData, setFormData] = useState<Omit<Coupon, 'id'>>({
     code: '',
@@ -102,19 +105,27 @@ export const CouponsManager: React.FC = () => {
     await upsertCoupon({ ...coupon, active: !coupon.active });
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar este cupón de descuento?')) return;
+  const handleDelete = (coupon: Coupon) => {
+    setDeleteConfirmCoupon(coupon);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirmCoupon) return;
+    setIsDeleting(true);
     try {
       const res = await fetch('/api/coupons', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id: deleteConfirmCoupon.id }),
       }).then(r => r.json());
       if (res?.success && Array.isArray(res.data)) {
         setCoupons(res.data);
       }
     } catch (e) {
       console.error('Error eliminando cupón:', e);
+    } finally {
+      setIsDeleting(false);
+      setDeleteConfirmCoupon(null);
     }
   };
 
@@ -242,7 +253,7 @@ export const CouponsManager: React.FC = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDelete(coupon.id)}
+                          onClick={() => handleDelete(coupon)}
                           className="p-2 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                           title="Eliminar Cupón"
                         >
@@ -357,6 +368,29 @@ export const CouponsManager: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Confirm Delete Modal */}
+      {deleteConfirmCoupon && (
+        <ConfirmDeleteModal
+          isOpen={!!deleteConfirmCoupon}
+          title="¿Eliminar cupón de descuento?"
+          description="¿Estás seguro de que deseas eliminar este código promocional?"
+          itemName={`CUPÓN: ${deleteConfirmCoupon.code}`}
+          itemSubtitle={
+            deleteConfirmCoupon.type === 'percentage'
+              ? `Descuento: ${deleteConfirmCoupon.value}% • Compra mínima: ${formatCurrency(deleteConfirmCoupon.minPurchase || 0)}`
+              : `Descuento: ${formatCurrency(deleteConfirmCoupon.value)} • Compra mínima: ${formatCurrency(deleteConfirmCoupon.minPurchase || 0)}`
+          }
+          warningText="Los clientes ya no podrán aplicar este código en el carrito de compras."
+          confirmText="Sí, Eliminar"
+          cancelText="Cancelar"
+          isLoading={isDeleting}
+          onConfirm={handleConfirmDelete}
+          onClose={() => {
+            if (!isDeleting) setDeleteConfirmCoupon(null);
+          }}
+        />
       )}
     </div>
   );

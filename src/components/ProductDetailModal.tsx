@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   X,
   CheckCircle2,
@@ -12,6 +12,8 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Plus,
+  Minus,
 } from "lucide-react";
 import { FaMotorcycle } from "react-icons/fa";
 import { FaCartPlus } from "react-icons/fa6";
@@ -36,7 +38,7 @@ interface ProductDetailModalProps {
   schematics?: ExplodedDiagram[];
   models?: SuzukiModel[];
   onClose: () => void;
-  onAddToCart: (part: SuzukiPart) => void;
+  onAddToCart: (part: SuzukiPart, quantity?: number) => void;
   onOpenGarageModal: () => void;
   onViewSchematics: (schematicId: string, partId: string) => void;
   onSelectRelatedPart?: (part: SuzukiPart) => void;
@@ -58,6 +60,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 }) => {
   const [copiedOem, setCopiedOem] = useState<string | null>(null);
   const [showAllOems, setShowAllOems] = useState(false);
+  const [quantity, setQuantity] = useState<number>(1);
+
+  useEffect(() => {
+    setQuantity(1);
+  }, [part?.id]);
 
   const handleCopyOem = (oem: string) => {
     navigator.clipboard.writeText(oem).then(() => {
@@ -400,7 +407,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           <div className="space-y-4">
             <div>
               <div className="flex items-center justify-between gap-2 flex-wrap">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#E60012] bg-red-50 px-2 py-0.5 rounded-md border border-red-100">
                   {part.category}
                 </span>
                 <span className="text-xs font-mono font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
@@ -409,45 +416,62 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </div>
               <h2
                 id="product-detail-modal-title"
-                className="text-xl font-black text-slate-900 mt-1"
+                className="text-xl sm:text-2xl font-black text-slate-900 mt-1.5 leading-tight tracking-tight"
               >
                 {part.name}
               </h2>
-              <div className="mt-2">
+
+              {/* Stock Indicator with Live Pulse */}
+              <div className="mt-2.5 flex items-center gap-2">
                 {part.stock > 0 ? (
                   <span
-                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-black uppercase tracking-wide border ${
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-mono font-bold uppercase tracking-wide border ${
                       part.stock <= 5
-                        ? "bg-amber-50 text-amber-700 border-amber-200"
-                        : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        ? "bg-amber-50 text-amber-800 border-amber-200/90"
+                        : "bg-emerald-50 text-emerald-800 border-emerald-200/90"
                     }`}
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                    Stock: {part.stock} {part.stock === 1 ? "unidad" : "unidades"}
+                    <span className="relative flex h-2 w-2">
+                      <span
+                        className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                          part.stock <= 5 ? "bg-amber-400" : "bg-emerald-400"
+                        }`}
+                      />
+                      <span
+                        className={`relative inline-flex rounded-full h-2 w-2 ${
+                          part.stock <= 5 ? "bg-amber-500" : "bg-emerald-500"
+                        }`}
+                      />
+                    </span>
+                    {part.stock <= 5
+                      ? `¡Últimas ${part.stock} unid. en bodega!`
+                      : `En Stock (${part.stock} unidades)`}
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-black uppercase tracking-wide border bg-red-50 text-red-700 border-red-200">
-                    <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                    Agotado
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-mono font-bold uppercase tracking-wide border bg-red-50 text-red-800 border-red-200">
+                    <span className="w-2 h-2 rounded-full bg-red-500" />
+                    Agotado Temporalmente
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <div className="text-xl sm:text-2xl font-mono font-black text-[#E60012] whitespace-nowrap">
+
+              {/* Price & Tax */}
+              <div className="flex items-baseline gap-2.5 mt-2.5 flex-wrap">
+                <div className="text-2xl sm:text-3xl font-mono font-black text-[#E60012] tracking-tight">
                   {formatCurrency(part.price)}
                 </div>
                 {part.taxable !== false ? (
                   part.priceIncludesTax ? (
-                    <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded">
+                    <span className="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-md">
                       IVA 19% Incluido
                     </span>
                   ) : (
-                    <span className="text-[10px] font-mono font-bold text-slate-700 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded">
+                    <span className="text-[11px] font-mono font-bold text-slate-700 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded-md">
                       + 19% IVA al checkout
                     </span>
                   )
                 ) : (
-                  <span className="text-[10px] font-mono font-bold text-blue-800 bg-blue-100 border border-blue-300 px-2 py-0.5 rounded">
+                  <span className="text-[11px] font-mono font-bold text-blue-800 bg-blue-100 border border-blue-300 px-2 py-0.5 rounded-md">
                     Exento de IVA
                   </span>
                 )}
@@ -458,16 +482,32 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               {part.description}
             </p>
 
+            {/* Trust Mini Strip */}
+            <div className="grid grid-cols-3 gap-2 py-2 border-y border-slate-100 text-[10px]">
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/80 p-1.5 rounded-lg">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="font-bold text-slate-800 truncate">100% Genuino</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/80 p-1.5 rounded-lg">
+                <Wrench className="w-3.5 h-3.5 text-[#0A3088] shrink-0" />
+                <span className="font-bold text-slate-800 truncate">Ajuste Exacto</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/80 p-1.5 rounded-lg">
+                <CheckCircle2 className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                <span className="font-bold text-slate-800 truncate">Envío Nacional</span>
+              </div>
+            </div>
+
             {/* Spec Sheet Table */}
             <div>
-              <h4 className="text-xs font-extrabold uppercase text-slate-900 mb-2 flex items-center gap-1.5">
+              <h4 className="text-xs font-extrabold uppercase text-slate-900 mb-1.5 flex items-center gap-1.5">
                 <FileText
                   className="w-3.5 h-3.5 text-[#E60012]"
                   aria-hidden="true"
                 />
                 Especificaciones Técnicas
               </h4>
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5 text-xs">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-1 text-xs">
                 {part.specs.map((s, idx) => (
                   <div
                     key={idx}
@@ -486,14 +526,14 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
             {/* Applicability Range Badges / Table */}
             <div>
-              <h4 className="text-xs font-extrabold uppercase text-slate-900 mb-2 flex items-center gap-1.5">
+              <h4 className="text-xs font-extrabold uppercase text-slate-900 mb-1.5 flex items-center gap-1.5">
                 <FaMotorcycle
                   className="w-3.5 h-3.5 text-[#E60012]"
                   aria-hidden="true"
                 />
                 Vehículos Asociados & Compatibilidad
               </h4>
-              <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+              <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
                 {part.compatibility.map((c, idx) => {
                   const modelObj = models.find((m) => m.id === c.modelId);
                   const isMatch = activeMotorcycle
@@ -502,14 +542,14 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   return (
                     <div
                       key={idx}
-                      className={`p-2.5 rounded-xl text-xs flex justify-between items-center border transition-colors ${
+                      className={`p-2 rounded-xl text-xs flex justify-between items-center border transition-colors ${
                         isMatch
                           ? "bg-emerald-50 border-emerald-300 text-emerald-950 ring-1 ring-emerald-400/20"
                           : "bg-slate-50 border-slate-200 text-slate-800"
                       }`}
                     >
                       <div>
-                        <div className="font-extrabold flex items-center gap-1.5">
+                        <div className="font-extrabold flex items-center gap-1.5 text-xs">
                           {modelObj ? modelObj.name : c.modelId.toUpperCase()}
                           {isMatch && (
                             <span className="text-[9px] font-mono font-bold bg-emerald-600 text-white px-1.5 py-0.5 rounded uppercase">
@@ -524,7 +564,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                         )}
                       </div>
                       <div className="text-right shrink-0">
-                        <span className="font-mono text-[11px] font-bold text-slate-700 bg-white/80 border border-slate-200 px-2 py-1 rounded-md">
+                        <span className="font-mono text-[10px] font-bold text-slate-700 bg-white/80 border border-slate-200 px-2 py-0.5 rounded-md">
                           {c.yearStart} - {c.yearEnd}
                         </span>
                       </div>
@@ -537,20 +577,20 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         </div>
 
         {/* Related Products Section (Strictly Compatible with Active Motorcycle) */}
-        <div className="mt-8 pt-6 border-t border-slate-200">
-          <div className="flex items-center justify-between mb-4">
+        <div className="mt-6 pt-5 border-t border-slate-200">
+          <div className="flex items-center justify-between mb-3">
             <div>
-              <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
                 <ShieldCheck
                   className="w-4 h-4 text-emerald-600"
                   aria-hidden="true"
                 />
                 Repuestos Relacionados Garantizados
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-[11px] text-slate-500 mt-0.5">
                 {activeMotorcycle ? (
                   <>
-                    Mostrando únicamente repuestos 100% compatibles con tu{" "}
+                    Mostrando repuestos 100% compatibles con tu{" "}
                     <span className="font-bold text-slate-800">
                       {activeMotorcycle.modelName} ({activeMotorcycle.year})
                     </span>
@@ -563,19 +603,19 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           </div>
 
           {relatedParts.length === 0 ? (
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center text-xs text-slate-500">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center text-xs text-slate-500">
               No hay otros repuestos registrados para este modelo en este
               momento.
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
               {relatedParts.slice(0, 3).map((relPart) => (
                 <div
                   key={relPart.id}
-                  className="bg-slate-50 hover:bg-white border border-slate-200 rounded-xl p-3 flex flex-col justify-between transition-all hover:shadow-xs"
+                  className="bg-slate-50 hover:bg-white border border-slate-200 rounded-xl p-2.5 flex flex-col justify-between transition-all hover:shadow-xs"
                 >
                   <div>
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-1.5">
                       <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded">
                         {relPart.oemNumbers[0]}
                       </span>
@@ -589,41 +629,41 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                         </span>
                       )}
                     </div>
-                    <div className="flex gap-2 items-center mb-2">
+                    <div className="flex gap-2 items-center mb-1.5">
                       {shouldShowProductImages() ? (
                         <img
                           src={relPart.image}
                           alt={relPart.name}
                           referrerPolicy="no-referrer"
-                          className="w-10 h-10 object-cover rounded-lg bg-slate-200 shrink-0"
+                          className="w-9 h-9 object-cover rounded-lg bg-slate-200 shrink-0"
                         />
                       ) : (
-                        <ProductImageEmptyState className="w-10 h-10 shrink-0" />
+                        <ProductImageEmptyState className="w-9 h-9 shrink-0" />
                       )}
 
-                      <h4 className="text-xs font-bold text-slate-900 line-clamp-2 leading-tight">
+                      <h4 className="text-[11px] font-bold text-slate-900 line-clamp-2 leading-tight">
                         {relPart.name}
                       </h4>
                     </div>
-                    <div className="text-xs font-mono font-black text-slate-900 mb-3 whitespace-nowrap">
+                    <div className="text-xs font-mono font-black text-slate-900 mb-2 whitespace-nowrap text-[#E60012]">
                       {formatCurrency(relPart.price)}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 pt-2 border-t border-slate-200/80">
+                  <div className="flex items-center gap-1.5 pt-1.5 border-t border-slate-200/80">
                     <button
                       type="button"
                       onClick={() =>
                         onSelectRelatedPart && onSelectRelatedPart(relPart)
                       }
-                      className="flex-1 py-2 px-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[10px] uppercase rounded-lg transition-colors text-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+                      className="flex-1 py-1.5 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[10px] uppercase rounded-lg transition-colors text-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
                     >
                       Ver Detalle
                     </button>
                     <button
                       type="button"
                       onClick={() => onAddToCart(relPart)}
-                      className="py-2 px-2.5 bg-[#E60012] hover:bg-red-700 text-white font-bold text-[10px] uppercase rounded-lg transition-colors flex items-center gap-1 shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+                      className="py-1.5 px-2 bg-[#E60012] hover:bg-red-700 text-white font-bold text-[10px] uppercase rounded-lg transition-colors flex items-center gap-1 shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
                       title="Añadir al carrito"
                       aria-label={`Añadir ${relPart.name} al carrito`}
                     >
@@ -637,57 +677,124 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           )}
         </div>
 
-        {/* Footer Action — centrado */}
-        <div className="mt-8 border-t border-slate-200 pt-5 space-y-4">
-          {/* Action buttons row */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 pt-2">
+        {/* Footer Unified Purchase & Technical Advisory Console */}
+        <div className="mt-6 border-t border-slate-200 pt-4 space-y-3">
+          {!activeMotorcycle ? (
+            /* No Motorcycle Selected */
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-amber-50/80 border border-amber-200 p-3 rounded-2xl">
+              <div className="flex items-center gap-2">
+                <Wrench className="w-5 h-5 text-amber-600 shrink-0" />
+                <div className="text-xs text-amber-900">
+                  <span className="font-extrabold uppercase block">Selecciona tu motocicleta</span>
+                  <span className="text-[11px] text-amber-800">Verifica la compatibilidad antes de agregar al carrito.</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onOpenGarageModal}
+                className="px-5 py-2.5 min-h-[44px] bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] shrink-0 active:scale-[0.99]"
+              >
+                <FaMotorcycle className="w-4 h-4" />
+                <span>Seleccionar Moto</span>
+              </button>
+            </div>
+          ) : !isCompatible ? (
+            /* Incompatible Vehicle */
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-red-50/80 border border-red-200 p-3 rounded-2xl">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-[#E60012] shrink-0" />
+                <div className="text-xs text-red-900">
+                  <span className="font-extrabold uppercase block">Compra Bloqueada</span>
+                  <span className="text-[11px] text-red-800">Pieza no compatible con {activeMotorcycle.modelName} ({activeMotorcycle.year}).</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onOpenGarageModal}
+                className="px-4 py-2 min-h-[40px] bg-slate-900 hover:bg-black text-white font-bold text-xs uppercase rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] shrink-0"
+              >
+                <FaMotorcycle className="w-4 h-4" />
+                <span>Cambiar Moto</span>
+              </button>
+            </div>
+          ) : (
+            /* Compatible Vehicle: Primary Purchase Console */
+            <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
+              {/* Ergonomic Stepper */}
+              <div className="flex items-center justify-between sm:justify-center border border-slate-300 rounded-xl bg-slate-50 p-1 shadow-2xs sm:min-w-[130px]">
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  disabled={quantity <= 1}
+                  aria-label="Disminuir cantidad"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-white hover:bg-slate-100 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer border border-slate-200/80 shadow-2xs active:scale-95"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+                <div className="flex flex-col items-center px-1.5">
+                  <input
+                    type="number"
+                    min={1}
+                    max={part.stock > 0 ? part.stock : 99}
+                    value={quantity}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (!isNaN(val) && val >= 1) {
+                        setQuantity(part.stock > 0 ? Math.min(part.stock, val) : val);
+                      }
+                    }}
+                    className="w-10 text-center font-mono font-black text-sm bg-transparent border-none focus:outline-none text-slate-900"
+                    aria-label="Cantidad"
+                  />
+                  <span className="text-[8px] font-bold uppercase text-slate-400 -mt-1 select-none">
+                    {quantity === 1 ? "Unidad" : "Unidades"}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => (part.stock > 0 ? Math.min(part.stock, q + 1) : q + 1))}
+                  disabled={part.stock > 0 && quantity >= part.stock}
+                  aria-label="Aumentar cantidad"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-white hover:bg-slate-100 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer border border-slate-200/80 shadow-2xs active:scale-95"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Primary Add to Cart CTA */}
+              <button
+                type="button"
+                onClick={() => {
+                  onAddToCart(part, quantity);
+                  onClose();
+                }}
+                disabled={part.stock === 0}
+                className="flex-1 py-3 px-5 min-h-[46px] bg-[#E60012] hover:bg-[#b5000b] disabled:bg-slate-200 disabled:text-slate-400 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012] active:scale-[0.99]"
+              >
+                <FaCartPlus className="w-4 h-4" aria-hidden="true" />
+                <div className="flex items-center gap-2">
+                  <span>Añadir al Carrito</span>
+                  {quantity > 1 && (
+                    <span className="font-mono text-[11px] bg-white/20 px-2 py-0.5 rounded-md font-black">
+                      {formatCurrency(part.price * quantity)}
+                    </span>
+                  )}
+                </div>
+              </button>
+            </div>
+          )}
+
+          {/* Secondary WhatsApp Technical Advisory Channel */}
+          <div className="pt-0.5">
             <a
               href={getProductWhatsAppUrl(part, activeMotorcycle)}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-6 py-2.5 min-h-[44px] bg-[#25D366] hover:bg-emerald-600 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+              className="w-full py-2 px-3 min-h-[40px] bg-emerald-50/70 hover:bg-emerald-100/90 text-emerald-900 border border-emerald-200/90 font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 shadow-2xs group"
             >
-              <IoChatbubbleEllipses className="w-5 h-5 shrink-0" />
-              <span>Consultar WhatsApp</span>
+              <IoChatbubbleEllipses className="w-4 h-4 text-[#25D366] shrink-0 group-hover:scale-110 transition-transform" />
+              <span>¿Dudas de Compatibilidad? Consultar con un Asesor Técnico</span>
             </a>
-
-            {!activeMotorcycle ? (
-              <button
-                type="button"
-                onClick={onOpenGarageModal}
-                className="px-6 py-2.5 min-h-[44px] bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs uppercase rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
-              >
-                <FaMotorcycle className="w-5 h-5 shrink-0" />
-                <span>Seleccionar Moto</span>
-              </button>
-            ) : !isCompatible ? (
-              <div className="flex flex-col items-center gap-1">
-                <button
-                  type="button"
-                  disabled
-                  aria-disabled="true"
-                  className="px-6 py-2.5 min-h-[44px] bg-red-100 text-red-900 border border-red-300 font-black text-xs uppercase rounded-xl cursor-not-allowed shadow-none flex items-center justify-center text-center"
-                >
-                  Compra Bloqueada (Incompatible)
-                </button>
-                <span className="text-[10px] text-red-700 font-medium text-center">
-                  Selecciona tu moto compatible en el Garaje para habilitar la
-                  compra.
-                </span>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  onAddToCart(part);
-                  onClose();
-                }}
-                className="px-6 py-2.5 min-h-[44px] bg-[#E60012] hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
-              >
-                <FaCartPlus className="w-4 h-4" aria-hidden="true" />
-                <span>Añadir al Carrito</span>
-              </button>
-            )}
           </div>
         </div>
       </div>
