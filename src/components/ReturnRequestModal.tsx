@@ -176,10 +176,13 @@ export const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
     <div
       id="return-request-modal"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto"
-      onClick={onClose}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
     >
       <div
-        onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden text-slate-900 my-8"
       >
         

@@ -67,11 +67,14 @@ export const GarageModal: React.FC<GarageModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="garage-modal-title"
-      onClick={onClose}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 overflow-y-auto"
     >
       <div 
-        onClick={(e) => e.stopPropagation()}
         className="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative border border-slate-200 my-auto"
       >
         

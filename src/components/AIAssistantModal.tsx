@@ -106,12 +106,15 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="ai-assistant-modal-title"
-      onClick={onClose}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
       className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/75 backdrop-blur-xs p-4 overflow-y-auto"
     >
 
       <div 
-        onClick={(e) => e.stopPropagation()}
         className="bg-white rounded-2xl max-w-2xl w-full h-[85vh] max-h-[660px] flex flex-col shadow-2xl relative border border-slate-200 overflow-hidden my-auto"
       >
         
