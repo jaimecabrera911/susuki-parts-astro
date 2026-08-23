@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, ChevronDown, Check, Package, Tag } from 'lucide-react';
+import { Search, ChevronDown, Check, Package, Plus, Sparkles } from 'lucide-react';
 import type { SuzukiPart } from '../../types';
 import { formatCurrency } from '../../utils/formatCurrency';
 
@@ -7,6 +7,7 @@ interface SearchablePartSelectProps {
   parts: SuzukiPart[];
   selectedPartId: string;
   onSelectPart: (part: SuzukiPart) => void;
+  onCreateNewPart?: (initialName?: string) => void;
   label?: string;
   placeholder?: string;
 }
@@ -15,6 +16,7 @@ export const SearchablePartSelect: React.FC<SearchablePartSelectProps> = ({
   parts,
   selectedPartId,
   onSelectPart,
+  onCreateNewPart,
   label = "VINCULAR A REPUESTO DEL CATÁLOGO",
   placeholder = "Buscar por nombre, referencia OEM o código..."
 }) => {
@@ -103,8 +105,8 @@ export const SearchablePartSelect: React.FC<SearchablePartSelectProps> = ({
 
       {/* Autocomplete Dropdown List */}
       {isOpen && (
-        <div className="absolute left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-2 custom-scrollbar animate-in fade-in zoom-in-95">
-          <div className="relative mb-2">
+        <div className="absolute left-0 right-0 mt-1 max-h-72 flex flex-col bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-2 custom-scrollbar animate-in fade-in zoom-in-95">
+          <div className="relative mb-2 shrink-0">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               ref={inputRef}
@@ -116,7 +118,7 @@ export const SearchablePartSelect: React.FC<SearchablePartSelectProps> = ({
             />
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-1 overflow-y-auto flex-1 custom-scrollbar pr-0.5">
             {filteredParts.map(part => {
               const isSelected = part.id === selectedPartId;
               return (
@@ -124,7 +126,7 @@ export const SearchablePartSelect: React.FC<SearchablePartSelectProps> = ({
                   key={part.id}
                   type="button"
                   onClick={() => handleSelect(part)}
-                  className={`w-full flex items-center justify-between p-2 rounded-xl text-xs transition-colors text-left ${
+                  className={`w-full flex items-center justify-between p-2 rounded-xl text-xs transition-colors text-left cursor-pointer ${
                     isSelected
                       ? 'bg-red-50 border border-red-200 text-[#E60012] font-bold'
                       : 'hover:bg-slate-50 border border-transparent text-slate-800'
@@ -159,6 +161,30 @@ export const SearchablePartSelect: React.FC<SearchablePartSelectProps> = ({
               </div>
             )}
           </div>
+
+          {/* Quick Create Part Action Footer */}
+          {onCreateNewPart && (
+            <div className="pt-2 mt-2 border-t border-slate-100 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onCreateNewPart(searchQuery);
+                }}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-[#E60012] bg-red-50 hover:bg-red-100/80 border border-dashed border-red-200 hover:border-[#E60012] transition-all group shadow-xs cursor-pointer"
+              >
+                <div className="w-5 h-5 rounded-lg bg-white border border-red-200 flex items-center justify-center text-[#E60012] shadow-2xs group-hover:scale-110 transition-transform shrink-0">
+                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                </div>
+                <span className="truncate">
+                  {searchQuery.trim()
+                    ? `Crear "${searchQuery.trim()}" como nuevo repuesto`
+                    : 'Crear nuevo repuesto en catálogo'}
+                </span>
+                <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0 ml-auto opacity-75 group-hover:opacity-100" />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

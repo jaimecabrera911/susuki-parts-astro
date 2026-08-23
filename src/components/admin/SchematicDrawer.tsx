@@ -15,9 +15,10 @@ import {
   UploadCloud,
   Check,
 } from "lucide-react";
-import type { ExplodedDiagram, SuzukiPart, SuzukiModel } from "../../types";
+import type { ExplodedDiagram, SuzukiPart, SuzukiModel, Category } from "../../types";
 import { SearchableModelMultiSelect } from "./SearchableModelMultiSelect";
 import { SearchablePartSelect } from "./SearchablePartSelect";
+import { PartDrawer } from "./PartDrawer";
 import { UPLOAD_IMAGE } from "../../services/api";
 
 interface SchematicDrawerProps {
@@ -27,6 +28,8 @@ interface SchematicDrawerProps {
   schematicToEdit: ExplodedDiagram | null;
   models: SuzukiModel[];
   parts: SuzukiPart[];
+  categories?: Category[];
+  onSavePart?: (part: SuzukiPart) => Promise<void> | void;
 }
 
 export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
@@ -36,6 +39,8 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
   schematicToEdit,
   models,
   parts,
+  categories = [],
+  onSavePart,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<"form" | "canvas">("form");
 
@@ -69,6 +74,39 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
   const [itemNumberInput, setItemNumberInput] = useState<number>(1);
   const [labelInput, setLabelInput] = useState("");
   const [partIdInput, setPartIdInput] = useState("");
+
+  // Local synced parts & Create Part Modal State
+  const [localParts, setLocalParts] = useState<SuzukiPart[]>(parts);
+  const [isCreatePartOpen, setIsCreatePartOpen] = useState(false);
+  const [initialPartData, setInitialPartData] = useState<Partial<SuzukiPart> | null>(null);
+
+  useEffect(() => {
+    setLocalParts(parts);
+  }, [parts]);
+
+  const handleOpenCreatePart = (query?: string) => {
+    const rawCategory = (category || section || "").trim();
+    const matchedCategory = categories.find(
+      c => c.slug.toLowerCase() === rawCategory.toLowerCase() ||
+           c.name.toLowerCase() === rawCategory.toLowerCase()
+    );
+    setInitialPartData({
+      name: query?.trim() || labelInput?.trim() || "",
+      category: matchedCategory?.slug || categories[0]?.slug || "motor",
+      compatibility: applicableModelIds.map(mId => ({ modelId: mId })),
+    });
+    setIsCreatePartOpen(true);
+  };
+
+  const handleSaveNewPart = async (newPart: SuzukiPart) => {
+    setLocalParts(prev => [newPart, ...prev.filter(p => p.id !== newPart.id)]);
+    setPartIdInput(newPart.id);
+    setLabelInput(newPart.name);
+    setIsCreatePartOpen(false);
+    if (onSavePart) {
+      await onSavePart(newPart);
+    }
+  };
 
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState("");
@@ -1182,12 +1220,13 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
 
                     <div className="sm:col-span-2">
                       <SearchablePartSelect
-                        parts={parts}
+                        parts={localParts}
                         selectedPartId={partIdInput}
                         onSelectPart={(p) => {
                           setPartIdInput(p.id);
                           setLabelInput(p.name);
                         }}
+                        onCreateNewPart={handleOpenCreatePart}
                         label="Re-Asignar Producto del Catálogo"
                         placeholder="Buscar producto por nombre o referencia OEM..."
                       />
@@ -1261,12 +1300,13 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
 
                     <div className="sm:col-span-2">
                       <SearchablePartSelect
-                        parts={parts}
+                        parts={localParts}
                         selectedPartId={partIdInput}
                         onSelectPart={(p) => {
                           setPartIdInput(p.id);
                           setLabelInput(p.name);
                         }}
+                        onCreateNewPart={handleOpenCreatePart}
                         label="Buscar y Seleccionar Producto"
                         placeholder="Escribe nombre o referencia OEM para buscar producto..."
                       />
@@ -1398,6 +1438,18 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Quick Part Creation Modal / Drawer within Schematic Editor */}
+      <PartDrawer
+        isOpen={isCreatePartOpen}
+        onClose={() => setIsCreatePartOpen(false)}
+        onSave={handleSaveNewPart}
+        partToEdit={null}
+        initialData={initialPartData}
+        models={models}
+        categories={categories}
+        zIndex="z-[70]"
+      />
     </div>
   );
 };

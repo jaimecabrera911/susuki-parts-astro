@@ -178,6 +178,27 @@ export async function deleteUserApi(id: string) {
   return await res.json();
 }
 
+export async function fetchRoles() {
+  const res = await fetch('/api/roles');
+  const json = await res.json();
+  return json.data || [];
+}
+
+export async function saveRoleApi(role: any, isEdit = false) {
+  const method = isEdit ? 'PUT' : 'POST';
+  const res = await fetch('/api/roles', {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(role)
+  });
+  return await res.json();
+}
+
+export async function deleteRoleApi(id: string) {
+  const res = await fetch(`/api/roles?id=${id}`, { method: 'DELETE' });
+  return await res.json();
+}
+
 export async function fetchGarages(userId?: string) {
   const url = userId ? `/api/garages?userId=${userId}` : '/api/garages';
   const res = await fetch(url);

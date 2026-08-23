@@ -23,7 +23,7 @@ interface NavbarProps {
   onOpenAI: () => void;
   userName?: string;
   isLoggedIn?: boolean;
-  userRole?: 'customer' | 'admin';
+  userRole?: string;
   onOpenAuthModal?: () => void;
   onLogout?: () => void;
   mobileMenuOpen?: boolean;
@@ -268,7 +268,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <span>Repuestos Guardados</span>
                     </button>
 
-                    {isLoggedIn && userRole === 'admin' && (
+                    {isLoggedIn && userRole && userRole !== 'customer' && (
                       <a
                         href="/admin"
                         className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-sky-50 hover:text-sky-700 flex items-center gap-2 transition-colors cursor-pointer"
@@ -439,7 +439,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>
 
-                {isLoggedIn && userRole === 'admin' && (
+                {isLoggedIn && userRole && userRole !== 'customer' && (
                   <a
                     href="/admin"
                     onClick={() => closeMobileMenu()}

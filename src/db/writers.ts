@@ -1,11 +1,11 @@
 import type { AppDb } from './client';
 import {
-  brands, models, modelYears,
+  brands, models, modelYears, categories,
   parts, partOemNumbers, partImages, partCompatibilities,
   schematics, schematicHotspots, schematicApplicableModels, schematicSections,
   orderStatuses, carriers, modelCategories,
   orders, orderItems, orderReturns, siteSettings,
-  users, userFavorites,
+  users, userFavorites, userPermissions,
   shippingMethods, shippingZones, shippingZoneStates, shippingMethodZoneRates,
   shippingZoneCities,
   countries, states, cities
@@ -139,24 +139,54 @@ export async function upsertPart(db: AppDb, body: any) {
     ? String(body.image).trim()
     : images[0] || '';
 
-  const data = {
-    id,
-    sku,
-    name: body.name,
-    category: body.category,
-    price: Number(body.price),
-    stock: Number(body.stock || 0),
-    image: primaryImage,
-    description: body.description || '',
-    specs: body.specs || [],
-    schematicId: body.schematicId ? ensureUuid(body.schematicId) : null,
-    diagramHotspot: body.diagramHotspot || null,
-    availability: body.availability || 'in_stock',
-    taxable: body.taxable !== false,
-    priceIncludesTax: body.priceIncludesTax === true
-  };
+  let data: any = null;
 
   await db.transaction(async (tx) => {
+    let resolvedCategory = body.category ? String(body.category).trim() : '';
+    if (!resolvedCategory) {
+      resolvedCategory = 'motor';
+    }
+
+    // Verify category exists in categories table to satisfy Foreign Key
+    const catCheck = await tx.select().from(categories).where(eq(categories.slug, resolvedCategory));
+    if (catCheck.length === 0) {
+      const allCats = await tx.select().from(categories);
+      const match = allCats.find(c =>
+        c.slug.toLowerCase() === resolvedCategory.toLowerCase() ||
+        c.name.toLowerCase() === resolvedCategory.toLowerCase()
+      );
+      if (match) {
+        resolvedCategory = match.slug;
+      } else {
+        const newSlug = resolvedCategory.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'categoria-general';
+        await tx.insert(categories).values({
+          id: crypto.randomUUID(),
+          name: resolvedCategory,
+          slug: newSlug,
+          order: 99,
+          active: true
+        }).onConflictDoNothing();
+        resolvedCategory = newSlug;
+      }
+    }
+
+    data = {
+      id,
+      sku,
+      name: body.name,
+      category: resolvedCategory,
+      price: Number(body.price),
+      stock: Number(body.stock || 0),
+      image: primaryImage,
+      description: body.description || '',
+      specs: body.specs || [],
+      schematicId: body.schematicId ? ensureUuid(body.schematicId) : null,
+      diagramHotspot: body.diagramHotspot || null,
+      availability: body.availability || 'in_stock',
+      taxable: body.taxable !== false,
+      priceIncludesTax: body.priceIncludesTax === true
+    };
+
     await tx.insert(parts).values(data).onConflictDoUpdate({ target: parts.id, set: data });
 
     await tx.delete(partImages).where(eq(partImages.partId, id));
@@ -352,9 +382,9 @@ export async function upsertUser(db: AppDb, body: any) {
     passwordHash = hashPassword(body.password);
   }
 
-  // If no password set yet for admin or newly created user, assign standard default
+  // If no password set yet for admin/superadmin or newly created user, assign standard default
   if (!passwordHash && !body.id) {
-    passwordHash = hashPassword(body.role === 'admin' ? 'Admin2026!' : 'Suzuki2026!');
+    passwordHash = hashPassword((body.role === 'admin' || body.role === 'superadmin') ? 'Admin2026!' : 'Suzuki2026!');
   }
 
   const data: any = {
@@ -385,7 +415,7 @@ export async function upsertUser(db: AppDb, body: any) {
         data.passwordHash = existing[0].passwordHash;
       } else {
         // Fallback default password if missing
-        data.passwordHash = hashPassword(data.role === 'admin' ? 'Admin2026!' : 'Suzuki2026!');
+        data.passwordHash = hashPassword((data.role === 'admin' || data.role === 'superadmin') ? 'Admin2026!' : 'Suzuki2026!');
       }
     }
 
@@ -395,6 +425,31 @@ export async function upsertUser(db: AppDb, body: any) {
     for (const partId of body.favoritePartIds || []) {
       if (partId && typeof partId === 'string') {
         await tx.insert(userFavorites).values({ id: crypto.randomUUID(), userId: id, partId, createdAt: new Date() }).onConflictDoNothing();
+      }
+    }
+
+    // Persist permissions if provided or if user is admin
+    if (Array.isArray(body.permissions)) {
+      await tx.delete(userPermissions).where(eq(userPermissions.userId, id));
+      for (const p of body.permissions) {
+        if (p && p.module) {
+          await tx.insert(userPermissions).values({
+            id: ensureUuid(p.id),
+            userId: id,
+            module: p.module,
+            canRead: p.canRead !== undefined ? Boolean(p.canRead) : true,
+            canWrite: p.canWrite !== undefined ? Boolean(p.canWrite) : false,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }).onConflictDoUpdate({
+            target: [userPermissions.userId, userPermissions.module],
+            set: {
+              canRead: p.canRead !== undefined ? Boolean(p.canRead) : true,
+              canWrite: p.canWrite !== undefined ? Boolean(p.canWrite) : false,
+              updatedAt: new Date()
+            }
+          });
+        }
       }
     }
   });

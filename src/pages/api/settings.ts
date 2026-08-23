@@ -7,7 +7,7 @@ function isAdminRequest(request: Request): boolean {
   const authHeader = request.headers.get('authorization') || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   const payload = token ? verifyJwtToken(token) : null;
-  return Boolean(payload && payload.role === 'admin');
+  return Boolean(payload && payload.role && payload.role !== 'customer');
 }
 
 export const GET: APIRoute = async () => {

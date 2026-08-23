@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../db/client';
-import { users, userFavorites } from '../../db/schema';
+import { users, userFavorites, userPermissions } from '../../db/schema';
 import { eq, like, or } from 'drizzle-orm';
 import { upsertUser } from '../../db/writers';
 
@@ -35,11 +35,28 @@ export const GET: APIRoute = async ({ url }) => {
       favoritesByUser.set(f.userId, arr);
     }
 
+    const allPermissions = await db.select().from(userPermissions);
+    const permissionsByUser = new Map<string, any[]>();
+    for (const p of allPermissions) {
+      const arr = permissionsByUser.get(p.userId) || [];
+      arr.push({
+        id: p.id,
+        userId: p.userId,
+        module: p.module,
+        canRead: p.canRead,
+        canWrite: p.canWrite,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt
+      });
+      permissionsByUser.set(p.userId, arr);
+    }
+
     const formatted = rawData.map(u => {
       const { passwordHash, ...safeUser } = u;
       return {
         ...safeUser,
-        favoritePartIds: favoritesByUser.get(u.id) || []
+        favoritePartIds: favoritesByUser.get(u.id) || [],
+        permissions: permissionsByUser.get(u.id) || []
       };
     });
 

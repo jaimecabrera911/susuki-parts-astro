@@ -485,3 +485,48 @@ export const coupons = pgTable('coupons', {
 }, (table) => ({
   activeIdx: index('idx_coupons_active').on(table.active)
 }));
+
+// 17. User Dashboard Permissions Table (3NF Normalized)
+export const userPermissions = pgTable('user_permissions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  module: text('module').notNull(),
+  canRead: boolean('can_read').notNull().default(true),
+  canWrite: boolean('can_write').notNull().default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  userIdx: index('idx_user_permissions_user_id').on(table.userId),
+  userModuleUnique: uniqueIndex('idx_user_permissions_user_module_unique').on(table.userId, table.module)
+}));
+
+// 18. Roles & Permission Groups Table (3NF Normalized)
+export const roles = pgTable('roles', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull(),
+  description: text('description'),
+  isSystem: boolean('is_system').notNull().default(false),
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  slugUniqueIdx: uniqueIndex('idx_roles_slug_unique').on(table.slug),
+  activeIdx: index('idx_roles_active').on(table.active)
+}));
+
+// 19. Role Permissions Table (3NF Normalized)
+export const rolePermissions = pgTable('role_permissions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  roleId: uuid('role_id').notNull().references(() => roles.id, { onDelete: 'cascade' }),
+  module: text('module').notNull(),
+  canRead: boolean('can_read').notNull().default(true),
+  canWrite: boolean('can_write').notNull().default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  roleIdx: index('idx_role_permissions_role_id').on(table.roleId),
+  roleModuleUnique: uniqueIndex('idx_role_permissions_role_module_unique').on(table.roleId, table.module)
+}));
+
+
