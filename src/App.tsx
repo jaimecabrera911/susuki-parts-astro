@@ -85,7 +85,7 @@ export default function App() {
   );
   const [maxPriceFilter, setMaxPriceFilter] = useState(5000000);
   const [minPriceFilter, setMinPriceFilter] = useState(0);
-  const [sortBy, setSortBy] = useState("relevance");
+  const [sortBy, setSortBy] = useState("schematic");
 
   const loadStorefrontData = async (isInitial = false) => {
     try {
@@ -278,7 +278,7 @@ export default function App() {
     setMaxPriceFilter(maxP);
     setMinPriceFilter(0);
     setSearchQuery("");
-    setSortBy("relevance");
+    setSortBy("schematic");
   };
 
   const navigateToTab = (
@@ -723,16 +723,65 @@ export default function App() {
       }
 
       return true;
-    })
-    .sort((a, b) => {
+    });
+
+    // Map part to schematic and section info for fast hierarchical sorting
+    const partSchematicMap = new Map<string, { section: string; diagramTitle: string; itemNumber: string }>();
+    if (schematics && schematics.length > 0) {
+      for (const s of schematics) {
+        const sectionName = (s.section || s.category || "General").trim();
+        const diagTitle = (s.title || "").trim();
+        if (Array.isArray(s.hotspots)) {
+          for (const h of s.hotspots) {
+            if (h.partId && !partSchematicMap.has(h.partId)) {
+              partSchematicMap.set(h.partId, {
+                section: sectionName,
+                diagramTitle: diagTitle,
+                itemNumber: String(h.itemNumber || ""),
+              });
+            }
+          }
+        }
+      }
+    }
+
+    filteredParts.sort((a, b) => {
       if (sortBy === "price-asc") return a.price - b.price;
       if (sortBy === "price-desc") return b.price - a.price;
-      if (sortBy === "name") return a.name.localeCompare(b.name);
-      // Default (relevance): prioriza disponibles sin ocultar el resto
-      const aStatus = AVAILABILITY_META[getAvailabilityStatus(a)].sortOrder;
-      const bStatus = AVAILABILITY_META[getAvailabilityStatus(b)].sortOrder;
-      if (aStatus !== bStatus) return aStatus - bStatus;
-      return a.name.localeCompare(b.name);
+      if (sortBy === "name") return a.name.localeCompare(b.name, "es", { sensitivity: "base", numeric: true });
+      if (sortBy === "relevance") {
+        const aStatus = AVAILABILITY_META[getAvailabilityStatus(a)].sortOrder;
+        const bStatus = AVAILABILITY_META[getAvailabilityStatus(b)].sortOrder;
+        if (aStatus !== bStatus) return aStatus - bStatus;
+        return a.name.localeCompare(b.name, "es", { sensitivity: "base", numeric: true });
+      }
+
+      // Default ("schematic"): Primero por nombre del despiece -> luego por número de ítem -> luego por nombre
+      const aSch = partSchematicMap.get(a.id) || {
+        section: (a.category || "zzz").trim(),
+        diagramTitle: (a.category || "zzz").trim(),
+        itemNumber: "",
+      };
+      const bSch = partSchematicMap.get(b.id) || {
+        section: (b.category || "zzz").trim(),
+        diagramTitle: (b.category || "zzz").trim(),
+        itemNumber: "",
+      };
+
+      // 1. Nombre del Despiece / Diagrama (FIG.01, FIG.02 ... FIG.39A con orden natural)
+      const diagComp = aSch.diagramTitle.localeCompare(bSch.diagramTitle, "es", { sensitivity: "base", numeric: true });
+      if (diagComp !== 0) return diagComp;
+
+      // 2. Número de Ítem del Hotspot (#1, #2, #10)
+      if (aSch.itemNumber && bSch.itemNumber) {
+        const itemComp = aSch.itemNumber.localeCompare(bSch.itemNumber, "es", { sensitivity: "base", numeric: true });
+        if (itemComp !== 0) return itemComp;
+      }
+      if (aSch.itemNumber && !bSch.itemNumber) return -1;
+      if (!aSch.itemNumber && bSch.itemNumber) return 1;
+
+      // 3. Nombre del Repuesto
+      return a.name.localeCompare(b.name, "es", { sensitivity: "base", numeric: true });
     });
 
   return (
@@ -877,10 +926,11 @@ export default function App() {
                   onChange={(e) => setSortBy(e.target.value)}
                   className="bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#E60012]/20 focus:border-[#E60012] cursor-pointer"
                 >
-                  <option value="relevance">Relevancia / Destacados</option>
+                  <option value="schematic">Esquema y Despiece (Default)</option>
+                  <option value="relevance">Relevancia / Disponibilidad</option>
+                  <option value="name">Nombre: A - Z</option>
                   <option value="price-asc">Precio: Menor a Mayor</option>
                   <option value="price-desc">Precio: Mayor a Menor</option>
-                  <option value="name">Nombre: A - Z</option>
                 </select>
               </div>
             </div>

@@ -15,6 +15,9 @@ import {
   HelpCircle,
   Plus,
   Minus,
+  Truck,
+  Globe,
+  Clock,
   Palette,
   ArrowRightLeft,
   Ruler,
@@ -31,10 +34,11 @@ import type {
   SuzukiModel,
   PartVariant,
 } from "../types";
-import { getPrimaryOem, getVariantTypeLabel, formatVariantAttributes } from "../types";
+import { getPrimaryOem, getVariantTypeLabel, formatVariantAttributes, getEstimatedDeliveryRange } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { getProductWhatsAppUrl } from "../utils/whatsapp";
 import { shouldShowProductImages } from "../utils/config";
+import { useSiteSettings } from "./SiteSettingsProvider";
 import { ProductImageEmptyState } from "./ProductImageEmptyState";
 
 import { ProductImageGallery } from "./ProductImageGallery";
@@ -71,6 +75,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const [showAllOems, setShowAllOems] = useState(false);
   const [quantity, setQuantity] = useState<number>(1);
   const [selectedVariant, setSelectedVariant] = useState<PartVariant | null>(null);
+  const { settings } = useSiteSettings();
 
   useEffect(() => {
     setQuantity(1);
@@ -436,25 +441,66 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 leading-tight">
                   {part.name}
                 </h1>
-                <div className="mt-2.5">
-                  {effectiveStock > 0 ? (
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-black uppercase tracking-wide border ${
-                        effectiveStock <= 5
-                          ? "bg-amber-50 text-amber-700 border-amber-200"
-                          : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      }`}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                      Stock: {effectiveStock} {effectiveStock === 1 ? "unidad" : "unidades"}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-black uppercase tracking-wide border bg-red-50 text-red-700 border-red-200">
-                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                      Agotado
-                    </span>
-                  )}
-                </div>
+                {/* Availability, Sourcing & Estimated Delivery Window */}
+                {(() => {
+                  const deliveryRange = getEstimatedDeliveryRange(part, settings);
+                  return (
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {effectiveStock > 0 ? (
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-black uppercase tracking-wide border ${
+                              effectiveStock <= 5
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            }`}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                            Stock: {effectiveStock} {effectiveStock === 1 ? "unidad" : "unidades"}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-black uppercase tracking-wide border bg-red-50 text-red-700 border-red-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                            Agotado
+                          </span>
+                        )}
+
+                        {/* Sourcing Badge */}
+                        {part.availability === 'international' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                            <Globe className="w-3.5 h-3.5 text-blue-600" />
+                            Importación Suzuki
+                          </span>
+                        ) : part.availability === 'on_order' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            <Clock className="w-3.5 h-3.5 text-amber-600" />
+                            Bajo Pedido
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {/* Prominent Estimated Delivery Window */}
+                      {deliveryRange && (
+                        <div className="flex items-center gap-2 text-xs font-mono text-slate-700 bg-slate-50 border border-slate-200/90 px-3 py-2 rounded-xl w-fit">
+                          {part.availability === 'international' ? (
+                            <Globe className="w-4 h-4 text-blue-600 shrink-0" />
+                          ) : part.availability === 'on_order' ? (
+                            <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                          ) : (
+                            <Truck className="w-4 h-4 text-emerald-600 shrink-0" />
+                          )}
+                          <span className="font-semibold text-slate-600">Entrega estimada:</span>
+                          <span className="font-black text-slate-900 bg-white px-2 py-0.5 rounded-lg border border-slate-200 shadow-2xs font-mono">
+                            {deliveryRange.shortAbbrRange}
+                          </span>
+                          <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                            ({deliveryRange.formattedDays})
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 <div className="flex items-center gap-3 mt-3">
                   <div className="text-2xl sm:text-3xl font-mono font-black text-[#E60012]">
                     {formatCurrency(effectivePrice)}

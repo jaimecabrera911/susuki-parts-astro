@@ -237,6 +237,8 @@ export interface DeliveryDateRange {
   formattedRange: string;
   /** Ej: "2-4 días hábiles" */
   formattedDays: string;
+  /** Ej: "01-ago-26 al 15-ago-26" */
+  shortAbbrRange: string;
   /** Etiqueta completa: "Llega entre el Jueves 27 y Lunes 31 de Ago (2-4 días hábiles)" */
   fullLabel: string;
 }
@@ -262,6 +264,14 @@ export function addWorkingDays(startDate: Date, days: number, mode: WorkingDaysM
 
 const DAYS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const MONTHS_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+const MONTHS_SHORT_LOWER_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+export function formatShortDateAbbr(d: Date): string {
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = MONTHS_SHORT_LOWER_ES[d.getMonth()];
+  const year = String(d.getFullYear()).slice(-2);
+  return `${day}-${month}-${year}`;
+}
 
 function formatDateES(d: Date): string {
   return `${DAYS_ES[d.getDay()]} ${d.getDate()} de ${MONTHS_ES[d.getMonth()]}`;
@@ -286,9 +296,10 @@ export function calculateDeliveryDateRange(
   const modeLabel = mode === 'mon_fri' ? 'días hábiles' : mode === 'mon_sat' ? 'días (Lun-Sab)' : 'días calendario';
   const formattedDays = minDays === maxDays ? `${minDays} ${modeLabel}` : `${minDays}-${maxDays} ${modeLabel}`;
   const formattedRange = `entre el ${formatDateES(minDate)} y el ${formatDateES(maxDate)}`;
+  const shortAbbrRange = `${formatShortDateAbbr(minDate)} al ${formatShortDateAbbr(maxDate)}`;
   const fullLabel = `Llega ${formattedRange} (${formattedDays})`;
 
-  return { minDays, maxDays, minDate, maxDate, formattedRange, formattedDays, fullLabel };
+  return { minDays, maxDays, minDate, maxDate, formattedRange, formattedDays, shortAbbrRange, fullLabel };
 }
 
 /**

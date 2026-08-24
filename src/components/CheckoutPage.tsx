@@ -25,6 +25,7 @@ import {
   Wrench,
   Tag,
   Percent,
+  Globe,
 } from "lucide-react";
 import type {
   CartItem,
@@ -39,7 +40,7 @@ import type {
   PaymentSettings,
   BankAccount,
 } from "../types";
-import { getPrimaryOem, getVariantTypeLabel, formatVariantAttributes } from "../types";
+import { getPrimaryOem, getVariantTypeLabel, formatVariantAttributes, getEstimatedDeliveryRange, formatShortDateAbbr } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatDocumentNumber } from "../utils/formatDocumentNumber";
 import {
@@ -209,20 +210,14 @@ function getEstimatedDeliveryInfo(
   const maxArrival = new Date(startDate);
   maxArrival.setDate(maxArrival.getDate() + estimatedDays + 1);
 
-  const formatShort = (d: Date) =>
-    d.toLocaleDateString("es-CO", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-    });
-
   const dispatchNotice = isTodayDispatch
     ? "Despacho estimado: Hoy mismo"
     : `Despacho estimado: Próximo ${startDate.toLocaleDateString("es-CO", { weekday: "long", day: "numeric" })}`;
 
-  const arrivalText = `Llega entre el ${formatShort(minArrival)} y el ${formatShort(maxArrival)}`;
+  const shortAbbrRange = `${formatShortDateAbbr(minArrival)} al ${formatShortDateAbbr(maxArrival)}`;
+  const arrivalText = `Llega: ${shortAbbrRange}`;
 
-  return { arrivalText, dispatchNotice };
+  return { arrivalText, dispatchNotice, shortAbbrRange };
 }
 
 export const CheckoutPage: React.FC<CheckoutPageProps> = ({
@@ -240,6 +235,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
   // Effective items directly from cartItems state
   const effectiveCartItems: CartItem[] = cartItems;
+  const { settings } = useSiteSettings();
 
   // Form fields
   const [formData, setFormData] = useState({
@@ -1468,6 +1464,27 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                             {item.motorcycle?.modelName || effectiveBike?.modelName}
                           </span>
                         )}
+                        {(() => {
+                          const itemRange = getEstimatedDeliveryRange(item.part, settings);
+                          return (
+                            <span className={`text-[9px] font-mono font-bold flex items-center gap-1 border px-1.5 py-0.5 rounded ${
+                              item.part.availability === 'international'
+                                ? 'bg-blue-50 text-blue-800 border-blue-200'
+                                : item.part.availability === 'on_order'
+                                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            }`}>
+                              {item.part.availability === 'international' ? (
+                                <Globe className="w-2.5 h-2.5 text-blue-600 shrink-0" />
+                              ) : item.part.availability === 'on_order' ? (
+                                <Clock className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                              ) : (
+                                <Truck className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                              )}
+                              <span>Llega: <strong>{itemRange.shortAbbrRange}</strong></span>
+                            </span>
+                          );
+                        })()}
                       </div>
 
                       {/* Variant Attributes: Rendered as clean individual pills */}

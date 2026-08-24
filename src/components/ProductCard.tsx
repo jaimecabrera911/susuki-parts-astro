@@ -11,6 +11,7 @@ import {
   Check,
   Heart,
   Layers,
+  Truck,
 } from "lucide-react";
 import { AiTwotoneSafetyCertificate } from "react-icons/ai";
 import { TbAlertHexagonFilled } from "react-icons/tb";
@@ -25,6 +26,7 @@ import {
   getAvailabilityStatus,
   AVAILABILITY_META,
   getPrimaryOem,
+  getEstimatedDeliveryRange,
 } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { getProductWhatsAppUrl } from "../utils/whatsapp";
@@ -411,7 +413,25 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {part.description}
           </p>
 
-          <div className="mt-2.5 w-fit">{availabilityBadge}</div>
+          <div className="mt-2.5 space-y-1 w-fit">
+            {availabilityBadge}
+            {(() => {
+              const deliveryRange = getEstimatedDeliveryRange(part, settings);
+              if (!deliveryRange) return null;
+              return (
+                <div className="flex items-center gap-1 text-[10px] font-mono font-bold text-slate-700 bg-slate-100/90 border border-slate-200/90 px-1.5 py-0.5 rounded-md">
+                  {availabilityStatus === "international" ? (
+                    <Globe className="w-2.5 h-2.5 text-blue-600 shrink-0" />
+                  ) : availabilityStatus === "on_order" ? (
+                    <Clock className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                  ) : (
+                    <Truck className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                  )}
+                  <span>Llega: <strong>{deliveryRange.shortAbbrRange}</strong></span>
+                </div>
+              );
+            })()}
+          </div>
         </div>
       </div>
 

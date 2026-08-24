@@ -232,43 +232,74 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
     return [...canonical, ...extra];
   }, [allDiagrams, dbSections]);
 
-  // Apply motorcycle filter first, then section filter, then search
+  // Apply motorcycle filter first, then section filter, then search, naturally sorted
   const filteredDiagrams = useMemo(() => {
-    return allDiagrams.filter(d => {
-      const sec = getDiagramSection(d);
-      // Motorcycle model filter — only diagrams applicable to the active model
-      if (activeMotorcycle && d.applicableModelIds && d.applicableModelIds.length > 0 && !d.applicableModelIds.includes(activeMotorcycle.modelId)) {
-        return false;
-      }
-      // Section filter
-      if (activeSection !== 'all' && sec !== activeSection) return false;
-      // Search
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const match = d.title.toLowerCase().includes(q)
-          || (d.modelTarget && d.modelTarget.toLowerCase().includes(q))
-          || d.category.toLowerCase().includes(q)
-          || sec.toLowerCase().includes(q);
-        if (!match) return false;
-      }
-      return true;
-    });
-  }, [allDiagrams, activeMotorcycle, activeSection, searchQuery]);
+    return allDiagrams
+      .filter((d) => {
+        const sec = getDiagramSection(d);
+        // Motorcycle model filter — only diagrams applicable to the active model
+        if (
+          activeMotorcycle &&
+          d.applicableModelIds &&
+          d.applicableModelIds.length > 0 &&
+          !d.applicableModelIds.includes(activeMotorcycle.modelId)
+        ) {
+          return false;
+        }
+        // Section filter
+        if (activeSection !== 'all' && sec !== activeSection) return false;
+        // Search
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          const match =
+            d.title.toLowerCase().includes(q) ||
+            (d.modelTarget && d.modelTarget.toLowerCase().includes(q)) ||
+            d.category.toLowerCase().includes(q) ||
+            sec.toLowerCase().includes(q);
+          if (!match) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        // 1. Orden según las secciones configuradas
+        const secA = getDiagramSection(a);
+        const secB = getDiagramSection(b);
+        const idxA = availableSections.indexOf(secA);
+        const idxB = availableSections.indexOf(secB);
+        if (idxA !== -1 && idxB !== -1 && idxA !== idxB) {
+          return idxA - idxB;
+        }
+
+        // 2. Orden natural alfanumérico por número de figura (FIG.01, FIG.02 ... FIG.39A)
+        return a.title.localeCompare(b.title, 'es', {
+          numeric: true,
+          sensitivity: 'base',
+        });
+      });
+  }, [allDiagrams, activeMotorcycle, activeSection, searchQuery, availableSections]);
 
   // Group filtered diagrams by section in canonical order
   const groupedBySection = useMemo(() => {
     const groups: { section: string; diagrams: ExplodedDiagram[] }[] = [];
     const orderedSections = activeSection === 'all' ? availableSections : [activeSection];
-    orderedSections.forEach(sec => {
-      const diagrams = filteredDiagrams.filter(d => getDiagramSection(d) === sec);
+    orderedSections.forEach((sec) => {
+      const diagrams = filteredDiagrams
+        .filter((d) => getDiagramSection(d) === sec)
+        .sort((a, b) =>
+          a.title.localeCompare(b.title, 'es', { numeric: true, sensitivity: 'base' })
+        );
       if (diagrams.length > 0) {
         groups.push({ section: sec, diagrams });
       }
     });
 
     // Fallback: If there are filtered diagrams not matched in orderedSections, add them under their section
-    const groupedIds = new Set(groups.flatMap(g => g.diagrams.map(d => d.id)));
-    const remaining = filteredDiagrams.filter(d => !groupedIds.has(d.id));
+    const groupedIds = new Set(groups.flatMap((g) => g.diagrams.map((d) => d.id)));
+    const remaining = filteredDiagrams
+      .filter((d) => !groupedIds.has(d.id))
+      .sort((a, b) =>
+        a.title.localeCompare(b.title, 'es', { numeric: true, sensitivity: 'base' })
+      );
     if (remaining.length > 0) {
       groups.push({ section: 'General', diagrams: remaining });
     }
