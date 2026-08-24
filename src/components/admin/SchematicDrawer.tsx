@@ -71,11 +71,13 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
     });
 
     if (hotspotSortMode === "item") {
-      // Ordena por el número/texto del hotspot (#1, #2, #3, ...)
+      // Ordena por el número/texto alfanumérico del hotspot (#1, #2, #2A, #3, ...)
       return list.sort((a, b) => {
-        if (a.hs.itemNumber !== b.hs.itemNumber) {
-          return a.hs.itemNumber - b.hs.itemNumber;
-        }
+        const itemComp = String(a.hs.itemNumber).localeCompare(String(b.hs.itemNumber), "es", {
+          numeric: true,
+          sensitivity: "base",
+        });
+        if (itemComp !== 0) return itemComp;
         return a.name.localeCompare(b.name, "es", { sensitivity: "base", numeric: true });
       });
     }
@@ -106,7 +108,7 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
   const [editingHotspotIndex, setEditingHotspotIndex] = useState<number | null>(
     null,
   );
-  const [itemNumberInput, setItemNumberInput] = useState<number>(1);
+  const [itemNumberInput, setItemNumberInput] = useState<string>("1");
   const [labelInput, setLabelInput] = useState("");
   const [partIdInput, setPartIdInput] = useState("");
 
@@ -620,10 +622,17 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
     }
 
     // Otherwise create a new hotspot
-    const nextItem =
-      hotspots.length > 0
-        ? Math.max(...hotspots.map((h) => h.itemNumber)) + 1
-        : 1;
+    let nextItem = "1";
+    if (hotspots.length > 0) {
+      const numericItems = hotspots
+        .map((h) => parseInt(String(h.itemNumber), 10))
+        .filter((n) => !isNaN(n));
+      if (numericItems.length > 0) {
+        nextItem = String(Math.max(...numericItems) + 1);
+      } else {
+        nextItem = String(hotspots.length + 1);
+      }
+    }
     setItemNumberInput(nextItem);
     setPendingHotspot({ x, y });
 
@@ -642,7 +651,7 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
 
     const newHotspot = {
       partId: partIdInput || parts[0]?.id || "",
-      itemNumber: itemNumberInput,
+      itemNumber: String(itemNumberInput).trim() || "1",
       x: pendingHotspot.x,
       y: pendingHotspot.y,
       label: labelInput.trim(),
@@ -659,7 +668,7 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
     if (!hs) return;
     setEditingHotspotIndex(index);
     setPendingHotspot(null);
-    setItemNumberInput(hs.itemNumber);
+    setItemNumberInput(String(hs.itemNumber));
     setLabelInput(hs.label);
     setPartIdInput(hs.partId);
     setError("");
@@ -677,7 +686,7 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
         if (i === editingHotspotIndex) {
           return {
             ...hs,
-            itemNumber: itemNumberInput,
+            itemNumber: String(itemNumberInput).trim() || "1",
             partId: partIdInput || hs.partId,
             label: labelInput.trim(),
           };
@@ -1633,14 +1642,13 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-[10px] font-mono font-bold text-slate-600 mb-1">
-                        Número de Ítem #
+                        Número de Ítem / Código #
                       </label>
                       <input
-                        type="number"
+                        type="text"
                         value={itemNumberInput}
-                        onChange={(e) =>
-                          setItemNumberInput(Number(e.target.value))
-                        }
+                        onChange={(e) => setItemNumberInput(e.target.value)}
+                        placeholder="Ej: 1, 2A, 12-1..."
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono font-bold"
                       />
                     </div>
@@ -1713,14 +1721,13 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-[10px] font-mono font-bold text-slate-600 mb-1">
-                        Número de Ítem #
+                        Número de Ítem / Código #
                       </label>
                       <input
-                        type="number"
+                        type="text"
                         value={itemNumberInput}
-                        onChange={(e) =>
-                          setItemNumberInput(Number(e.target.value))
-                        }
+                        onChange={(e) => setItemNumberInput(e.target.value)}
+                        placeholder="Ej: 1, 2A, 12-1..."
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono font-bold"
                       />
                     </div>

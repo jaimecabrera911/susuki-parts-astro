@@ -35,9 +35,11 @@ export const SchematicViewModal: React.FC<SchematicViewModalProps> = ({
 
     if (sortMode === 'item') {
       return list.sort((a, b) => {
-        if (a.hs.itemNumber !== b.hs.itemNumber) {
-          return a.hs.itemNumber - b.hs.itemNumber;
-        }
+        const itemComp = String(a.hs.itemNumber).localeCompare(String(b.hs.itemNumber), 'es', {
+          numeric: true,
+          sensitivity: 'base',
+        });
+        if (itemComp !== 0) return itemComp;
         return a.name.localeCompare(b.name, 'es', { sensitivity: 'base', numeric: true });
       });
     }
@@ -49,11 +51,6 @@ export const SchematicViewModal: React.FC<SchematicViewModalProps> = ({
 
   const selectedHotspot = selectedHotspotIndex !== null ? schematic.hotspots[selectedHotspotIndex] : null;
   const selectedPart = selectedHotspot ? parts.find(p => p.id === selectedHotspot.partId) : null;
-
-  const handleAddToCart = (part: SuzukiPart) => {
-    setAddedToCartPartId(part.id);
-    setTimeout(() => setAddedToCartPartId(null), 1800);
-  };
 
   return (
     <div id="schematic-view-modal" className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 md:p-6 overflow-y-auto">

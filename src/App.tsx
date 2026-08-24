@@ -30,6 +30,7 @@ import type {
   ActiveMotorcycle,
   SuzukiPart,
   CartItem,
+  PartVariant,
   AvailabilityStatus,
   UserProfile,
   SuzukiModel,
@@ -474,7 +475,13 @@ export default function App() {
           (item.part.oemNumbers &&
             p.oemNumbers.includes(item.part.oemNumbers[0])),
       );
-      return live ? { ...item, part: live } : item;
+      if (live) {
+        const liveVariant = item.selectedVariant
+          ? live.variants?.find((v) => v.id === item.selectedVariant?.id) || item.selectedVariant
+          : null;
+        return { ...item, part: live, selectedVariant: liveVariant };
+      }
+      return item;
     });
   }, [cartItems, parts]);
 
@@ -488,15 +495,14 @@ export default function App() {
       try {
         const fetched = await fetchOrders();
         setOrders(fetched);
-      } catch (err) {
-        console.error("Error cargando órdenes:", err);
-        setOrders([]);
+      } catch (e) {
+        console.error("Error cargando pedidos desde BD:", e);
       }
     };
     loadAllOrders();
   }, []);
 
-  // Modals
+  // Modal Handlers
   const [isGarageModalOpen, setIsGarageModalOpen] = useState(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [isAIOpen, setIsAIOpen] = useState(false);
@@ -585,7 +591,11 @@ export default function App() {
   };
 
   // Cart Handlers
-  const handleAddToCart = (part: SuzukiPart, quantity: number = 1) => {
+  const handleAddToCart = (
+    part: SuzukiPart,
+    quantity: number = 1,
+    selectedVariant?: PartVariant | null,
+  ) => {
     if (!activeMotorcycle) {
       setIsGarageModalOpen(true);
       return;
@@ -594,25 +604,47 @@ export default function App() {
     const qtyToAdd = Math.max(1, quantity || 1);
 
     setCartItems((prev) => {
-      const existing = prev.find((item) => item.part.id === part.id);
+      const existing = prev.find(
+        (item) =>
+          item.part.id === part.id &&
+          (item.selectedVariant?.id || null) ===
+            (selectedVariant?.id || null),
+      );
       if (existing) {
         return prev.map((item) =>
-          item.part.id === part.id
+          item.part.id === part.id &&
+          (item.selectedVariant?.id || null) ===
+            (selectedVariant?.id || null)
             ? { ...item, quantity: item.quantity + qtyToAdd }
             : item,
         );
       } else {
-        return [...prev, { part, quantity: qtyToAdd, motorcycle: activeMotorcycle }];
+        return [
+          ...prev,
+          {
+            part,
+            quantity: qtyToAdd,
+            motorcycle: activeMotorcycle,
+            selectedVariant: selectedVariant || null,
+          },
+        ];
       }
     });
 
     setIsCartOpen(true);
   };
 
-  const handleUpdateQuantity = (partId: string, delta: number) => {
+  const handleUpdateQuantity = (
+    partId: string,
+    delta: number,
+    variantId?: string | null,
+  ) => {
     setCartItems((prev) =>
       prev.map((item) => {
-        if (item.part.id === partId) {
+        if (
+          item.part.id === partId &&
+          (item.selectedVariant?.id || null) === (variantId || null)
+        ) {
           const newQty = item.quantity + delta;
           return newQty > 0 ? { ...item, quantity: newQty } : item;
         }
@@ -621,8 +653,19 @@ export default function App() {
     );
   };
 
-  const handleRemoveCartItem = (partId: string) => {
-    setCartItems((prev) => prev.filter((item) => item.part.id !== partId));
+  const handleRemoveCartItem = (
+    partId: string,
+    variantId?: string | null,
+  ) => {
+    setCartItems((prev) =>
+      prev.filter(
+        (item) =>
+          !(
+            item.part.id === partId &&
+            (item.selectedVariant?.id || null) === (variantId || null)
+          ),
+      ),
+    );
   };
 
   const handleOrderComplete = (newOrder: Order) => {

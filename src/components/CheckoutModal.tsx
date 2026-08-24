@@ -48,7 +48,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   if (!isOpen) return null;
 
   const total = cartItems.reduce(
-    (acc, item) => acc + item.part.price * item.quantity,
+    (acc, item) => {
+      const price = item.selectedVariant?.price != null ? item.selectedVariant.price : item.part.price;
+      return acc + price * item.quantity;
+    },
     0,
   );
 

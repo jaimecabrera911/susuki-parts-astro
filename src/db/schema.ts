@@ -121,6 +121,30 @@ export const partImages = pgTable('part_images', {
   uniquePartPrimary: uniqueIndex('idx_part_images_part_primary').on(table.partId).where(sql`${table.isPrimary} = true`)
 }));
 
+// 5d. Part Variants & Colors Table (3NF Normalized)
+export const partVariants = pgTable('part_variants', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  partId: uuid('part_id').notNull().references(() => parts.id, { onDelete: 'cascade' }),
+  variantType: text('variant_type').notNull().default('color'),
+  name: text('name').notNull(),
+  colorCode: text('color_code'),
+  colorHex: text('color_hex'),
+  sku: text('sku'),
+  price: doublePrecision('price'),
+  cost: doublePrecision('cost').notNull().default(0),
+  stock: integer('stock').notNull().default(0),
+  stockReserved: integer('stock_reserved').notNull().default(0),
+  image: text('image'),
+  attributes: jsonb('attributes').$type<Array<{ name: string; value: string; code?: string; hex?: string }>>().default([]),
+  position: integer('position').notNull().default(0),
+  active: boolean('active').notNull().default(true)
+}, (table) => ({
+  partIdx: index('idx_part_variants_part_id').on(table.partId),
+  skuIdx: index('idx_part_variants_sku').on(table.sku),
+  activeIdx: index('idx_part_variants_active').on(table.active),
+  positionIdx: index('idx_part_variants_position').on(table.partId, table.position)
+}));
+
 // 6d. Schematic Sections Table
 export const schematicSections = pgTable('schematic_sections', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -151,7 +175,7 @@ export const schematicHotspots = pgTable('schematic_hotspots', {
   id: uuid('id').defaultRandom().primaryKey(),
   schematicId: uuid('schematic_id').notNull().references(() => schematics.id, { onDelete: 'cascade' }),
   partId: uuid('part_id').references(() => parts.id, { onDelete: 'cascade' }),
-  itemNumber: integer('item_number').notNull(),
+  itemNumber: text('item_number').notNull(),
   x: doublePrecision('x').notNull(),
   y: doublePrecision('y').notNull(),
   label: text('label').notNull()
@@ -583,6 +607,7 @@ export const stockReservations = pgTable('stock_reservations', {
   statusIdx: index('idx_stock_reservations_status').on(table.status),
   expiresIdx: index('idx_stock_reservations_expires_at').on(table.expiresAt)
 }));
+
 
 
 

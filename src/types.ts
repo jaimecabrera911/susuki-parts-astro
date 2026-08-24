@@ -129,6 +129,67 @@ export const isCancelOrderStatus = (statusStr?: string | null): boolean => {
   return s.includes('cancel') || s.includes('expir') || s.includes('rechaz') || s.includes('anulad');
 };
 
+export type PartVariantType = 'color' | 'side' | 'size' | 'material' | 'finish' | 'custom' | 'other';
+
+export const VARIANT_TYPE_LABELS: Record<string, { label: string; icon: string; prompt: string }> = {
+  color: { label: 'Color / Pintura OEM', icon: 'Palette', prompt: 'Color disponible' },
+  side: { label: 'Lado / Posición (LH/RH/FR/RR)', icon: 'ArrowRightLeft', prompt: 'Lado / Posición' },
+  size: { label: 'Medida / Sobremedida (STD/+0.25)', icon: 'Ruler', prompt: 'Medida / Calibre' },
+  material: { label: 'Material / Compuesto (Sinterizado, etc.)', icon: 'ShieldCheck', prompt: 'Material / Compuesto' },
+  finish: { label: 'Acabado (Mate, Cromo, etc.)', icon: 'Sparkles', prompt: 'Acabado' },
+  custom: { label: 'Personalizado / Otro', icon: 'Tag', prompt: 'Variación' },
+  other: { label: 'Opción / Variación', icon: 'Tag', prompt: 'Opción' },
+};
+
+export const getVariantTypeLabel = (type?: string | null): string => {
+  if (!type) return 'Opción';
+  switch (type.toLowerCase()) {
+    case 'color': return 'Color';
+    case 'side': return 'Lado';
+    case 'size': return 'Medida';
+    case 'material': return 'Material';
+    case 'finish': return 'Acabado';
+    default: return 'Opción';
+  }
+};
+
+export interface VariantAttributeValue {
+  name: string;   // e.g. "Lado", "Color", "Medida", "Material", "Acabado"
+  value: string;  // e.g. "Derecho (RH)", "Azul Suzuki Triton", "+0.25 mm"
+  code?: string | null;  // e.g. "RH", "YSF", "025"
+  hex?: string | null;   // e.g. "#0045A5" (for colors)
+}
+
+export interface PartVariant {
+  id: string;
+  partId: string;
+  variantType: PartVariantType | string;
+  name: string;
+  colorCode?: string | null;
+  colorHex?: string | null;
+  sku?: string | null;
+  price?: number | null;
+  cost?: number;
+  stock: number;
+  stockReserved?: number;
+  image?: string | null;
+  attributes?: VariantAttributeValue[] | null;
+  position: number;
+  active: boolean;
+}
+
+/** Formatea los atributos de una variante de forma legible (ej. "Lado: Derecho (RH) · Color: Azul Triton YSF") */
+export const formatVariantAttributes = (variant?: PartVariant | null): string => {
+  if (!variant) return '';
+  if (Array.isArray(variant.attributes) && variant.attributes.length > 0) {
+    return variant.attributes
+      .map(a => `${a.name}: ${a.value}${a.code && !a.value.includes(a.code) ? ` (${a.code})` : ''}`)
+      .join(' · ');
+  }
+  const type = getVariantTypeLabel(variant.variantType);
+  return `${type}: ${variant.name}${variant.colorCode && !variant.name.includes(variant.colorCode) ? ` (${variant.colorCode})` : ''}`;
+};
+
 export interface SuzukiPart {
   id: string;
   sku: string;
@@ -146,7 +207,9 @@ export interface SuzukiPart {
   specs: TechnicalSpec[];
   compatibility: CompatibilityRule[];
   schematicId?: string;
-  diagramHotspot?: { x: number; y: number; itemNumber: number };
+  diagramHotspot?: { x: number; y: number; itemNumber: string | number };
+  /** Variaciones opcionales del repuesto (colores, lados, medidas, etc.) */
+  variants?: PartVariant[];
   /** Estado de disponibilidad del repuesto. Default: derivado de `stock`. */
   availability?: AvailabilityStatus;
   /** Días mínimos de entrega específicos para este repuesto. Si no se especifica, usa la configuración global de la tienda. */
@@ -369,7 +432,7 @@ export interface ExplodedDiagram {
   description: string;
   hotspots: {
     partId: string;
-    itemNumber: number;
+    itemNumber: string | number;
     x: number; // percentage
     y: number; // percentage
     label: string;
@@ -397,6 +460,7 @@ export interface CartItem {
   part: SuzukiPart;
   quantity: number;
   motorcycle: ActiveMotorcycle;
+  selectedVariant?: PartVariant | null;
 }
 
 export interface VinLookupResult {

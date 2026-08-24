@@ -1,4 +1,4 @@
-import type { SuzukiPart, CartItem, Coupon } from '../types';
+import type { SuzukiPart, CartItem, Coupon, PartVariant } from '../types';
 
 export interface ItemFinancials {
   unitPrice: number;
@@ -43,9 +43,10 @@ export function calculateItemFinancials(
   part: SuzukiPart,
   quantity: number,
   taxRate: number = 19,
-  taxActive: boolean = true
+  taxActive: boolean = true,
+  selectedVariant?: PartVariant | null
 ): ItemFinancials {
-  const unitPrice = part.price;
+  const unitPrice = selectedVariant?.price != null ? selectedVariant.price : part.price;
   const isTaxable = taxActive && (part.taxable !== false);
   const priceIncludesTax = part.priceIncludesTax === true;
 
@@ -107,7 +108,7 @@ export function calculateCartTotals(
   let grossTotalSum = 0;
 
   for (const item of cartItems) {
-    const fin = calculateItemFinancials(item.part, item.quantity, taxRate, taxActive);
+    const fin = calculateItemFinancials(item.part, item.quantity, taxRate, taxActive, item.selectedVariant);
     grossBaseSum += fin.lineBase;
     grossTaxSum += fin.lineTax;
     grossTotalSum += fin.lineTotal;

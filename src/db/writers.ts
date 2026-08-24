@@ -1,7 +1,7 @@
 import type { AppDb } from './client';
 import {
   brands, models, modelYears, categories,
-  parts, partOemNumbers, partImages, partCompatibilities,
+  parts, partOemNumbers, partImages, partCompatibilities, partVariants,
   schematics, schematicHotspots, schematicApplicableModels, schematicSections,
   orderStatuses, carriers, modelCategories,
   orders, orderItems, orderReturns, siteSettings,
@@ -50,6 +50,8 @@ export async function formatParts(db: AppDb, rows: any[]) {
   const oemAll = await db.select().from(partOemNumbers);
   const compatAll = await db.select().from(partCompatibilities);
   const imgAll = await db.select().from(partImages);
+  const variantsAll = await db.select().from(partVariants);
+
   const oemByPart = new Map<string, typeof oemAll>();
   for (const r of oemAll) {
     const arr = oemByPart.get(r.partId) || [];
@@ -68,12 +70,35 @@ export async function formatParts(db: AppDb, rows: any[]) {
     arr.push(r);
     imgByPart.set(r.partId, arr);
   }
+  const variantsByPart = new Map<string, typeof variantsAll>();
+  for (const v of variantsAll) {
+    const arr = variantsByPart.get(v.partId) || [];
+    arr.push(v);
+    variantsByPart.set(v.partId, arr);
+  }
 
   return rows.map(p => ({
     ...p,
     sku: p.sku || `SKU-${p.id}`,
     oemNumbers: (oemByPart.get(p.id) || []).sort((a, b) => a.position - b.position).map(r => r.oemNumber),
     images: (imgByPart.get(p.id) || []).sort((a, b) => a.position - b.position).map(r => r.url),
+    variants: (variantsByPart.get(p.id) || []).sort((a, b) => a.position - b.position).map(v => ({
+      id: v.id,
+      partId: v.partId,
+      variantType: (v.variantType || 'color') as 'color' | 'side' | 'size' | 'material' | 'finish' | 'other',
+      name: v.name,
+      colorCode: v.colorCode || null,
+      colorHex: v.colorHex || null,
+      sku: v.sku || null,
+      price: v.price != null ? Number(v.price) : null,
+      cost: Number(v.cost || 0),
+      stock: Number(v.stock || 0),
+      stockReserved: Number(v.stockReserved || 0),
+      image: v.image || null,
+      attributes: Array.isArray(v.attributes) ? v.attributes : [],
+      position: Number(v.position || 0),
+      active: v.active !== false
+    })),
     specs: p.specs || [],
     compatibility: (compatByPart.get(p.id) || []).map(r => ({
       modelId: r.modelId,
@@ -261,6 +286,33 @@ export async function upsertPart(db: AppDb, body: any) {
         }).onConflictDoNothing();
       }
     }
+
+    // Sync part_variants
+    await tx.delete(partVariants).where(eq(partVariants.partId, id));
+    if (Array.isArray(body.variants)) {
+      for (let i = 0; i < body.variants.length; i++) {
+        const v = body.variants[i];
+        if (v && v.name && String(v.name).trim()) {
+          await tx.insert(partVariants).values({
+            id: ensureUuid(v.id),
+            partId: id,
+            variantType: v.variantType || 'color',
+            name: String(v.name).trim(),
+            colorCode: v.colorCode ? String(v.colorCode).trim() : null,
+            colorHex: v.colorHex ? String(v.colorHex).trim() : null,
+            sku: v.sku ? String(v.sku).trim() : null,
+            price: v.price != null && v.price !== '' ? Number(v.price) : null,
+            cost: v.cost != null && v.cost !== '' ? Number(v.cost) : 0,
+            stock: Number(v.stock || 0),
+            stockReserved: Number(v.stockReserved || 0),
+            image: v.image || null,
+            attributes: Array.isArray(v.attributes) ? v.attributes : [],
+            position: i,
+            active: v.active !== false
+          }).onConflictDoNothing();
+        }
+      }
+    }
   });
 
   return data;
@@ -308,7 +360,7 @@ export async function upsertSchematic(db: AppDb, body: any) {
           id: crypto.randomUUID(),
           schematicId: id,
           partId: hs.partId || null,
-          itemNumber: Number(hs.itemNumber),
+          itemNumber: String(hs.itemNumber),
           x: Number(hs.x || 0),
           y: Number(hs.y || 0),
           label: String(hs.label || `Pieza ${hs.itemNumber}`)

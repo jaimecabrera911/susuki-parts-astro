@@ -39,7 +39,7 @@ import type {
   PaymentSettings,
   BankAccount,
 } from "../types";
-import { getPrimaryOem } from "../types";
+import { getPrimaryOem, getVariantTypeLabel, formatVariantAttributes } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatDocumentNumber } from "../utils/formatDocumentNumber";
 import {
@@ -397,7 +397,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
   // Subtotal, Shipping & Financial Breakdown Calculations
   const rawSubtotal = effectiveCartItems.reduce(
-    (acc, item) => acc + item.part.price * item.quantity,
+    (acc, item) => {
+      const price = item.selectedVariant?.price != null ? item.selectedVariant.price : item.part.price;
+      return acc + price * item.quantity;
+    },
     0,
   );
   const selectedShipping =
@@ -1423,64 +1426,106 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 
             {/* Simplified Item List Breakdown */}
             <div className="space-y-2.5 max-h-[480px] overflow-y-auto pr-1 custom-scrollbar">
-              {effectiveCartItems.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="p-3 bg-slate-50 rounded-2xl border border-slate-200 hover:border-slate-300 transition-all flex items-center gap-3"
-                >
-                  {/* Part Thumbnail */}
-                  {shouldShowProductImages() ? (
-                    <img
-                      src={item.part.image}
-                      alt={item.part.name}
-                      className="w-12 h-12 rounded-xl object-cover bg-white border border-slate-200 shrink-0 shadow-2xs"
-                    />
-                  ) : (
-                    <ProductImageEmptyState className="w-12 h-12 shrink-0 rounded-xl" />
-                  )}
+              {effectiveCartItems.map((item, idx) => {
+                const itemPrice = item.selectedVariant?.price != null ? item.selectedVariant.price : item.part.price;
+                const itemImage = item.selectedVariant?.image || item.part.image;
+                const itemOem = item.selectedVariant?.sku || getPrimaryOem(item.part);
 
-                  {/* Info & Meta */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-mono text-[9px] font-bold text-[#E60012] bg-red-50 border border-red-200 px-1.5 py-0.5 rounded inline-block">
-                        OEM: {getPrimaryOem(item.part)}
-                      </span>
-                      {(item.motorcycle || effectiveBike) && (
-                        <span className="text-[9px] font-mono text-emerald-700 font-semibold flex items-center gap-0.5 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                          <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
-                          {item.motorcycle?.modelName ||
-                            effectiveBike?.modelName}
+                return (
+                  <div
+                    key={idx}
+                    className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200/90 hover:border-slate-300 transition-all flex items-start sm:items-center gap-3.5"
+                  >
+                    {/* Part Thumbnail */}
+                    {shouldShowProductImages() ? (
+                      <img
+                        src={itemImage}
+                        alt={item.part.name}
+                        className="w-14 h-14 rounded-xl object-cover bg-white border border-slate-200 shrink-0 shadow-2xs"
+                      />
+                    ) : (
+                      <ProductImageEmptyState className="w-14 h-14 shrink-0 rounded-xl" />
+                    )}
+
+                    {/* Info & Meta */}
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      {/* Name */}
+                      <h4
+                        className="font-black text-slate-900 text-xs leading-snug font-display truncate"
+                        title={item.part.name}
+                      >
+                        {item.part.name}
+                      </h4>
+
+                      {/* Primary badges: OEM & Motorcycle */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-mono text-[9px] font-bold text-[#E60012] bg-red-50 border border-red-200/80 px-1.5 py-0.5 rounded inline-block">
+                          OEM: {itemOem}
                         </span>
+                        {(item.motorcycle || effectiveBike) && (
+                          <span className="text-[9px] font-mono text-emerald-800 font-semibold flex items-center gap-0.5 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 rounded">
+                            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                            {item.motorcycle?.modelName || effectiveBike?.modelName}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Variant Attributes: Rendered as clean individual pills */}
+                      {item.selectedVariant && (
+                        <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                          {Array.isArray(item.selectedVariant.attributes) && item.selectedVariant.attributes.length > 0 ? (
+                            item.selectedVariant.attributes.map((attr, aIdx) => (
+                              <span
+                                key={aIdx}
+                                className="text-[9px] font-mono text-slate-800 font-bold inline-flex items-center gap-1 bg-white border border-slate-200/90 px-1.5 py-0.5 rounded shadow-2xs"
+                              >
+                                {attr.hex && (
+                                  <span
+                                    className="w-2 h-2 rounded-full border border-black/20 shrink-0"
+                                    style={{ backgroundColor: attr.hex }}
+                                  />
+                                )}
+                                <span>
+                                  {attr.name}: <strong>{attr.value}</strong>
+                                </span>
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[9px] font-mono text-slate-800 font-bold inline-flex items-center gap-1 bg-white border border-slate-200/90 px-1.5 py-0.5 rounded shadow-2xs">
+                              {item.selectedVariant.variantType === 'color' || item.selectedVariant.colorHex ? (
+                                <span
+                                  className="w-2 h-2 rounded-full border border-black/20 shrink-0"
+                                  style={{ backgroundColor: item.selectedVariant.colorHex || '#0045A5' }}
+                                />
+                              ) : null}
+                              <span>{formatVariantAttributes(item.selectedVariant)}</span>
+                            </span>
+                          )}
+                        </div>
                       )}
+
+                      {/* Quantity and unit price */}
+                      <div className="text-[11px] text-slate-500 font-medium">
+                        Cant:{" "}
+                        <strong className="text-slate-900 font-mono font-bold">
+                          {item.quantity}
+                        </strong>{" "}
+                        ×{" "}
+                        <span className="font-mono text-slate-600 font-semibold">
+                          {formatCurrency(itemPrice)}
+                        </span>
+                      </div>
                     </div>
 
-                    <h4
-                      className="font-bold text-slate-900 text-xs mt-1 leading-tight truncate font-display"
-                      title={item.part.name}
-                    >
-                      {item.part.name}
-                    </h4>
-
-                    <div className="text-[11px] text-slate-500 font-medium mt-1">
-                      Cant:{" "}
-                      <strong className="text-slate-900 font-mono font-bold">
-                        {item.quantity}
-                      </strong>{" "}
-                      ×{" "}
-                      <span className="font-mono text-slate-600">
-                        {formatCurrency(item.part.price)}
+                    {/* Subtotal */}
+                    <div className="text-right shrink-0 self-center">
+                      <span className="font-mono font-black text-slate-900 text-sm">
+                        {formatCurrency(itemPrice * item.quantity)}
                       </span>
                     </div>
                   </div>
-
-                  {/* Subtotal */}
-                  <div className="text-right shrink-0">
-                    <span className="font-mono font-black text-slate-900 text-sm">
-                      {formatCurrency(item.part.price * item.quantity)}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Coupon Code Section */}

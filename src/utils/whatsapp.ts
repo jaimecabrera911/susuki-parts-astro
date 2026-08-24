@@ -1,5 +1,5 @@
-import type { SuzukiPart, CartItem, ActiveMotorcycle } from '../types';
-import { getPrimaryOem } from '../types';
+import type { SuzukiPart, CartItem, ActiveMotorcycle, PartVariant } from '../types';
+import { getPrimaryOem, formatVariantAttributes } from '../types';
 import { formatCurrency } from './formatCurrency';
 import { getWhatsAppNumber, getStoreName } from './config';
 
@@ -31,13 +31,24 @@ export function getGeneralWhatsAppUrl(activeMotorcycle?: ActiveMotorcycle | null
 /**
  * Builds a WhatsApp URL for inquiring about a specific product
  */
-export function getProductWhatsAppUrl(part: SuzukiPart, activeMotorcycle?: ActiveMotorcycle | null): string {
+export function getProductWhatsAppUrl(
+  part: SuzukiPart,
+  activeMotorcycle?: ActiveMotorcycle | null,
+  selectedVariant?: PartVariant | null
+): string {
+  const price = selectedVariant?.price != null ? selectedVariant.price : part.price;
+  const stock = selectedVariant ? selectedVariant.stock : part.stock;
+  const oem = selectedVariant?.sku || getPrimaryOem(part);
+
   let message = `${storeGreeting()}quiero consultar disponibilidad y precio para este repuesto genuino:\n\n`;
   message += `📦 *Producto:* ${part.name}\n`;
-  message += `🏷️ *Ref. OEM:* ${getPrimaryOem(part)}\n`;
+  if (selectedVariant) {
+    message += `🔹 *Opción:* ${formatVariantAttributes(selectedVariant)}\n`;
+  }
+  message += `🏷️ *Ref. OEM:* ${oem}\n`;
   message += `📁 *Categoría:* ${part.category}\n`;
-  message += `💰 *Precio:* ${formatCurrency(part.price)}\n`;
-  message += `⚡ *Estado:* ${part.stock > 0 ? `En Stock (${part.stock} disp.)` : 'Bajo Pedido Especial'}\n`;
+  message += `💰 *Precio:* ${formatCurrency(price)}\n`;
+  message += `⚡ *Estado:* ${stock > 0 ? `En Stock (${stock} disp.)` : 'Bajo Pedido Especial'}\n`;
 
   if (activeMotorcycle) {
     message += `\n🏍️ *Mi Motocicleta:* ${activeMotorcycle.brand} ${activeMotorcycle.modelName} (${activeMotorcycle.year})`;
@@ -52,15 +63,27 @@ export function getProductWhatsAppUrl(part: SuzukiPart, activeMotorcycle?: Activ
  * Builds a WhatsApp URL for consulting or placing an order for all items in the cart
  */
 export function getCartWhatsAppUrl(cartItems: CartItem[], activeMotorcycle?: ActiveMotorcycle | null): string {
-  const total = cartItems.reduce((acc, item) => acc + (item.part.price * item.quantity), 0);
+  const total = cartItems.reduce((acc, item) => {
+    const itemPrice = item.selectedVariant?.price != null ? item.selectedVariant.price : item.part.price;
+    return acc + (itemPrice * item.quantity);
+  }, 0);
 
   let message = `${storeGreeting()}me gustaría cotizar / realizar el pedido de los siguientes repuestos de mi carrito:\n\n`;
 
   cartItems.forEach((item, index) => {
-    const subtotal = item.part.price * item.quantity;
+    const itemPrice = item.selectedVariant?.price != null ? item.selectedVariant.price : item.part.price;
+    const subtotal = itemPrice * item.quantity;
     const motoInfo = item.motorcycle ? ` [Vehículo: ${item.motorcycle.modelName} (${item.motorcycle.year})]` : '';
+    const variantInfo = item.selectedVariant
+      ? ` • Opción: ${formatVariantAttributes(item.selectedVariant)}\n`
+      : '';
+    const oemRef = item.selectedVariant?.sku || getPrimaryOem(item.part);
+
     message += `${index + 1}. *${item.part.name}*${motoInfo}\n`;
-    message += `   • Ref. OEM: ${getPrimaryOem(item.part)}\n`;
+    if (variantInfo) {
+      message += `   ${variantInfo}`;
+    }
+    message += `   • Ref. OEM: ${oemRef}\n`;
     message += `   • Cantidad: ${item.quantity}\n`;
     message += `   • Subtotal: ${formatCurrency(subtotal)}\n\n`;
   });

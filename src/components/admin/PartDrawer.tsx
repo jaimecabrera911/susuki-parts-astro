@@ -20,6 +20,13 @@ import {
   RotateCcw,
   Eye,
   EyeOff,
+  Palette,
+  Check,
+  Image as ImageIcon,
+  ArrowRightLeft,
+  Ruler,
+  ShieldCheck,
+  Tag,
 } from "lucide-react";
 import type {
   SuzukiPart,
@@ -28,7 +35,11 @@ import type {
   TechnicalSpec,
   CompatibilityRule,
   Category,
+  PartVariant,
+  PartVariantType,
+  VariantAttributeValue,
 } from "../../types";
+import { VARIANT_TYPE_LABELS, getVariantTypeLabel, formatVariantAttributes } from "../../types";
 import { SearchableModelSelect } from "../SearchableModelSelect";
 import { UPLOAD_IMAGE } from "../../services/api";
 import { useSiteSettings } from "../SiteSettingsProvider";
@@ -44,6 +55,88 @@ interface PartDrawerProps {
   initialData?: Partial<SuzukiPart> | null;
   zIndex?: string;
 }
+
+interface VariantAxisDef {
+  id: string;
+  name: string;
+  type: PartVariantType;
+  options: Array<{ value: string; code?: string; hex?: string }>;
+}
+
+const extractAxesFromVariants = (
+  vars: PartVariant[],
+): VariantAxisDef[] => {
+  const axesMap = new Map<
+    string,
+    {
+      type: PartVariantType;
+      optionsMap: Map<string, { value: string; code?: string; hex?: string }>;
+    }
+  >();
+
+  for (const v of vars) {
+    if (Array.isArray(v.attributes) && v.attributes.length > 0) {
+      for (const attr of v.attributes) {
+        if (!axesMap.has(attr.name)) {
+          let aType: PartVariantType = "custom";
+          const n = attr.name.toLowerCase();
+          if (n.includes("color")) aType = "color";
+          else if (n.includes("lado") || n.includes("posic")) aType = "side";
+          else if (
+            n.includes("medida") ||
+            n.includes("calibre") ||
+            n.includes("sobre")
+          )
+            aType = "size";
+          else if (n.includes("material") || n.includes("compuesto"))
+            aType = "material";
+          else if (n.includes("acabado") || n.includes("tratamiento"))
+            aType = "finish";
+
+          axesMap.set(attr.name, { type: aType, optionsMap: new Map() });
+        }
+        const axis = axesMap.get(attr.name)!;
+        if (!axis.optionsMap.has(attr.value)) {
+          axis.optionsMap.set(attr.value, {
+            value: attr.value,
+            code: attr.code || undefined,
+            hex: attr.hex || undefined,
+          });
+        }
+      }
+    }
+  }
+
+  if (axesMap.size === 0) {
+    return [
+      {
+        id: "1",
+        name: "Lado / Posición",
+        type: "side",
+        options: [
+          { value: "Izquierdo (LH)", code: "LH" },
+          { value: "Derecho (RH)", code: "RH" },
+        ],
+      },
+      {
+        id: "2",
+        name: "Color OEM",
+        type: "color",
+        options: [
+          { value: "Azul Suzuki Triton", code: "YSF", hex: "#0045A5" },
+          { value: "Negro Sparkle Black", code: "YVB", hex: "#1C1D21" },
+        ],
+      },
+    ];
+  }
+
+  return Array.from(axesMap.entries()).map(([name, data], idx) => ({
+    id: String(idx + 1),
+    name,
+    type: data.type,
+    options: Array.from(data.optionsMap.values()),
+  }));
+};
 
 export const PartDrawer: React.FC<PartDrawerProps> = ({
   isOpen,
@@ -93,6 +186,42 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
   const [yearStart, setYearStart] = useState<number>();
   const [yearEnd, setYearEnd] = useState<number>();
   const [versionNote, setVersionNote] = useState("");
+
+  // Variants & Colors List (Optional)
+  const [hasVariants, setHasVariants] = useState<boolean>(false);
+  const [variantMode, setVariantMode] = useState<"simple" | "matrix">("simple");
+  const [primaryVariantType, setPrimaryVariantType] = useState<PartVariantType>("color");
+  const [variants, setVariants] = useState<PartVariant[]>([]);
+
+  // Multi-Attribute Matrix Axes State
+  const [axes, setAxes] = useState<
+    Array<{
+      id: string;
+      name: string;
+      type: PartVariantType;
+      options: Array<{ value: string; code?: string; hex?: string }>;
+    }>
+  >([
+    {
+      id: "1",
+      name: "Lado / Posición",
+      type: "side",
+      options: [
+        { value: "Izquierdo (LH)", code: "LH" },
+        { value: "Derecho (RH)", code: "RH" },
+      ],
+    },
+    {
+      id: "2",
+      name: "Color OEM",
+      type: "color",
+      options: [
+        { value: "Azul Suzuki Triton", code: "YSF", hex: "#0045A5" },
+        { value: "Negro Sparkle Black", code: "YVB", hex: "#1C1D21" },
+      ],
+    },
+  ]);
+  const [axisInputs, setAxisInputs] = useState<Record<string, string>>({});
 
   const [error, setError] = useState("");
 
@@ -205,6 +334,23 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
       setDescription(partToEdit.description || "");
       setSpecs(partToEdit.specs || []);
       setCompatibility(partToEdit.compatibility || []);
+      const existingVariants = partToEdit.variants || [];
+      setVariants(existingVariants);
+      setHasVariants(existingVariants.length > 0);
+      if (existingVariants.length > 0) {
+        const isMulti = existingVariants.some(
+          (v) => Array.isArray(v.attributes) && v.attributes.length > 1
+        );
+        if (isMulti) {
+          setVariantMode("matrix");
+          setAxes(extractAxesFromVariants(existingVariants));
+        } else {
+          setVariantMode("simple");
+          setPrimaryVariantType(
+            (existingVariants[0].variantType as PartVariantType) || "color"
+          );
+        }
+      }
     } else if (initialData) {
       setSku(initialData.sku || "");
       setName(initialData.name || "");
@@ -245,6 +391,23 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
             : [];
       setSpecs(initialSpecs);
       setCompatibility(initialData.compatibility || []);
+      const existingVariants = initialData.variants || [];
+      setVariants(existingVariants);
+      setHasVariants(existingVariants.length > 0);
+      if (existingVariants.length > 0) {
+        const isMulti = existingVariants.some(
+          (v) => Array.isArray(v.attributes) && v.attributes.length > 1
+        );
+        if (isMulti) {
+          setVariantMode("matrix");
+          setAxes(extractAxesFromVariants(existingVariants));
+        } else {
+          setVariantMode("simple");
+          setPrimaryVariantType(
+            (existingVariants[0].variantType as PartVariantType) || "color"
+          );
+        }
+      }
     } else {
       setSku("");
       setName("");
@@ -273,6 +436,10 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
           : [];
       setSpecs(initialSpecs);
       setCompatibility([]);
+      setVariants([]);
+      setHasVariants(false);
+      setVariantMode("simple");
+      setPrimaryVariantType("color");
     }
     setError("");
   }, [partToEdit, initialData, isOpen, configuredDefaultSpecs.length, categories]);
@@ -407,6 +574,321 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
     setCompatibility(compatibility.filter((_, i) => i !== index));
   };
 
+  const VARIANT_PRESETS: Record<
+    string,
+    {
+      label: string;
+      icon: any;
+      prompt: string;
+      items: Array<{ name: string; code?: string; hex?: string }>;
+    }
+  > = {
+    color: {
+      label: "Color / Pintura OEM",
+      icon: Palette,
+      prompt: "Colores OEM Suzuki Populares:",
+      items: [
+        { name: "Azul Suzuki Triton", code: "YSF", hex: "#0045A5" },
+        { name: "Negro Sparkle Black", code: "YVB", hex: "#1C1D21" },
+        { name: "Blanco Pearl Glacier", code: "YWW", hex: "#F0F2F5" },
+        { name: "Rojo Candy Daring", code: "YYG", hex: "#BA0C2F" },
+        { name: "Gris Metallic Mat", code: "QT8", hex: "#585C61" },
+        { name: "Amarillo Champion", code: "YU1", hex: "#FFC72C" },
+        { name: "Negro Mate Titan", code: "YKV", hex: "#2B2B2B" },
+        { name: "Azul Pearl Vigor", code: "YBB", hex: "#002B49" },
+      ],
+    },
+    side: {
+      label: "Lado / Posición",
+      icon: ArrowRightLeft,
+      prompt: "Posiciones Habituales:",
+      items: [
+        { name: "Izquierdo (LH)", code: "LH" },
+        { name: "Derecho (RH)", code: "RH" },
+        { name: "Delantero (FR)", code: "FR" },
+        { name: "Trasero (RR)", code: "RR" },
+        { name: "Juego Par (L+R)", code: "PAIR" },
+      ],
+    },
+    size: {
+      label: "Medida / Sobremedida",
+      icon: Ruler,
+      prompt: "Calibres y Medidas (Pistón / Anillos / Guayas):",
+      items: [
+        { name: "Estándar (STD)", code: "STD" },
+        { name: "Sobremedida +0.25 mm", code: "025" },
+        { name: "Sobremedida +0.50 mm", code: "050" },
+        { name: "Sobremedida +0.75 mm", code: "075" },
+        { name: "Sobremedida +1.00 mm", code: "100" },
+      ],
+    },
+    material: {
+      label: "Material / Compuesto",
+      icon: ShieldCheck,
+      prompt: "Compuestos de Fricción y Empaques:",
+      items: [
+        { name: "Sinterizado / Cerámica", code: "SINT" },
+        { name: "Semimetálico", code: "SMET" },
+        { name: "Orgánico / Kevlar", code: "ORG" },
+        { name: "Cobre / Grafito", code: "COPR" },
+        { name: "Acero Inoxidable", code: "SS" },
+        { name: "Fibra de Carbono", code: "CARB" },
+      ],
+    },
+    finish: {
+      label: "Acabado / Tratamiento",
+      icon: Sparkles,
+      prompt: "Acabados y Tratamientos:",
+      items: [
+        { name: "Negro Mate", code: "MAT", hex: "#2B2B2B" },
+        { name: "Negro Brillante", code: "GLS", hex: "#111111" },
+        { name: "Cromado Espejo", code: "CHR", hex: "#E2E8F0" },
+        { name: "Aluminio Anodizado", code: "AND", hex: "#94A3B8" },
+        { name: "Titanio Burned", code: "TIT", hex: "#475569" },
+      ],
+    },
+    custom: {
+      label: "Personalizado / Otro",
+      icon: Tag,
+      prompt: "Variación Libre:",
+      items: [],
+    },
+  };
+
+  const handleAddVariant = (custom?: Partial<PartVariant>) => {
+    const vType = custom?.variantType || primaryVariantType || "color";
+    const baseSku = primaryOem.trim() || sku.trim() || "VAR";
+    const suffix = custom?.colorCode ? `-${custom.colorCode}` : "";
+    const name = custom?.name || "";
+    const attrs: VariantAttributeValue[] =
+      custom?.attributes ||
+      (name
+        ? [
+            {
+              name: getVariantTypeLabel(vType),
+              value: name,
+              code: custom?.colorCode || null,
+              hex: custom?.colorHex || null,
+            },
+          ]
+        : []);
+
+    const newVar: PartVariant = {
+      id: crypto.randomUUID(),
+      partId: partToEdit?.id || "",
+      variantType: vType,
+      name,
+      colorCode: custom?.colorCode || null,
+      colorHex: custom?.colorHex || (vType === "color" ? "#0045A5" : null),
+      sku: custom?.sku || `${baseSku}${suffix}`,
+      price: custom?.price !== undefined ? custom.price : null,
+      cost: custom?.cost !== undefined ? custom.cost : 0,
+      stock: custom?.stock !== undefined ? custom.stock : 5,
+      stockReserved: 0,
+      image: custom?.image || null,
+      attributes: attrs,
+      position: variants.length,
+      active: custom?.active !== undefined ? custom.active : true,
+    };
+    setVariants((prev) => [...prev, newVar]);
+  };
+
+  const handleUpdateVariant = (
+    index: number,
+    field: keyof PartVariant,
+    val: any,
+  ) => {
+    setVariants((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: val };
+      return copy;
+    });
+  };
+
+  const handleRemoveVariant = (index: number) => {
+    setVariants((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleMoveVariant = (index: number, direction: "up" | "down") => {
+    const targetIdx = direction === "up" ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= variants.length) return;
+    setVariants((prev) => {
+      const copy = [...prev];
+      const temp = copy[index];
+      copy[index] = copy[targetIdx];
+      copy[targetIdx] = temp;
+      return copy.map((v, i) => ({ ...v, position: i }));
+    });
+  };
+
+  const handleVariantImageUpload = (index: number, file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setError("Formato de imagen inválido.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        handleUpdateVariant(index, "image", e.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Matrix Generator helpers
+  const handleAddAxis = () => {
+    const newId = String(axes.length + 1);
+    setAxes([
+      ...axes,
+      {
+        id: newId,
+        name: `Atributo ${axes.length + 1}`,
+        type: "custom",
+        options: [],
+      },
+    ]);
+  };
+
+  const handleRemoveAxis = (axisId: string) => {
+    if (axes.length <= 1) return;
+    setAxes(axes.filter((a) => a.id !== axisId));
+  };
+
+  const handleUpdateAxis = (
+    axisId: string,
+    field: "name" | "type",
+    val: any,
+  ) => {
+    setAxes(
+      axes.map((a) => (a.id === axisId ? { ...a, [field]: val } : a)),
+    );
+  };
+
+  const handleAddOptionToAxis = (
+    axisId: string,
+    opt: { value: string; code?: string; hex?: string },
+  ) => {
+    setAxes(
+      axes.map((a) => {
+        if (a.id === axisId) {
+          const exists = a.options.some(
+            (o) => o.value.toLowerCase() === opt.value.toLowerCase(),
+          );
+          if (exists) return a;
+          return { ...a, options: [...a.options, opt] };
+        }
+        return a;
+      }),
+    );
+  };
+
+  const handleRemoveOptionFromAxis = (axisId: string, optIndex: number) => {
+    setAxes(
+      axes.map((a) => {
+        if (a.id === axisId) {
+          return {
+            ...a,
+            options: a.options.filter((_, i) => i !== optIndex),
+          };
+        }
+        return a;
+      }),
+    );
+  };
+
+  const handleGenerateMatrixCombinations = () => {
+    const validAxes = axes.filter(
+      (a) => a.name.trim() && a.options.length > 0,
+    );
+    if (validAxes.length === 0) {
+      setError("Configura al menos 1 eje con opciones para generar combinaciones.");
+      return;
+    }
+
+    const helper = (
+      depth: number,
+      current: VariantAttributeValue[],
+    ): Array<VariantAttributeValue[]> => {
+      if (depth === validAxes.length) return [current];
+      const axis = validAxes[depth];
+      const result: Array<VariantAttributeValue[]> = [];
+      for (const opt of axis.options) {
+        result.push(
+          ...helper(depth + 1, [
+            ...current,
+            {
+              name: axis.name,
+              value: opt.value,
+              code: opt.code || null,
+              hex: opt.hex || null,
+            },
+          ]),
+        );
+      }
+      return result;
+    };
+
+    const combinations = helper(0, []);
+    const baseSku = primaryOem.trim() || sku.trim() || "VAR";
+
+    const newVariants: PartVariant[] = combinations.map((attrs, idx) => {
+      const matchKey = attrs
+        .map((a) => `${a.name}:${a.value}`)
+        .sort()
+        .join("|");
+
+      const existing = variants.find((v) => {
+        if (Array.isArray(v.attributes) && v.attributes.length > 0) {
+          const vKey = v.attributes
+            .map((a) => `${a.name}:${a.value}`)
+            .sort()
+            .join("|");
+          return vKey === matchKey;
+        }
+        return false;
+      });
+
+      const comboName = attrs.map((a) => a.value).join(" - ");
+      const codeSuffix = attrs
+        .map((a) => a.code)
+        .filter(Boolean)
+        .join("-");
+      const colorAttr = attrs.find((a) => a.hex);
+
+      if (existing) {
+        return {
+          ...existing,
+          name: comboName,
+          attributes: attrs,
+          position: idx,
+          colorHex: colorAttr?.hex || existing.colorHex || null,
+          colorCode: codeSuffix || existing.colorCode || null,
+        };
+      }
+
+      return {
+        id: crypto.randomUUID(),
+        partId: partToEdit?.id || "",
+        variantType: validAxes[0]?.type || "custom",
+        name: comboName,
+        colorCode: codeSuffix || null,
+        colorHex: colorAttr?.hex || null,
+        sku: `${baseSku}${codeSuffix ? `-${codeSuffix}` : `-${idx + 1}`}`,
+        price: null,
+        cost: 0,
+        stock: 5,
+        stockReserved: 0,
+        image: null,
+        attributes: attrs,
+        position: idx,
+        active: true,
+      };
+    });
+
+    setVariants(newVariants);
+    setError("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -422,6 +904,14 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
     if (!primaryOem.trim()) {
       setError("La referencia OEM principal es obligatoria.");
       return;
+    }
+
+    if (hasVariants && variants.length > 0) {
+      const emptyVar = variants.find((v) => !v.name || !v.name.trim());
+      if (emptyVar) {
+        setError("Todas las variantes deben tener un nombre (ej. nombre del color).");
+        return;
+      }
     }
 
     const oemNumbers = [
@@ -467,6 +957,31 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
         }),
       );
 
+      // Upload any variant images if they are data URLs
+      const processedVariants = hasVariants
+        ? await Promise.all(
+            variants.map(async (v) => {
+              if (v.image && v.image.startsWith("data:")) {
+                const dataUrl = v.image;
+                const file = await (async () => {
+                  const res = await fetch(dataUrl);
+                  const blob = await res.blob();
+                  const extMatch = dataUrl.match(/^data:image\/(\w+);/);
+                  const ext = extMatch ? extMatch[1].replace("jpeg", "jpg") : "png";
+                  return new File(
+                    [blob],
+                    `variant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`,
+                    { type: blob.type },
+                  );
+                })();
+                const result = await UPLOAD_IMAGE(file, "variants");
+                return { ...v, image: result.url };
+              }
+              return v;
+            })
+          )
+        : [];
+
       const newPart: SuzukiPart = {
         id: partId,
         sku: sku.trim().toUpperCase(),
@@ -487,6 +1002,7 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
         description: description.trim(),
         specs: cleanedSpecs,
         compatibility,
+        variants: processedVariants,
       };
 
       await onSave(newPart);
@@ -1386,6 +1902,740 @@ export const PartDrawer: React.FC<PartDrawerProps> = ({
                 );
               })}
             </div>
+          </div>
+
+          {/* Variants & Colors Section (Optional) */}
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3.5">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 text-[#0A3088] flex items-center justify-center shrink-0">
+                  <Palette className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-900 font-mono">
+                      VARIACIONES Y COLORES (OPCIONAL)
+                    </span>
+                    {hasVariants && (
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-blue-100 text-[#0A3088]">
+                        {variants.length} {variants.length === 1 ? 'variante' : 'variantes'}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-sans mt-0.5">
+                    Actívalo si esta pieza viene en diferentes colores, lados o medidas con stock o foto individual.
+                  </p>
+                </div>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={hasVariants}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setHasVariants(checked);
+                    if (checked && variants.length === 0) {
+                      handleAddVariant({ name: 'Negro Sparkle Black', colorCode: 'YVB', colorHex: '#1C1D21' });
+                    }
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0A3088]"></div>
+              </label>
+            </div>
+
+            {hasVariants && (
+              <div className="space-y-4 pt-2">
+                {/* 0. Mode Switcher: Simple 1D vs Multi-Attribute Matrix */}
+                <div className="flex items-center justify-between p-1 bg-slate-200/70 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setVariantMode("simple")}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer text-center ${
+                      variantMode === "simple"
+                        ? "bg-white text-slate-900 shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Variación Simple (1 Atributo)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVariantMode("matrix")}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      variantMode === "matrix"
+                        ? "bg-[#0A3088] text-white shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Matriz Multi-Atributo (Lado + Color + ...)</span>
+                  </button>
+                </div>
+
+                {variantMode === "simple" ? (
+                  <>
+                    {/* 1. Selector de Tipo Principal de Variante */}
+                    <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold font-mono text-slate-700 uppercase">
+                          Tipo de Variación:
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          Define el tipo de opción de este repuesto
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5">
+                        {(
+                          [
+                            { type: "color", label: "Color OEM", icon: Palette },
+                            { type: "side", label: "Lado / Posición", icon: ArrowRightLeft },
+                            { type: "size", label: "Medida (STD)", icon: Ruler },
+                            { type: "material", label: "Material", icon: ShieldCheck },
+                            { type: "finish", label: "Acabado", icon: Sparkles },
+                            { type: "custom", label: "Personalizado", icon: Tag },
+                          ] as const
+                        ).map((t) => {
+                          const IconComp = t.icon;
+                          const isSelected = primaryVariantType === t.type;
+                          return (
+                            <button
+                              key={t.type}
+                              type="button"
+                              onClick={() => {
+                                setPrimaryVariantType(t.type);
+                                if (variants.length > 0) {
+                                  setVariants((prev) =>
+                                    prev.map((v) => ({ ...v, variantType: t.type }))
+                                  );
+                                }
+                              }}
+                              className={`px-2.5 py-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-1 cursor-pointer border ${
+                                isSelected
+                                  ? "bg-[#0A3088] text-white border-[#0A3088] shadow-xs"
+                                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300"
+                              }`}
+                            >
+                              <IconComp className={`w-4 h-4 ${isSelected ? "text-white" : "text-slate-500"}`} />
+                              <span className="text-[11px] leading-tight text-center">{t.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 2. Contextual Quick-Add Chips */}
+                    {VARIANT_PRESETS[primaryVariantType]?.items.length > 0 && (
+                      <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2 animate-in fade-in">
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                          <span>{VARIANT_PRESETS[primaryVariantType].prompt} (Clic para agregar rápido):</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {VARIANT_PRESETS[primaryVariantType].items.map((item) => {
+                            const alreadyAdded = variants.some(
+                              (v) =>
+                                v.name.toLowerCase() === item.name.toLowerCase() ||
+                                (item.code && (v.colorCode || "").toLowerCase() === item.code.toLowerCase())
+                            );
+                            return (
+                              <button
+                                key={item.name}
+                                type="button"
+                                disabled={alreadyAdded}
+                                onClick={() =>
+                                  handleAddVariant({
+                                    variantType: primaryVariantType,
+                                    name: item.name,
+                                    colorCode: item.code,
+                                    colorHex: item.hex || (primaryVariantType === "color" ? "#0045A5" : null),
+                                  })
+                                }
+                                className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer ${
+                                  alreadyAdded
+                                    ? "bg-slate-100 text-slate-400 border-slate-200 opacity-50 cursor-not-allowed"
+                                    : "bg-white text-slate-800 border-slate-300 hover:border-[#0A3088] hover:bg-blue-50/50 shadow-2xs"
+                                }`}
+                              >
+                                {item.hex && (
+                                  <span
+                                    className="w-3 h-3 rounded-full border border-black/20 shrink-0"
+                                    style={{ backgroundColor: item.hex }}
+                                  />
+                                )}
+                                <span>
+                                  {item.name} {item.code ? `(${item.code})` : ""}
+                                </span>
+                                {alreadyAdded ? (
+                                  <Check className="w-3 h-3 text-emerald-600" />
+                                ) : (
+                                  <Plus className="w-3 h-3 text-slate-400" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  /* MATRIX BUILDER: Multi-Attribute Axes Definition */
+                  <div className="p-4 bg-white rounded-2xl border border-slate-200 space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div>
+                        <h4 className="text-xs font-black text-slate-900 font-display uppercase tracking-wider">
+                          Ejes de Atributos para Combinar
+                        </h4>
+                        <p className="text-[11px] text-slate-500 font-sans mt-0.5">
+                          Define las dimensiones (ej. Eje 1 = Lado, Eje 2 = Color, Eje 3 = Acabado). El sistema generará todas las combinaciones automáticamente.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddAxis}
+                        className="px-3 py-1.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Añadir Eje (3er / 4to Atributo)</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {axes.map((axis, axisIdx) => {
+                        const currentInput = axisInputs[axis.id] || "";
+                        return (
+                          <div
+                            key={axis.id}
+                            className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3"
+                          >
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                                <span className="w-5 h-5 rounded-full bg-[#0A3088] text-white text-[10px] font-mono font-bold flex items-center justify-center shrink-0">
+                                  {axisIdx + 1}
+                                </span>
+                                <input
+                                  type="text"
+                                  value={axis.name}
+                                  onChange={(e) =>
+                                    handleUpdateAxis(axis.id, "name", e.target.value)
+                                  }
+                                  placeholder="Nombre del Atributo (ej. Lado, Color, Acabado)"
+                                  className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-900 font-bold focus:border-[#0A3088] focus:outline-none"
+                                />
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <select
+                                  value={axis.type}
+                                  onChange={(e) =>
+                                    handleUpdateAxis(
+                                      axis.id,
+                                      "type",
+                                      e.target.value as PartVariantType
+                                    )
+                                  }
+                                  className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-700 font-medium focus:border-[#0A3088] focus:outline-none cursor-pointer"
+                                >
+                                  <option value="side">Lado / Posición</option>
+                                  <option value="color">Color OEM</option>
+                                  <option value="size">Medida / STD</option>
+                                  <option value="material">Material</option>
+                                  <option value="finish">Acabado</option>
+                                  <option value="custom">Personalizado</option>
+                                </select>
+
+                                {axes.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveAxis(axis.id)}
+                                    className="p-1 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                                    title="Eliminar este eje de atributos"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Configured values tags */}
+                            <div className="flex flex-wrap items-center gap-1.5 min-h-[28px]">
+                              {axis.options.map((opt, optIdx) => (
+                                <span
+                                  key={optIdx}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-xs font-bold text-slate-800 shadow-2xs"
+                                >
+                                  {opt.hex && (
+                                    <span
+                                      className="w-3 h-3 rounded-full border border-black/20 shrink-0"
+                                      style={{ backgroundColor: opt.hex }}
+                                    />
+                                  )}
+                                  <span>
+                                    {opt.value} {opt.code ? `(${opt.code})` : ""}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleRemoveOptionFromAxis(axis.id, optIdx)
+                                    }
+                                    className="text-slate-400 hover:text-red-500 ml-0.5"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ))}
+
+                              {/* Inline add option */}
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="text"
+                                  value={currentInput}
+                                  onChange={(e) =>
+                                    setAxisInputs((prev) => ({
+                                      ...prev,
+                                      [axis.id]: e.target.value,
+                                    }))
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      if (currentInput.trim()) {
+                                        handleAddOptionToAxis(axis.id, {
+                                          value: currentInput.trim(),
+                                        });
+                                        setAxisInputs((prev) => ({
+                                          ...prev,
+                                          [axis.id]: "",
+                                        }));
+                                      }
+                                    }
+                                  }}
+                                  placeholder="+ Nuevo valor (Enter)"
+                                  className="bg-white border border-dashed border-slate-300 rounded-lg px-2 py-0.5 text-xs text-slate-700 w-36 focus:border-[#0A3088] focus:outline-none"
+                                />
+                                {currentInput.trim() && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleAddOptionToAxis(axis.id, {
+                                        value: currentInput.trim(),
+                                      });
+                                      setAxisInputs((prev) => ({
+                                        ...prev,
+                                        [axis.id]: "",
+                                      }));
+                                    }}
+                                    className="p-1 bg-[#0A3088] text-white rounded-md hover:bg-blue-800"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Preset chips for this axis */}
+                            {VARIANT_PRESETS[axis.type]?.items.length > 0 && (
+                              <div className="pt-1 flex flex-wrap gap-1 items-center">
+                                <span className="text-[10px] text-slate-400 font-mono mr-1">
+                                  Sugerencias rápidas:
+                                </span>
+                                {VARIANT_PRESETS[axis.type].items.map((item) => {
+                                  const alreadyInAxis = axis.options.some(
+                                    (o) =>
+                                      o.value.toLowerCase() ===
+                                      item.name.toLowerCase()
+                                  );
+                                  return (
+                                    <button
+                                      key={item.name}
+                                      type="button"
+                                      disabled={alreadyInAxis}
+                                      onClick={() =>
+                                        handleAddOptionToAxis(axis.id, {
+                                          value: item.name,
+                                          code: item.code,
+                                          hex: item.hex,
+                                        })
+                                      }
+                                      className={`px-2 py-0.5 text-[10px] font-bold rounded-md border flex items-center gap-1 cursor-pointer transition-all ${
+                                        alreadyInAxis
+                                          ? "bg-slate-100 text-slate-400 border-slate-200 opacity-40 cursor-not-allowed"
+                                          : "bg-white text-slate-700 border-slate-200 hover:border-[#0A3088] hover:bg-blue-50"
+                                      }`}
+                                    >
+                                      {item.hex && (
+                                        <span
+                                          className="w-2 h-2 rounded-full border border-black/20 shrink-0"
+                                          style={{ backgroundColor: item.hex }}
+                                        />
+                                      )}
+                                      <span>
+                                        {item.name} {item.code ? `(${item.code})` : ""}
+                                      </span>
+                                      {alreadyInAxis ? (
+                                        <Check className="w-2.5 h-2.5 text-emerald-600" />
+                                      ) : (
+                                        <Plus className="w-2.5 h-2.5 text-slate-400" />
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Generate Matrix CTA */}
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                      <span className="text-xs font-bold text-slate-600 font-mono">
+                        Combinaciones posibles:{" "}
+                        <strong className="text-[#0A3088] text-sm">
+                          {axes.reduce(
+                            (acc, a) =>
+                              acc * Math.max(1, a.options.length),
+                            1
+                          )}{" "}
+                          opciones
+                        </strong>
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={handleGenerateMatrixCombinations}
+                        className="px-4 py-2 bg-[#0A3088] hover:bg-blue-900 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+                      >
+                        <Sparkles className="w-4 h-4 text-amber-400" />
+                        <span>⚡ Generar Combinaciones (Matriz)</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Variants Matrix Header */}
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold font-mono text-slate-700 uppercase">
+                    Combinaciones Resultantes ({variants.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleAddVariant({ variantType: primaryVariantType })
+                    }
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors shadow-2xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Agregar Fila Manual</span>
+                  </button>
+                </div>
+
+                {/* 4. Variants Matrix Rows */}
+                {variants.length === 0 ? (
+                  <div className="p-6 text-center bg-white rounded-xl border border-dashed border-slate-300 text-slate-400 text-xs">
+                    No has agregado variantes. Haz clic en las sugerencias rápidas arriba o genera la matriz multidimensional.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {variants.map((v, idx) => {
+                      const isColor =
+                        v.variantType === "color" ||
+                        primaryVariantType === "color" ||
+                        Boolean(v.colorHex);
+                      const hasMultiAttrs =
+                        Array.isArray(v.attributes) && v.attributes.length > 0;
+
+                      return (
+                        <div
+                          key={v.id || idx}
+                          className={`p-3 rounded-2xl bg-white border transition-all space-y-3 ${
+                            v.active
+                              ? "border-slate-200 shadow-xs"
+                              : "border-slate-200 opacity-60 bg-slate-50"
+                          }`}
+                        >
+                          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                            {/* Visual Indicator & Name / Multi-Attribute Tags */}
+                            <div className="sm:col-span-5 flex items-center gap-2">
+                              {isColor ? (
+                                <label
+                                  className="relative cursor-pointer w-8 h-8 rounded-xl border-2 border-slate-300 overflow-hidden shrink-0 shadow-2xs"
+                                  title="Seleccionar color visual"
+                                >
+                                  <input
+                                    type="color"
+                                    value={v.colorHex || "#0045A5"}
+                                    onChange={(e) =>
+                                      handleUpdateVariant(
+                                        idx,
+                                        "colorHex",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="absolute -inset-2 w-12 h-12 cursor-pointer opacity-0"
+                                  />
+                                  <div
+                                    className="w-full h-full"
+                                    style={{
+                                      backgroundColor: v.colorHex || "#0045A5",
+                                    }}
+                                  />
+                                </label>
+                              ) : (
+                                <div
+                                  className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center shrink-0 shadow-2xs"
+                                  title={getVariantTypeLabel(v.variantType)}
+                                >
+                                  {v.variantType === "side" ? (
+                                    <ArrowRightLeft className="w-4 h-4 text-blue-600" />
+                                  ) : v.variantType === "size" ? (
+                                    <Ruler className="w-4 h-4 text-amber-600" />
+                                  ) : v.variantType === "material" ? (
+                                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                                  ) : v.variantType === "finish" ? (
+                                    <Sparkles className="w-4 h-4 text-purple-600" />
+                                  ) : (
+                                    <Tag className="w-4 h-4 text-slate-600" />
+                                  )}
+                                </div>
+                              )}
+
+                              <div className="flex-1 min-w-0">
+                                {hasMultiAttrs ? (
+                                  <div className="space-y-1">
+                                    <div className="flex flex-wrap gap-1 items-center">
+                                      {v.attributes!.map((attr, aIdx) => (
+                                        <span
+                                          key={aIdx}
+                                          className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-200 inline-flex items-center gap-1"
+                                        >
+                                          {attr.hex && (
+                                            <span
+                                              className="w-2 h-2 rounded-full border border-black/20 shrink-0"
+                                              style={{
+                                                backgroundColor: attr.hex,
+                                              }}
+                                            />
+                                          )}
+                                          <span>
+                                            {attr.name}: {attr.value}
+                                          </span>
+                                        </span>
+                                      ))}
+                                    </div>
+                                    <input
+                                      type="text"
+                                      value={v.name}
+                                      onChange={(e) =>
+                                        handleUpdateVariant(
+                                          idx,
+                                          "name",
+                                          e.target.value
+                                        )
+                                      }
+                                      placeholder="Nombre descriptivo"
+                                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-[#0A3088]"
+                                    />
+                                  </div>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={v.name}
+                                    onChange={(e) =>
+                                      handleUpdateVariant(
+                                        idx,
+                                        "name",
+                                        e.target.value
+                                      )
+                                    }
+                                    placeholder={
+                                      isColor
+                                        ? "Nombre (ej. Azul Triton)"
+                                        : v.variantType === "side"
+                                        ? "Lado (ej. Izquierdo LH)"
+                                        : v.variantType === "size"
+                                        ? "Medida (ej. STD o +0.25)"
+                                        : v.variantType === "material"
+                                        ? "Compuesto (ej. Sinterizado)"
+                                        : "Nombre de variante"
+                                    }
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-bold focus:bg-white focus:outline-none focus:border-[#0A3088]"
+                                  />
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Suffix / Code & Specific SKU */}
+                            <div className="sm:col-span-2 grid grid-cols-1 gap-1">
+                              <input
+                                type="text"
+                                value={v.sku || ""}
+                                onChange={(e) =>
+                                  handleUpdateVariant(
+                                    idx,
+                                    "sku",
+                                    e.target.value.toUpperCase()
+                                  )
+                                }
+                                placeholder="OEM Variante"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-900 font-mono font-bold uppercase focus:bg-white focus:outline-none focus:border-[#0A3088]"
+                                title="Código OEM específico de esta combinación"
+                              />
+                            </div>
+
+                            {/* Stock & Custom Price */}
+                            <div className="sm:col-span-3 grid grid-cols-2 gap-1.5">
+                              <div>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={v.stock}
+                                  onChange={(e) =>
+                                    handleUpdateVariant(
+                                      idx,
+                                      "stock",
+                                      Math.max(
+                                        0,
+                                        parseInt(e.target.value) || 0
+                                      )
+                                    )
+                                  }
+                                  placeholder="Stock"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-900 font-mono font-bold focus:bg-white focus:outline-none focus:border-[#0A3088]"
+                                  title="Unidades disponibles de esta combinación"
+                                />
+                                <span className="text-[9px] text-slate-400 font-mono block pl-0.5">
+                                  Stock Disp.
+                                </span>
+                              </div>
+                              <div>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={
+                                    v.price !== null && v.price !== undefined
+                                      ? v.price
+                                      : ""
+                                  }
+                                  onChange={(e) =>
+                                    handleUpdateVariant(
+                                      idx,
+                                      "price",
+                                      e.target.value === ""
+                                        ? null
+                                        : Number(e.target.value)
+                                    )
+                                  }
+                                  placeholder={`$${price.toLocaleString("es-CO")}`}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-900 font-mono font-bold focus:bg-white focus:outline-none focus:border-[#0A3088]"
+                                  title="Precio opcional si difiere del precio base"
+                                />
+                                <span className="text-[9px] text-slate-400 font-mono block pl-0.5">
+                                  Precio (Opc.)
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Controls & Image */}
+                            <div className="sm:col-span-2 flex items-center justify-end gap-1">
+                              {/* Variant image uploader */}
+                              <label
+                                className={`w-7 h-7 rounded-lg border flex items-center justify-center cursor-pointer transition-colors overflow-hidden ${
+                                  v.image
+                                    ? "border-[#0A3088] bg-blue-50"
+                                    : "border-slate-300 hover:border-slate-400 bg-slate-100"
+                                }`}
+                                title={
+                                  v.image
+                                    ? "Foto cargada (clic para cambiar)"
+                                    : "Cargar foto individual para esta variante"
+                                }
+                              >
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    if (e.target.files && e.target.files[0]) {
+                                      handleVariantImageUpload(
+                                        idx,
+                                        e.target.files[0]
+                                      );
+                                      e.target.value = "";
+                                    }
+                                  }}
+                                />
+                                {v.image ? (
+                                  <img
+                                    src={v.image}
+                                    alt={v.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <ImageIcon className="w-3.5 h-3.5 text-slate-500" />
+                                )}
+                              </label>
+
+                              {/* Move Up/Down */}
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => handleMoveVariant(idx, "up")}
+                                className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30"
+                                title="Mover arriba"
+                              >
+                                <ChevronUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === variants.length - 1}
+                                onClick={() => handleMoveVariant(idx, "down")}
+                                className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30"
+                                title="Mover abajo"
+                              >
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Active switch */}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleUpdateVariant(idx, "active", !v.active)
+                                }
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold font-mono ${
+                                  v.active
+                                    ? "text-emerald-700 bg-emerald-50"
+                                    : "text-slate-400 bg-slate-100"
+                                }`}
+                                title={
+                                  v.active
+                                    ? "Variante Activa"
+                                    : "Variante Oculta"
+                                }
+                              >
+                                {v.active ? "Act." : "Off"}
+                              </button>
+
+                              {/* Delete */}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveVariant(idx)}
+                                className="p-1 text-slate-400 hover:text-red-600 rounded"
+                                title="Eliminar combinación"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </form>
 

@@ -15,6 +15,11 @@ import {
   HelpCircle,
   Plus,
   Minus,
+  Palette,
+  ArrowRightLeft,
+  Ruler,
+  Tag,
+  Sparkles,
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { FaMotorcycle } from "react-icons/fa";
@@ -24,8 +29,9 @@ import type {
   ActiveMotorcycle,
   ExplodedDiagram,
   SuzukiModel,
+  PartVariant,
 } from "../types";
-import { getPrimaryOem } from "../types";
+import { getPrimaryOem, getVariantTypeLabel, formatVariantAttributes } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { getProductWhatsAppUrl } from "../utils/whatsapp";
 import { shouldShowProductImages } from "../utils/config";
@@ -42,7 +48,7 @@ interface ProductDetailPageProps {
   schematics?: ExplodedDiagram[];
   models?: SuzukiModel[];
   onBack: () => void;
-  onAddToCart: (part: SuzukiPart, quantity?: number) => void;
+  onAddToCart: (part: SuzukiPart, quantity?: number, selectedVariant?: PartVariant | null) => void;
   onOpenGarageModal: () => void;
   onViewSchematics: (schematicId: string, partId: string) => void;
   onSelectRelatedPart: (part: SuzukiPart) => void;
@@ -64,9 +70,17 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const [copiedOem, setCopiedOem] = useState<string | null>(null);
   const [showAllOems, setShowAllOems] = useState(false);
   const [quantity, setQuantity] = useState<number>(1);
+  const [selectedVariant, setSelectedVariant] = useState<PartVariant | null>(null);
 
   useEffect(() => {
     setQuantity(1);
+    if (part?.variants && part.variants.length > 0) {
+      const activeVars = part.variants.filter((v) => v.active !== false);
+      const firstInStock = activeVars.find((v) => v.stock > 0) || activeVars[0] || null;
+      setSelectedVariant(firstInStock);
+    } else {
+      setSelectedVariant(null);
+    }
   }, [part.id]);
 
   const handleCopyOem = (oem: string) => {
@@ -106,11 +120,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   ): boolean => {
     return p.compatibility.some((c) => {
       if (c.modelId !== moto.modelId) return false;
-      if (
-        (c.yearStart && moto.year < c.yearStart) ||
-        (c.yearEnd && moto.year > c.yearEnd)
-      )
-        return false;
+      if (c.yearStart && moto.year < c.yearStart) return false;
+      if (c.yearEnd && moto.year > c.yearEnd) return false;
       if (c.version && c.version !== moto.version) return false;
       return true;
     });
@@ -136,6 +147,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // Effective values considering selected variant
+  const effectivePrice = selectedVariant?.price != null ? selectedVariant.price : part.price;
+  const effectiveStock = selectedVariant ? selectedVariant.stock : part.stock;
+  const effectiveSku = selectedVariant?.sku || part.sku || `SKU-${part.id}`;
 
   return (
     <div id="product-detail-page" className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -282,6 +298,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             <ProductImageGallery
               part={part}
               schematics={schematics}
+              selectedImageOverride={selectedVariant?.image || null}
               onViewSchematics={onViewSchematics}
             />
 
@@ -413,23 +430,23 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     {part.category}
                   </span>
                   <span className="text-xs font-mono font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">
-                    Código Interno: <strong className="text-slate-900">{part.sku || `SKU-${part.id}`}</strong>
+                    Código Interno: <strong className="text-slate-900">{effectiveSku}</strong>
                   </span>
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 leading-tight">
                   {part.name}
                 </h1>
                 <div className="mt-2.5">
-                  {part.stock > 0 ? (
+                  {effectiveStock > 0 ? (
                     <span
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-black uppercase tracking-wide border ${
-                        part.stock <= 5
+                        effectiveStock <= 5
                           ? "bg-amber-50 text-amber-700 border-amber-200"
                           : "bg-emerald-50 text-emerald-700 border-emerald-200"
                       }`}
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                      Stock: {part.stock} {part.stock === 1 ? "unidad" : "unidades"}
+                      Stock: {effectiveStock} {effectiveStock === 1 ? "unidad" : "unidades"}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-black uppercase tracking-wide border bg-red-50 text-red-700 border-red-200">
@@ -440,7 +457,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 </div>
                 <div className="flex items-center gap-3 mt-3">
                   <div className="text-2xl sm:text-3xl font-mono font-black text-[#E60012]">
-                    {formatCurrency(part.price)}
+                    {formatCurrency(effectivePrice)}
                   </div>
                   {part.taxable !== false ? (
                     part.priceIncludesTax ? (
@@ -459,6 +476,283 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   )}
                 </div>
               </div>
+
+              {/* Adaptive Multi-Attribute & Single-Attribute Variant Selector */}
+              {part.variants && part.variants.length > 0 && (() => {
+                const activeVariants = part.variants.filter((v) => v.active !== false);
+                if (activeVariants.length === 0) return null;
+
+                // Check if variants have multi-attribute configuration
+                const hasMultiAttrs = activeVariants.some(
+                  (v) => Array.isArray(v.attributes) && v.attributes.length > 1
+                );
+
+                if (hasMultiAttrs) {
+                  // Extract unique axis names in appearance order
+                  const axisNames: string[] = [];
+                  activeVariants.forEach((v) => {
+                    if (Array.isArray(v.attributes)) {
+                      v.attributes.forEach((a) => {
+                        if (!axisNames.includes(a.name)) axisNames.push(a.name);
+                      });
+                    }
+                  });
+
+                  const currentAttrs = selectedVariant?.attributes || [];
+
+                  return (
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3.5">
+                      <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5 font-mono">
+                          <Sparkles className="w-4 h-4 text-[#0A3088]" />
+                          <span>Opciones del Repuesto:</span>
+                        </span>
+                        {selectedVariant && (
+                          <span className="text-xs font-bold text-slate-700 bg-white border border-slate-200 px-2.5 py-0.5 rounded-lg shadow-2xs font-mono">
+                            {formatVariantAttributes(selectedVariant)}
+                          </span>
+                        )}
+                      </div>
+
+                      {axisNames.map((axisName) => {
+                        const valueOptionsMap = new Map<
+                          string,
+                          { value: string; code?: string; hex?: string }
+                        >();
+                        activeVariants.forEach((v) => {
+                          const attr = v.attributes?.find((a) => a.name === axisName);
+                          if (attr && !valueOptionsMap.has(attr.value)) {
+                            valueOptionsMap.set(attr.value, {
+                              value: attr.value,
+                              code: attr.code || undefined,
+                              hex:
+                                attr.hex ||
+                                (v.colorHex && axisName.toLowerCase().includes("color")
+                                  ? v.colorHex
+                                  : undefined),
+                            });
+                          }
+                        });
+
+                        const currentVal = currentAttrs.find(
+                          (a) => a.name === axisName
+                        )?.value;
+                        const isColorAxis =
+                          axisName.toLowerCase().includes("color") ||
+                          Array.from(valueOptionsMap.values()).some((o) => o.hex);
+
+                        const AxisIcon = isColorAxis
+                          ? Palette
+                          : axisName.toLowerCase().includes("lado") ||
+                            axisName.toLowerCase().includes("posic")
+                          ? ArrowRightLeft
+                          : axisName.toLowerCase().includes("medida") ||
+                            axisName.toLowerCase().includes("calibre")
+                          ? Ruler
+                          : axisName.toLowerCase().includes("material")
+                          ? ShieldCheck
+                          : axisName.toLowerCase().includes("acabado")
+                          ? Sparkles
+                          : Tag;
+
+                        return (
+                          <div key={axisName} className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-700 flex items-center gap-1 font-mono">
+                                <AxisIcon className="w-3.5 h-3.5 text-slate-500" />
+                                <span>{axisName}:</span>
+                              </span>
+                              {currentVal && (
+                                <span className="text-xs font-bold text-[#0A3088] font-mono">
+                                  {currentVal}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              {Array.from(valueOptionsMap.values()).map((opt) => {
+                                const isSelected = currentVal === opt.value;
+
+                                const targetAttrs = axisNames.map((name) => {
+                                  if (name === axisName) return { name, value: opt.value };
+                                  const current = currentAttrs.find((a) => a.name === name);
+                                  return { name, value: current?.value || "" };
+                                });
+
+                                let candidate = activeVariants.find((v) =>
+                                  targetAttrs.every((t) =>
+                                    v.attributes?.some(
+                                      (a) => a.name === t.name && a.value === t.value
+                                    )
+                                  )
+                                );
+
+                                if (!candidate) {
+                                  candidate = activeVariants.find((v) =>
+                                    v.attributes?.some(
+                                      (a) => a.name === axisName && a.value === opt.value
+                                    )
+                                  );
+                                }
+
+                                const isOutOfStock = candidate && candidate.stock <= 0;
+
+                                return (
+                                  <button
+                                    key={opt.value}
+                                    type="button"
+                                    disabled={!candidate}
+                                    onClick={() => {
+                                      if (candidate) setSelectedVariant(candidate);
+                                    }}
+                                    className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                                      isSelected
+                                        ? "bg-white border-[#0A3088] ring-2 ring-[#0A3088]/20 shadow-xs text-slate-900"
+                                        : "bg-white/80 border-slate-200 hover:border-slate-300 text-slate-700 hover:bg-white"
+                                    } ${
+                                      !candidate
+                                        ? "opacity-30 cursor-not-allowed"
+                                        : isOutOfStock
+                                        ? "opacity-60"
+                                        : ""
+                                    }`}
+                                  >
+                                    {opt.hex ? (
+                                      <div
+                                        className="w-4 h-4 rounded-full border border-black/15 shadow-2xs shrink-0"
+                                        style={{ backgroundColor: opt.hex }}
+                                      />
+                                    ) : null}
+                                    <span>
+                                      {opt.value}{" "}
+                                      {opt.code && !opt.value.includes(opt.code)
+                                        ? `(${opt.code})`
+                                        : ""}
+                                    </span>
+                                    {isOutOfStock && (
+                                      <span className="text-[10px] font-mono text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded">
+                                        Agotado
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                }
+
+                // Single-attribute variants UI
+                const vType = activeVariants[0].variantType || "color";
+                const typeLabel = getVariantTypeLabel(vType);
+
+                const HeaderIcon =
+                  vType === "color"
+                    ? Palette
+                    : vType === "side"
+                    ? ArrowRightLeft
+                    : vType === "size"
+                    ? Ruler
+                    : vType === "material"
+                    ? ShieldCheck
+                    : vType === "finish"
+                    ? Sparkles
+                    : Tag;
+
+                return (
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5 font-mono">
+                        <HeaderIcon className="w-3.5 h-3.5 text-[#0A3088]" />
+                        <span>{typeLabel} Disponible:</span>
+                      </span>
+                      {selectedVariant && (
+                        <span className="text-xs font-bold text-slate-900 bg-white border border-slate-200 px-2.5 py-0.5 rounded-lg shadow-2xs font-mono">
+                          {formatVariantAttributes(selectedVariant)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {activeVariants.map((variant) => {
+                        const isSelected = selectedVariant?.id === variant.id;
+                        const isOutOfStock = variant.stock <= 0;
+                        const isColorVariant =
+                          variant.variantType === "color" ||
+                          (!variant.variantType && !!variant.colorHex);
+
+                        const PillIcon =
+                          variant.variantType === "side"
+                            ? ArrowRightLeft
+                            : variant.variantType === "size"
+                            ? Ruler
+                            : variant.variantType === "material"
+                            ? ShieldCheck
+                            : variant.variantType === "finish"
+                            ? Sparkles
+                            : Tag;
+
+                        return (
+                          <button
+                            key={variant.id}
+                            type="button"
+                            onClick={() => setSelectedVariant(variant)}
+                            className={`group relative flex items-center gap-2.5 p-2 pr-3.5 rounded-xl border transition-all cursor-pointer ${
+                              isSelected
+                                ? "bg-white border-[#0A3088] ring-2 ring-[#0A3088]/20 shadow-xs"
+                                : "bg-white/80 border-slate-200 hover:border-slate-300 hover:bg-white"
+                            } ${isOutOfStock ? "opacity-50" : ""}`}
+                          >
+                            {/* Visual Swatch or Icon */}
+                            {isColorVariant ? (
+                                                       <div
+                                  className="w-5 h-5 rounded-full border border-black/15 shadow-2xs shrink-0"
+                                  style={{ backgroundColor: variant.colorHex || "#0045A5" }}
+                                />
+                            ) : (
+                              <div
+                                className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 border ${
+                                  isSelected
+                                    ? "bg-blue-50 border-[#0A3088] text-[#0A3088]"
+                                    : "bg-slate-100 border-slate-200 text-slate-600"
+                                }`}
+                              >
+                                <PillIcon className="w-3.5 h-3.5" />
+                              </div>
+                            )}
+
+                            <div className="text-left">
+                              <div className="text-xs font-bold text-slate-900 leading-tight">
+                                {variant.name}
+                              </div>
+                              <div className="text-[10px] font-mono text-slate-500">
+                                {variant.colorCode || variant.sku || ""}
+                                {variant.price != null && variant.price !== part.price && (
+                                  <span className="text-[#E60012] font-bold ml-1">
+                                    · {formatCurrency(variant.price)}
+                                  </span>
+                                )}
+                                {variant.stock > 0 ? (
+                                  <span className="text-emerald-700 font-semibold ml-1">
+                                    · {variant.stock} disp.
+                                  </span>
+                                ) : (
+                                  <span className="text-red-600 font-semibold ml-1">
+                                    · Agotado
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <p className="text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-4">
                 {part.description}
@@ -636,8 +930,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 ) : (
                   <button
                     type="button"
-                    onClick={() => onAddToCart(part, quantity)}
-                    className="w-full py-3 px-4 min-h-[44px] bg-[#E60012] hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
+                    disabled={effectiveStock <= 0}
+                    onClick={() => onAddToCart(part, quantity, selectedVariant)}
+                    className="w-full py-3 px-4 min-h-[44px] bg-[#E60012] hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
                   >
                     <FaCartPlus className="w-4 h-4" aria-hidden="true" />
                     <span>Añadir al Carrito {quantity > 1 ? `(${quantity})` : ''}</span>

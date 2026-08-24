@@ -15,7 +15,7 @@ import {
 import { FaBasketShopping, FaCartShopping } from "react-icons/fa6";
 import { AiTwotoneSafetyCertificate } from "react-icons/ai";
 import type { CartItem, ActiveMotorcycle, SuzukiPart, ShippingMethod } from "../types";
-import { getPrimaryOem, getCartShippingSummary } from "../types";
+import { getPrimaryOem, getCartShippingSummary, getVariantTypeLabel, formatVariantAttributes } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { getCartWhatsAppUrl } from "../utils/whatsapp";
 import { shouldShowProductImages } from "../utils/config";
@@ -28,8 +28,8 @@ interface CartDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   cartItems: CartItem[];
-  onUpdateQuantity: (partId: string, delta: number) => void;
-  onRemoveItem: (partId: string) => void;
+  onUpdateQuantity: (partId: string, delta: number, variantId?: string | null) => void;
+  onRemoveItem: (partId: string, variantId?: string | null) => void;
   onProceedCheckout: () => void;
   onContinueShopping: () => void;
   onViewPartDetail?: (part: SuzukiPart) => void;
@@ -85,7 +85,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   if (!isOpen) return null;
 
   const total = cartItems.reduce(
-    (acc, item) => acc + item.part.price * item.quantity,
+    (acc, item) => {
+      const price = item.selectedVariant?.price != null ? item.selectedVariant.price : item.part.price;
+      return acc + price * item.quantity;
+    },
     0,
   );
 
@@ -151,21 +154,25 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </button>
               </div>
             ) : (
-              cartItems.map((item) => {
+              cartItems.map((item, idx) => {
                 const vehicleLabel = item.motorcycle
                   ? `${item.motorcycle.modelName} (${item.motorcycle.year})`
                   : activeMotorcycle
                     ? `${activeMotorcycle.modelName} (${activeMotorcycle.year})`
                     : "Vehículo Seleccionado";
+                const itemPrice = item.selectedVariant?.price != null ? item.selectedVariant.price : item.part.price;
+                const itemImage = item.selectedVariant?.image || item.part.image;
+                const itemOem = item.selectedVariant?.sku || getPrimaryOem(item.part);
+                const itemKey = `${item.part.id}-${item.selectedVariant?.id || 'base'}-${idx}`;
 
                 return (
                   <div
-                    key={item.part.id}
+                    key={itemKey}
                     className="bg-slate-50 hover:bg-white border border-slate-200 hover:border-slate-300 rounded-xl p-3 flex gap-3 relative transition-all group"
                   >
                     {shouldShowProductImages() ? (
                       <img
-                        src={item.part.image}
+                        src={itemImage}
                         alt={item.part.name}
                         onClick={() =>
                           onViewPartDetail && onViewPartDetail(item.part)
@@ -190,7 +197,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                           }
                           className="font-mono text-[10px] font-bold text-[#E60012] cursor-pointer hover:underline"
                         >
-                          {getPrimaryOem(item.part)}
+                          {itemOem}
                         </div>
 
                         {onViewPartDetail && (
@@ -219,6 +226,40 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       >
                         {item.part.name}
                       </h4>
+
+                      {/* Selected Variant Badge */}
+                      {item.selectedVariant && (
+                        <div className="mt-1 flex items-center gap-1 flex-wrap">
+                          {Array.isArray(item.selectedVariant.attributes) && item.selectedVariant.attributes.length > 0 ? (
+                            item.selectedVariant.attributes.map((attr, aIdx) => (
+                              <span
+                                key={aIdx}
+                                className="text-[10px] font-mono text-slate-800 font-bold inline-flex items-center gap-1 bg-slate-100 border border-slate-200/90 px-1.5 py-0.5 rounded shadow-2xs"
+                              >
+                                {attr.hex && (
+                                  <span
+                                    className="w-2 h-2 rounded-full border border-black/20 shrink-0"
+                                    style={{ backgroundColor: attr.hex }}
+                                  />
+                                )}
+                                <span>
+                                  {attr.name}: <strong>{attr.value}</strong>
+                                </span>
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[10px] font-mono text-slate-800 font-bold inline-flex items-center gap-1 bg-slate-100 border border-slate-200/90 px-1.5 py-0.5 rounded shadow-2xs">
+                              {item.selectedVariant.variantType === 'color' || item.selectedVariant.colorHex ? (
+                                <span
+                                  className="w-2 h-2 rounded-full border border-black/20 shrink-0"
+                                  style={{ backgroundColor: item.selectedVariant.colorHex || '#0045A5' }}
+                                />
+                              ) : null}
+                              <span>{formatVariantAttributes(item.selectedVariant)}</span>
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       {/* Vehicle Specific Association Badge */}
                       <div
@@ -256,7 +297,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       </div>
 
                       <div className="text-xs font-mono font-black text-slate-900 mt-1.5">
-                        {formatCurrency(item.part.price)}
+                        {formatCurrency(itemPrice)}
                       </div>
 
                       {/* Quantity Controls with Min 44x44px Touch Targets */}
@@ -267,7 +308,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         <div className="flex items-center gap-1 bg-white border border-slate-300 rounded-lg p-0.5">
                           <button
                             type="button"
-                            onClick={() => onUpdateQuantity(item.part.id, -1)}
+                            onClick={() => onUpdateQuantity(item.part.id, -1, item.selectedVariant?.id)}
                             className="w-11 h-11 flex items-center justify-center text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
                             aria-label={`Disminuir cantidad de ${item.part.name}`}
                           >
@@ -281,7 +322,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                           </span>
                           <button
                             type="button"
-                            onClick={() => onUpdateQuantity(item.part.id, 1)}
+                            onClick={() => onUpdateQuantity(item.part.id, 1, item.selectedVariant?.id)}
                             className="w-11 h-11 flex items-center justify-center text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
                             aria-label={`Aumentar cantidad de ${item.part.name}`}
                           >
@@ -291,7 +332,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
                         <button
                           type="button"
-                          onClick={() => onRemoveItem(item.part.id)}
+                          onClick={() => onRemoveItem(item.part.id, item.selectedVariant?.id)}
                           className="w-11 h-11 flex items-center justify-center text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E60012]"
                           title="Eliminar del carrito"
                           aria-label={`Eliminar ${item.part.name} del carrito`}

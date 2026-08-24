@@ -8,6 +8,7 @@ interface ProductImageGalleryProps {
   part: SuzukiPart;
   schematics?: ExplodedDiagram[];
   onViewSchematics?: (schematicId: string, partId: string) => void;
+  selectedImageOverride?: string | null;
 }
 
 type GalleryTab = "despiece" | "images";
@@ -16,6 +17,7 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
   part,
   schematics,
   onViewSchematics,
+  selectedImageOverride,
 }) => {
   const [liveSchematics, setLiveSchematics] = useState<ExplodedDiagram[]>(
     schematics || [],
@@ -23,15 +25,25 @@ export const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [activeIndex, setActiveIndex] = useState<number>(0);
 
-  const galleryImages = useMemo(
-    () =>
+  const galleryImages = useMemo(() => {
+    const baseList =
       part.images && part.images.length > 0
         ? part.images
         : part.image
           ? [part.image]
-          : [],
-    [part.images, part.image],
-  );
+          : [];
+    if (selectedImageOverride && !baseList.includes(selectedImageOverride)) {
+      return [selectedImageOverride, ...baseList];
+    }
+    return baseList;
+  }, [part.images, part.image, selectedImageOverride]);
+
+  useEffect(() => {
+    if (selectedImageOverride) {
+      const idx = galleryImages.indexOf(selectedImageOverride);
+      if (idx !== -1) setActiveIndex(idx);
+    }
+  }, [selectedImageOverride, galleryImages]);
 
   // Drag to pan state for zoom
   const [isDragging, setIsDragging] = useState(false);

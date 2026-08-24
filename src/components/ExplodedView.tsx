@@ -5,7 +5,7 @@ import { getPrimaryOem, getAvailabilityStatus, AVAILABILITY_META } from '../type
 import {
   Layers, ArrowLeft, Filter, Search, CheckCircle2, AlertTriangle,
   Eye, Info, ChevronRight, X, ArrowRightLeft,
-  ZoomIn, ZoomOut, RotateCcw,
+  ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2,
   Plus, Minus, LayoutGrid
 } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
@@ -349,7 +349,12 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
         return part ? { spot, part } : null;
       })
       .filter((x): x is { spot: typeof currentDiagram.hotspots[0]; part: SuzukiPart } => x !== null)
-      .sort((a, b) => a.spot.itemNumber - b.spot.itemNumber);
+      .sort((a, b) =>
+        String(a.spot.itemNumber).localeCompare(String(b.spot.itemNumber), "es", {
+          numeric: true,
+          sensitivity: "base",
+        })
+      );
   }, [currentDiagram, allParts]);
 
   const selectedPart = diagramParts.find(dp => dp.part.id === selectedPartId)?.part;
@@ -950,7 +955,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
           {selectedPart && (
             <SelectedPartStrip
               part={selectedPart}
-              itemNumber={diagramParts.find(dp => dp.part.id === selectedPart.id)?.spot.itemNumber ?? 0}
+              itemNumber={diagramParts.find(dp => dp.part.id === selectedPart.id)?.spot.itemNumber ?? ""}
               compatible={isPartCompatible(selectedPart)}
               activeMotorcycle={activeMotorcycle}
               onAddToCart={onAddToCart}
@@ -1268,7 +1273,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                 <div>
                   <div className="flex items-start justify-between gap-3 mb-4">
                     <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#E60012] text-white font-mono font-extrabold text-base shadow-md">
-                      #{diagramParts.find(dp => dp.part.id === selectedPart.id)?.spot.itemNumber ?? 0}
+                      #{diagramParts.find(dp => dp.part.id === selectedPart.id)?.spot.itemNumber ?? ""}
                     </span>
                     <button
                       type="button"
@@ -1494,7 +1499,7 @@ const DiagramCard: React.FC<{ diagram: ExplodedDiagram; onClick: () => void }> =
 // ============== Selected Part Strip ==============
 const SelectedPartStrip: React.FC<{
   part: SuzukiPart;
-  itemNumber: number;
+  itemNumber: string | number;
   compatible: boolean | null;
   activeMotorcycle: ActiveMotorcycle | null;
   onAddToCart: (part: SuzukiPart, quantity?: number) => void;
