@@ -25,7 +25,6 @@ import {
   getAvailabilityStatus,
   AVAILABILITY_META,
   getPrimaryOem,
-  getEstimatedDeliveryTime,
 } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { getProductWhatsAppUrl } from "../utils/whatsapp";
@@ -458,20 +457,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {availabilityStatus === "in_stock" && (
               <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 rounded-lg shrink-0 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                <span>{getEstimatedDeliveryTime(part, settings)}</span>
                 <span className="text-emerald-500 font-normal">({part.stock})</span>
-              </span>
-            )}
-            {availabilityStatus === "international" && (
-              <span className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-lg shrink-0 flex items-center gap-1">
-                <Globe className="w-3 h-3 text-blue-600" />
-                <span>{getEstimatedDeliveryTime(part, settings)}</span>
-              </span>
-            )}
-            {availabilityStatus === "on_order" && (
-              <span className="text-[10px] font-mono font-bold text-amber-700 bg-amber-50 border border-amber-200/80 px-2.5 py-0.5 rounded-lg shrink-0 flex items-center gap-1">
-                <Clock className="w-3 h-3 text-amber-600" />
-                <span>{getEstimatedDeliveryTime(part, settings)}</span>
               </span>
             )}
           </div>

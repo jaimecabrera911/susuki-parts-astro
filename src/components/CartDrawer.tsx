@@ -15,7 +15,7 @@ import {
 import { FaBasketShopping, FaCartShopping } from "react-icons/fa6";
 import { AiTwotoneSafetyCertificate } from "react-icons/ai";
 import type { CartItem, ActiveMotorcycle, SuzukiPart, ShippingMethod } from "../types";
-import { getPrimaryOem, getCartShippingSummary, getEstimatedDeliveryTime } from "../types";
+import { getPrimaryOem, getCartShippingSummary } from "../types";
 import { formatCurrency } from "../utils/formatCurrency";
 import { getCartWhatsAppUrl } from "../utils/whatsapp";
 import { shouldShowProductImages } from "../utils/config";
@@ -252,7 +252,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                           ) : (
                             <Truck className="w-2.5 h-2.5 text-emerald-600" />
                           )}
-                          <span>{getEstimatedDeliveryTime(item.part, settings)}</span>
                         </span>
                       </div>
 
