@@ -332,6 +332,41 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 )}
               </div>
 
+              {/* Informative Banner when OEM has supersessions / multiple versions */}
+              {part.oemNumbers && part.oemNumbers.length > 1 && (
+                <div className="mb-4 p-4 rounded-xl bg-blue-50/90 border border-blue-200 text-slate-800 text-xs">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 border border-blue-200 text-[#0A3088] flex items-center justify-center shrink-0 mt-0.5">
+                      <ArrowRightLeft className="w-4 h-4" aria-hidden="true" />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-extrabold text-[#0A3088] uppercase tracking-wider text-xs">
+                          Actualización Oficial de Referencia OEM
+                        </span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-200">
+                          100% Compatible
+                        </span>
+                      </div>
+                      <p className="text-slate-700 text-xs leading-relaxed">
+                        Esta pieza con referencia vigente{" "}
+                        <strong className="font-mono text-slate-900 font-bold">
+                          {part.oemNumbers[0]}
+                        </strong>{" "}
+                        sustituye y reemplaza oficialmente a las versiones anteriores (
+                        {part.oemNumbers.slice(1).map((oldOem, i) => (
+                          <span key={oldOem}>
+                            {i > 0 && ", "}
+                            <span className="font-mono font-semibold text-slate-900">{oldOem}</span>
+                          </span>
+                        ))}
+                        ). Es la misma pieza original con calidad y especificaciones garantizadas.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <ul className="space-y-2">
                 {(showAllOems
                   ? part.oemNumbers
@@ -356,14 +391,15 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                           {isPrimary ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-100 border border-emerald-200 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wider rounded-md shrink-0">
                               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                              Principal Suzuki
+                              Vigente / Actual
                             </span>
                           ) : (
                             <span
                               className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-blue-50 border border-blue-200 text-[#0A3088] text-[10px] font-bold uppercase tracking-wider rounded-md shrink-0"
-                              title="Referencia equivalente o número de parte descontinuado que fue reemplazado por la referencia principal"
+                              title="Referencia anterior que fue reemplazada por la versión vigente"
                             >
-                              Cross-Ref (Reemplazada)
+                              <ArrowRightLeft className="w-3.5 h-3.5 text-blue-600" />
+                              Versión Anterior (Sustituida)
                             </span>
                           )}
                         </div>

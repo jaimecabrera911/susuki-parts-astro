@@ -21,6 +21,11 @@ export const TechnicalSearchCard: React.FC<TechnicalSearchCardProps> = ({
   const [isSearchingOem, setIsSearchingOem] = useState(false);
   const [vinFeedback, setVinFeedback] = useState<VinLookupResult | null>(null);
   const [oemError, setOemError] = useState<string | null>(null);
+  const [oemFeedback, setOemFeedback] = useState<{
+    searchedOem: string;
+    currentOem: string;
+    partName: string;
+  } | null>(null);
 
   const handleSearchVin = async (sampleVal?: string) => {
     const term = sampleVal || vinInput;
@@ -64,12 +69,23 @@ export const TechnicalSearchCard: React.FC<TechnicalSearchCardProps> = ({
       const data = await res.json();
 
       if (data.found && data.part) {
+        if (data.supersession?.isSuperseded) {
+          setOemFeedback({
+            searchedOem: data.supersession.searchedOem,
+            currentOem: data.supersession.currentOem,
+            partName: data.part.name
+          });
+        } else {
+          setOemFeedback(null);
+        }
         onOpenPartDetail(data.part);
       } else {
+        setOemFeedback(null);
         setOemError(data.message || 'Código OEM no encontrado.');
       }
     } catch (err) {
       console.error(err);
+      setOemFeedback(null);
       setOemError('Error al conectar con la base de datos OEM.');
     } finally {
       setIsSearchingOem(false);
@@ -171,6 +187,20 @@ export const TechnicalSearchCard: React.FC<TechnicalSearchCardProps> = ({
               </button>
             </div>
           </div>
+
+          {oemFeedback && (
+            <div className="p-3 rounded-xl mb-3 text-xs bg-blue-50 border border-blue-200 text-slate-800 animate-in fade-in duration-150">
+              <div className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 text-[#0A3088] shrink-0 mt-0.5" aria-hidden="true" />
+                <div>
+                  <div className="font-bold text-[#0A3088]">Referencia OEM Actualizada</div>
+                  <p className="mt-0.5 text-[11px] text-slate-700 leading-snug">
+                    Buscaste la referencia <span className="font-mono font-bold text-slate-900">{oemFeedback.searchedOem}</span>. Fue reemplazada oficialmente por la versión vigente <span className="font-mono font-bold text-slate-900">{oemFeedback.currentOem}</span> ({oemFeedback.partName}).
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {oemError && (
             <p className="text-xs text-[#E60012] font-semibold mt-2">{oemError}</p>

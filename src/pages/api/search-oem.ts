@@ -26,7 +26,23 @@ export const POST: APIRoute = async ({ request }) => {
       const rawParts = await db.select().from(parts).where(inArray(parts.id, ids)).limit(1);
       const [formatted] = await formatParts(db, rawParts);
       if (formatted) {
-        return new Response(JSON.stringify({ found: true, part: formatted }), {
+        const primaryOem = formatted.oemNumbers?.[0] || formatted.sku;
+        const matchedOem = formatted.oemNumbers?.find((o: string) => o.toUpperCase().includes(cleanOem)) || cleanOem;
+        const isSuperseded = Boolean(
+          formatted.oemNumbers &&
+          formatted.oemNumbers.length > 1 &&
+          primaryOem.toUpperCase() !== matchedOem.toUpperCase()
+        );
+
+        return new Response(JSON.stringify({
+          found: true,
+          part: formatted,
+          supersession: isSuperseded ? {
+            searchedOem: matchedOem,
+            currentOem: primaryOem,
+            isSuperseded: true
+          } : null
+        }), {
           status: 200,
           headers: { "Content-Type": "application/json" }
         });

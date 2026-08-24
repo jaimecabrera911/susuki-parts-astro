@@ -150,7 +150,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           onClose();
         }
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-xs p-4 overflow-y-auto"
+      className="fixed inset-0 z-[85] flex items-center justify-center bg-slate-950/75 backdrop-blur-xs p-4 overflow-y-auto"
     >
       <div 
         className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative border border-slate-200 my-auto overflow-hidden animate-in fade-in zoom-in-95 duration-200"
