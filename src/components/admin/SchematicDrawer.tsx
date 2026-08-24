@@ -14,6 +14,11 @@ import {
   Move,
   UploadCloud,
   Check,
+  Clipboard,
+  Link2,
+  Sparkles,
+  RefreshCw,
+  FileImage,
 } from "lucide-react";
 import type { ExplodedDiagram, SuzukiPart, SuzukiModel, Category } from "../../types";
 import { SearchableModelMultiSelect } from "./SearchableModelMultiSelect";
@@ -56,6 +61,12 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
   const [uploadingDiagram, setUploadingDiagram] = useState(false);
   const [description, setDescription] = useState("");
   const [hotspots, setHotspots] = useState<ExplodedDiagram["hotspots"]>([]);
+
+  // Paste & URL Image states
+  const [pasteFeedback, setPasteFeedback] = useState<string | null>(null);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
+  const [isReadingClipboard, setIsReadingClipboard] = useState(false);
 
   // Zoom & Pin Size Mode State
   const [zoomLevel, setZoomLevel] = useState<number>(1);
@@ -124,10 +135,10 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (file: File) => {
+  const handleFileSelect = (file: File, sourceLabel?: string) => {
     if (!file.type.startsWith("image/")) {
       setError(
-        "Por favor selecciona un archivo de imagen válido (PNG, JPG, WEBP, SVG).",
+        "Por favor selecciona un archivo de imagen válido (PNG, JPG, WEBP, SVG, GIF).",
       );
       return;
     }
@@ -137,6 +148,13 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
     reader.onload = (e) => {
       if (e.target?.result) {
         setDiagramImage(e.target.result as string);
+        if (sourceLabel === "clipboard") {
+          setPasteFeedback("¡Plano pegado desde el portapapeles con éxito!");
+          setTimeout(() => setPasteFeedback(null), 3500);
+        } else if (sourceLabel === "file") {
+          setPasteFeedback("¡Archivo de plano adjuntado con éxito!");
+          setTimeout(() => setPasteFeedback(null), 3500);
+        }
       }
     };
     reader.readAsDataURL(file);
@@ -146,9 +164,140 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileSelect(e.dataTransfer.files[0]);
+      handleFileSelect(e.dataTransfer.files[0], "file");
     }
   };
+
+  const handlePasteFromClipboardButton = async () => {
+    setError("");
+    setIsReadingClipboard(true);
+    try {
+      if (navigator.clipboard && navigator.clipboard.read) {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          const imageType = item.types.find((t) => t.startsWith("image/"));
+          if (imageType) {
+            const blob = await item.getType(imageType);
+            const ext = imageType.split("/")[1]?.replace("jpeg", "jpg") || "png";
+            const file = new File(
+              [blob],
+              `despiece-clipboard-${Date.now()}.${ext}`,
+              { type: imageType },
+            );
+            handleFileSelect(file, "clipboard");
+            setIsReadingClipboard(false);
+            return;
+          }
+        }
+      }
+
+      // Fallback: check text in clipboard in case user copied image URL
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        const cleanText = text.trim();
+        if (
+          cleanText.startsWith("data:image/") ||
+          /^https?:\/\/.+\.(png|jpe?g|webp|svg|gif)(\?.*)?$/i.test(cleanText) ||
+          /^https?:\/\/.+/i.test(cleanText)
+        ) {
+          setDiagramImage(cleanText);
+          setPendingDiagramFile(null);
+          setPasteFeedback("¡Enlace de imagen pegado con éxito!");
+          setTimeout(() => setPasteFeedback(null), 3500);
+          setIsReadingClipboard(false);
+          return;
+        }
+      }
+
+      setError(
+        "No se encontró una imagen en el portapapeles. Copia una imagen (ej. captura con Win+Shift+S) y vuelve a intentar.",
+      );
+    } catch (err: any) {
+      console.warn("Clipboard access error:", err);
+      setError(
+        "No se pudo acceder automáticamente al portapapeles. Por favor presiona Ctrl+V para pegar directamente.",
+      );
+    } finally {
+      setIsReadingClipboard(false);
+    }
+  };
+
+  const handleApplyImageUrl = (urlToApply?: string) => {
+    const target = (urlToApply || urlInput).trim();
+    if (!target) {
+      setError("Por favor ingresa una URL válida de imagen.");
+      return;
+    }
+    if (
+      !target.startsWith("http://") &&
+      !target.startsWith("https://") &&
+      !target.startsWith("data:image/") &&
+      !target.startsWith("/")
+    ) {
+      setError("La URL debe comenzar con http://, https:// o data:image/");
+      return;
+    }
+    setError("");
+    setDiagramImage(target);
+    setPendingDiagramFile(null);
+    setUrlInput("");
+    setShowUrlInput(false);
+    setPasteFeedback("¡Imagen de despiece asignada por URL!");
+    setTimeout(() => setPasteFeedback(null), 3500);
+  };
+
+  // Global paste listener (Ctrl+V anywhere in the modal)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      const activeEl = document.activeElement;
+      const isTypingText =
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT") &&
+        (activeEl as HTMLElement).id !== "diagram-url-input";
+
+      const items = e.clipboardData?.items;
+      if (items) {
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if (item.type.startsWith("image/")) {
+            e.preventDefault();
+            const blob = item.getAsFile();
+            if (blob) {
+              const ext =
+                item.type.split("/")[1]?.replace("jpeg", "jpg") || "png";
+              const file = new File(
+                [blob],
+                `despiece-clipboard-${Date.now()}.${ext}`,
+                { type: item.type },
+              );
+              handleFileSelect(file, "clipboard");
+              return;
+            }
+          }
+        }
+      }
+
+      // If not typing in another input and pasted text is an image URL
+      if (!isTypingText) {
+        const text = e.clipboardData?.getData("text")?.trim();
+        if (
+          text &&
+          (text.startsWith("data:image/") ||
+            /^https?:\/\/.+\.(png|jpe?g|webp|svg|gif)(\?.*)?$/i.test(text))
+        ) {
+          e.preventDefault();
+          handleApplyImageUrl(text);
+        }
+      }
+    };
+
+    window.addEventListener("paste", handleGlobalPaste);
+    return () => window.removeEventListener("paste", handleGlobalPaste);
+  }, [isOpen]);
 
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -221,6 +370,10 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
     setDraggingHotspotIndex(null);
     setIsDraggingPendingHotspot(false);
     setHasDraggedHotspot(false);
+    setPasteFeedback(null);
+    setShowUrlInput(false);
+    setUrlInput("");
+    setIsReadingClipboard(false);
     setError("");
   }, [schematicToEdit, isOpen]);
 
@@ -536,11 +689,33 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
         const result = await UPLOAD_IMAGE(pendingDiagramFile, "schematics");
         finalDiagramImage = result.url;
       } catch (err: any) {
-        setError(
-          err?.message || "No se pudo subir la imagen del despiece a la nube.",
+        console.warn("Cloud upload no disponible, usando plano cargado localmente:", err);
+        // Si falla la nube, mantenemos la imagen local/data URL para no perder el trabajo
+        if (!finalDiagramImage) {
+          setError(
+            err?.message || "No se pudo procesar la imagen del despiece.",
+          );
+          setUploadingDiagram(false);
+          return;
+        }
+      }
+      setUploadingDiagram(false);
+    } else if (finalDiagramImage.startsWith("data:")) {
+      setUploadingDiagram(true);
+      try {
+        const res = await fetch(finalDiagramImage);
+        const blob = await res.blob();
+        const extMatch = finalDiagramImage.match(/^data:image\/(\w+);/);
+        const ext = extMatch ? extMatch[1].replace("jpeg", "jpg") : "png";
+        const file = new File(
+          [blob],
+          `schematic-${Date.now()}.${ext}`,
+          { type: blob.type || "image/png" }
         );
-        setUploadingDiagram(false);
-        return;
+        const result = await UPLOAD_IMAGE(file, "schematics");
+        finalDiagramImage = result.url;
+      } catch (err: any) {
+        console.warn("Cloud upload no disponible para data URL, conservando en memoria:", err);
       }
       setUploadingDiagram(false);
     }
@@ -750,90 +925,231 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
                 placeholder="Escribe para buscar entre todos los modelos registrados..."
               />
 
-              {/* Diagram Image File Attachment Dropzone */}
+              {/* Diagram Image File Attachment & Clipboard Paste Dropzone */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-mono">
-                  Imagen / Plano del Despiece
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider font-mono">
+                    Imagen / Plano del Despiece *
+                  </label>
+                  <span className="text-[10px] text-slate-500 font-mono flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-[#E60012]" />
+                    Soporta Ctrl+V para pegar
+                  </span>
+                </div>
+
                 <input
                   type="file"
                   ref={fileInputRef}
                   accept="image/*"
                   onChange={(e) => {
                     if (e.target.files && e.target.files[0]) {
-                      handleFileSelect(e.target.files[0]);
+                      handleFileSelect(e.target.files[0], "file");
                     }
                   }}
                   className="hidden"
                 />
 
+                {/* Paste Feedback Banner */}
+                {pasteFeedback && (
+                  <div className="mb-3 p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-[#059669] text-xs font-bold flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />
+                      <span>{pasteFeedback}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPasteFeedback(null)}
+                      className="text-emerald-700 hover:text-emerald-900 text-xs font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
                 {diagramImage ? (
                   <div className="relative p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center gap-4">
-                    <div className="w-32 h-24 rounded-xl bg-white border border-slate-200 p-2 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+                    <div className="w-36 h-28 rounded-xl bg-white border border-slate-200 p-2 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
                       <img
                         src={diagramImage}
                         alt="Vista previa del diagrama"
                         className="max-w-full max-h-full object-contain"
                       />
                     </div>
-                    <div className="flex-1 min-w-0 text-center sm:text-left">
-                      <p className="text-xs font-black text-slate-900 flex items-center gap-1.5 justify-center sm:justify-start">
-                        <Check className="w-4 h-4 text-emerald-600" />
-                        Plano Adjuntado Correctamente
-                      </p>
-                      <p className="text-[11px] text-slate-500 font-mono mt-0.5 truncate">
+                    <div className="flex-1 min-w-0 text-center sm:text-left space-y-1">
+                      <div className="flex items-center gap-2 justify-center sm:justify-start flex-wrap">
+                        <p className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                          <Check className="w-4 h-4 text-emerald-600" />
+                          Plano Adjuntado Correctamente
+                        </p>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          {diagramImage.startsWith("data:")
+                            ? "Portapapeles / Local"
+                            : "Almacenamiento Cloud"}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 font-mono truncate">
                         {diagramImage.startsWith("data:")
-                          ? "Archivo de plano local adjuntado (Data URL)"
+                          ? "Imagen cargada en memoria (se subirá a la nube al guardar)"
                           : diagramImage}
                       </p>
-                      <div className="mt-2.5 flex items-center gap-2 justify-center sm:justify-start">
+                      <div className="pt-2 flex flex-wrap items-center gap-2 justify-center sm:justify-start">
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors"
+                          className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors flex items-center gap-1.5 shadow-xs"
+                          title="Seleccionar otro archivo del equipo"
                         >
-                          Cambiar Plano
+                          <UploadCloud className="w-3.5 h-3.5 text-[#E60012]" />
+                          <span>Subir Archivo</span>
                         </button>
                         <button
                           type="button"
-                          onClick={() => setDiagramImage("")}
+                          onClick={handlePasteFromClipboardButton}
+                          disabled={isReadingClipboard}
+                          className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors flex items-center gap-1.5 shadow-xs"
+                          title="Pegar imagen desde el portapapeles (Ctrl+V)"
+                        >
+                          <Clipboard className="w-3.5 h-3.5 text-[#0A3088]" />
+                          <span>{isReadingClipboard ? "Leyendo..." : "Pegar Portapapeles"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowUrlInput(!showUrlInput)}
+                          className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-100 transition-colors flex items-center gap-1.5 shadow-xs"
+                          title="Pegar enlace o URL"
+                        >
+                          <Link2 className="w-3.5 h-3.5 text-slate-500" />
+                          <span>URL</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDiagramImage("");
+                            setPendingDiagramFile(null);
+                          }}
                           className="px-3 py-1.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
-                          Quitar
+                          <span>Quitar</span>
                         </button>
                       </div>
+
+                      {showUrlInput && (
+                        <div className="pt-2 flex items-center gap-2">
+                          <input
+                            id="diagram-url-input"
+                            type="text"
+                            value={urlInput}
+                            onChange={(e) => setUrlInput(e.target.value)}
+                            placeholder="https://ejemplo.com/plano-despiece.png"
+                            className="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#E60012]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleApplyImageUrl()}
+                            className="px-3 py-1.5 bg-[#0A3088] text-white rounded-xl text-xs font-bold hover:bg-blue-900 transition-colors shrink-0"
+                          >
+                            Cargar URL
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
-                  <div
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setIsDragging(true);
-                    }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={handleDrop}
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`cursor-pointer border-2 border-dashed rounded-2xl p-6 text-center transition-all flex flex-col items-center justify-center gap-2.5 ${
-                      isDragging
-                        ? "border-[#E60012] bg-[#E60012]/5 scale-[0.99]"
-                        : "border-slate-300 hover:border-[#E60012] hover:bg-slate-50/80 bg-slate-50/50"
-                    }`}
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-xs text-slate-500 group-hover:text-[#E60012]">
-                      <UploadCloud className="w-6 h-6 text-[#E60012]" />
+                  <div className="space-y-3">
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDragging(true);
+                      }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={handleDrop}
+                      className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all flex flex-col items-center justify-center gap-3 ${
+                        isDragging
+                          ? "border-[#E60012] bg-[#E60012]/10 scale-[0.99]"
+                          : "border-slate-300 hover:border-[#E60012] bg-slate-50/70"
+                      }`}
+                    >
+                      <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-xs text-slate-500">
+                        <UploadCloud className="w-7 h-7 text-[#E60012]" />
+                      </div>
+                      <div className="max-w-md">
+                        <p className="text-sm font-extrabold text-slate-900">
+                          Arrastra tu imagen aquí, sube un archivo o pega con <kbd className="px-1.5 py-0.5 rounded bg-slate-200 border border-slate-300 font-mono text-xs text-slate-800">Ctrl + V</kbd>
+                        </p>
+                        <p className="text-[11px] text-slate-500 font-mono mt-1">
+                          Formatos compatibles: PNG, JPG, WEBP, SVG, GIF (capturas de pantalla y portapapeles soportados)
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="px-4 py-2 rounded-xl bg-[#E60012] text-white text-xs font-bold uppercase tracking-wider shadow-xs hover:bg-[#b5000b] transition-colors flex items-center gap-2"
+                        >
+                          <UploadCloud className="w-4 h-4" />
+                          <span>Subir Archivo</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handlePasteFromClipboardButton}
+                          disabled={isReadingClipboard}
+                          className="px-4 py-2 rounded-xl bg-white border border-slate-300 text-slate-800 text-xs font-bold hover:bg-slate-100 hover:border-slate-400 transition-colors flex items-center gap-2 shadow-xs"
+                          title="Pegar imagen copiada en el portapapeles"
+                        >
+                          <Clipboard className="w-4 h-4 text-[#0A3088]" />
+                          <span>{isReadingClipboard ? "Leyendo portapapeles..." : "Pegar Portapapeles"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowUrlInput(!showUrlInput)}
+                          className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-100 transition-colors flex items-center gap-1.5"
+                          title="Ingresar enlace URL de la imagen"
+                        >
+                          <Link2 className="w-4 h-4 text-slate-500" />
+                          <span>Pegar URL</span>
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-extrabold text-slate-900">
-                        Haz clic o arrastra la imagen o plano del despiece aquí
-                      </p>
-                      <p className="text-[11px] text-slate-500 font-mono mt-0.5">
-                        Formatos soportados: PNG, JPG, WEBP, SVG
-                      </p>
-                    </div>
-                    <span className="px-3 py-1.5 rounded-xl bg-[#E60012] text-white text-[11px] font-bold uppercase tracking-wider shadow-xs hover:bg-[#b5000b] transition-colors">
-                      Adjuntar Plano / Diagrama
-                    </span>
+
+                    {showUrlInput && (
+                      <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center gap-2 animate-in fade-in">
+                        <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200">
+                          <Link2 className="w-4 h-4 text-slate-400 shrink-0" />
+                          <input
+                            id="diagram-url-input"
+                            type="text"
+                            value={urlInput}
+                            onChange={(e) => setUrlInput(e.target.value)}
+                            placeholder="https://ejemplo.com/imagen-despiece.png o data:image/..."
+                            className="w-full bg-transparent text-xs text-slate-900 placeholder-slate-400 focus:outline-none font-medium"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleApplyImageUrl();
+                              }
+                            }}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2 justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleApplyImageUrl()}
+                            className="px-4 py-2 rounded-xl bg-[#0A3088] text-white text-xs font-bold hover:bg-blue-900 transition-colors shadow-xs"
+                          >
+                            Cargar URL
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowUrlInput(false)}
+                            className="px-3 py-2 rounded-xl text-slate-500 hover:text-slate-700 text-xs font-bold"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -949,8 +1265,48 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
                       Micro-Dot (12px)
                     </button>
                   </div>
+
+                  {/* Quick Image Replacement button on Canvas Toolbar */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-2.5 py-1.5 rounded-lg bg-white border border-blue-200 text-[#0A3088] hover:bg-blue-50 text-[11px] font-bold font-mono flex items-center gap-1.5 shadow-xs transition-colors"
+                      title="Subir archivo de plano"
+                    >
+                      <UploadCloud className="w-3.5 h-3.5 text-[#E60012]" />
+                      <span>Subir</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handlePasteFromClipboardButton}
+                      disabled={isReadingClipboard}
+                      className="px-2.5 py-1.5 rounded-lg bg-white border border-blue-200 text-[#0A3088] hover:bg-blue-50 text-[11px] font-bold font-mono flex items-center gap-1.5 shadow-xs transition-colors"
+                      title="Pegar imagen copiada en el portapapeles (o presiona Ctrl+V)"
+                    >
+                      <Clipboard className="w-3.5 h-3.5 text-[#0A3088]" />
+                      <span>{isReadingClipboard ? "Pegando..." : "Pegar (Ctrl+V)"}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
+
+              {/* Paste Feedback Banner inside Canvas view if triggered */}
+              {pasteFeedback && (
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-[#059669] text-xs font-bold flex items-center justify-between animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-[#059669] shrink-0" />
+                    <span>{pasteFeedback}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPasteFeedback(null)}
+                    className="text-emerald-700 hover:text-emerald-900 text-xs font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
 
               {/* Interactive Canvas Viewport (Scrollable with Zoom Container) */}
               <div
@@ -1169,11 +1525,58 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
                         })()}
                     </div>
                   ) : (
-                    <div className="text-center py-12 text-slate-400">
-                      <ImageIcon className="w-8 h-8 mx-auto mb-2" />
-                      <p className="text-xs font-mono font-bold">
-                        Sin imagen de diagrama cargada
-                      </p>
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDragging(true);
+                      }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={handleDrop}
+                      className="w-full max-w-xl mx-auto py-12 px-6 text-center flex flex-col items-center justify-center gap-3.5 border-2 border-dashed border-slate-300 rounded-3xl bg-slate-50/70 hover:border-[#E60012] transition-all"
+                    >
+                      <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-xs text-slate-400">
+                        <FileImage className="w-8 h-8 text-[#E60012]" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-extrabold text-slate-900 font-display">
+                          Aún no has cargado un plano para este despiece
+                        </h4>
+                        <p className="text-xs text-slate-500 font-mono mt-1 max-w-md">
+                          Sube un archivo, arrástralo aquí o presiona <kbd className="px-1.5 py-0.5 rounded bg-white border border-slate-300 font-mono text-[11px] text-slate-800 font-bold shadow-xs">Ctrl + V</kbd> para pegar directamente desde tu portapapeles.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="px-4 py-2 rounded-xl bg-[#E60012] text-white text-xs font-bold uppercase tracking-wider shadow-xs hover:bg-[#b5000b] transition-colors flex items-center gap-2"
+                        >
+                          <UploadCloud className="w-4 h-4" />
+                          <span>Subir Plano</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handlePasteFromClipboardButton}
+                          disabled={isReadingClipboard}
+                          className="px-4 py-2 rounded-xl bg-white border border-slate-300 text-slate-800 text-xs font-bold hover:bg-slate-100 hover:border-slate-400 transition-colors flex items-center gap-2 shadow-xs"
+                          title="Pegar imagen del portapapeles (Ctrl+V)"
+                        >
+                          <Clipboard className="w-4 h-4 text-[#0A3088]" />
+                          <span>{isReadingClipboard ? "Leyendo..." : "Pegar Portapapeles (Ctrl+V)"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveSubTab("form");
+                            setShowUrlInput(true);
+                          }}
+                          className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-100 transition-colors flex items-center gap-1.5"
+                        >
+                          <Link2 className="w-4 h-4 text-slate-500" />
+                          <span>Pegar URL</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

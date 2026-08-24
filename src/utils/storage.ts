@@ -10,12 +10,22 @@ export function getStorageBucket(): string {
 }
 
 function getClient(): S3Client | null {
-  const endpoint = getEnv('AWS_ENDPOINT_URL_S3');
-  const accessKeyId = getEnv('AWS_ACCESS_KEY_ID');
-  const secretAccessKey = getEnv('AWS_SECRET_ACCESS_KEY');
-  if (!endpoint || !accessKeyId || !secretAccessKey) {
+  const endpoint = getEnv('AWS_ENDPOINT_URL_S3').trim();
+  const accessKeyId = getEnv('AWS_ACCESS_KEY_ID').trim();
+  const secretAccessKey = getEnv('AWS_SECRET_ACCESS_KEY').trim();
+
+  // El endpoint debe ser una URL HTTP o HTTPS válida (no una URL de postgresql:// ni placeholders)
+  if (
+    !endpoint ||
+    !accessKeyId ||
+    !secretAccessKey ||
+    (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) ||
+    endpoint.includes('tu-endpoint') ||
+    accessKeyId.includes('tu_access_key')
+  ) {
     return null;
   }
+
   return new S3Client({
     region: getEnv('AWS_REGION') || 'us-east-2',
     endpoint,
@@ -32,18 +42,25 @@ export async function uploadImage(params: {
   const client = getClient();
   const bucket = getStorageBucket();
 
-  if (!client) {
-    throw new Error('Credenciales de almacenamiento S3/Neon Storage no configuradas.');
+  // 1. Si hay cliente S3 con endpoint HTTP/HTTPS válido, subir a la nube
+  if (client) {
+    try {
+      await client.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: params.key,
+          Body: params.body,
+          ContentType: params.contentType,
+        }),
+      );
+      const endpoint = getEnv('AWS_ENDPOINT_URL_S3').replace(/\/+$/, '');
+      return `${endpoint}/${bucket}/${params.key}`;
+    } catch (s3Error: any) {
+      console.warn('Error al subir a S3, guardando imagen directamente en base de datos Neon:', s3Error?.message);
+    }
   }
 
-  await client.send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: params.key,
-      Body: params.body,
-      ContentType: params.contentType,
-    }),
-  );
-  const endpoint = getEnv('AWS_ENDPOINT_URL_S3').replace(/\/+$/, '');
-  return `${endpoint}/${bucket}/${params.key}`;
+  // 2. Si no hay S3 configurado, convertir a Data URL para persistir directamente en Neon PostgreSQL
+  const base64 = params.body.toString('base64');
+  return `data:${params.contentType};base64,${base64}`;
 }

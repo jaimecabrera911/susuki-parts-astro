@@ -60,7 +60,10 @@ export const POST: APIRoute = async ({ request }) => {
   } catch (error: any) {
     console.error('Error en POST /api/upload:', error?.message || error);
     return new Response(
-      JSON.stringify({ success: false, error: 'Error subiendo la imagen al almacenamiento de la tienda' }),
+      JSON.stringify({
+        success: false,
+        error: error?.message || 'Error subiendo la imagen al almacenamiento de la tienda'
+      }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
