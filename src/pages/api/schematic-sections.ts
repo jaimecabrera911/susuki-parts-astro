@@ -48,6 +48,24 @@ export const PUT: APIRoute = async ({ request }) => {
   try {
     const db = getDb();
     const body = await request.json();
+
+    // Soporte para actualización en lote / reordenamiento de secciones
+    if (Array.isArray(body)) {
+      for (let i = 0; i < body.length; i++) {
+        const item = body[i];
+        if (item.id) {
+          await upsertSchematicSection(db, {
+            ...item,
+            order: item.order !== undefined ? item.order : i + 1,
+          });
+        }
+      }
+      const rows = await db.select().from(schematicSections).orderBy(schematicSections.order, schematicSections.name);
+      return new Response(JSON.stringify({ success: true, count: rows.length, data: rows }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     if (!body.id) throw new Error('ID de la sección es requerido');
     const saved = await upsertSchematicSection(db, body);
     return new Response(JSON.stringify({ success: true, data: saved }), {

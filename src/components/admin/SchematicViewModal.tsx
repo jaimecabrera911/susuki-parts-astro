@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { X, Layers, Crosshair, Package, ShoppingCart, Check, ZoomIn, ZoomOut, RotateCcw, Edit, ExternalLink } from 'lucide-react';
 import type { ExplodedDiagram, SuzukiPart } from '../../types';
 import { formatCurrency } from '../../utils/formatCurrency';
@@ -24,7 +24,28 @@ export const SchematicViewModal: React.FC<SchematicViewModalProps> = ({
 
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [selectedHotspotIndex, setSelectedHotspotIndex] = useState<number | null>(null);
-  const [addedToCartPartId, setAddedToCartPartId] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<'item' | 'alpha'>('item');
+
+  const sortedHotspotsWithIndex = useMemo(() => {
+    const list = schematic.hotspots.map((hs, originalIndex) => {
+      const part = parts.find(p => p.id === hs.partId);
+      const name = (hs.label || part?.name || '').trim();
+      return { hs, originalIndex, name, part };
+    });
+
+    if (sortMode === 'item') {
+      return list.sort((a, b) => {
+        if (a.hs.itemNumber !== b.hs.itemNumber) {
+          return a.hs.itemNumber - b.hs.itemNumber;
+        }
+        return a.name.localeCompare(b.name, 'es', { sensitivity: 'base', numeric: true });
+      });
+    }
+
+    return list.sort((a, b) =>
+      a.name.localeCompare(b.name, 'es', { sensitivity: 'base', numeric: true })
+    );
+  }, [schematic.hotspots, sortMode, parts]);
 
   const selectedHotspot = selectedHotspotIndex !== null ? schematic.hotspots[selectedHotspotIndex] : null;
   const selectedPart = selectedHotspot ? parts.find(p => p.id === selectedHotspot.partId) : null;
@@ -259,42 +280,78 @@ export const SchematicViewModal: React.FC<SchematicViewModalProps> = ({
             )}
 
             {/* List of all parts in this schematic */}
-            <div className="space-y-1.5 flex-1 max-h-[260px] overflow-y-auto custom-scrollbar pr-1">
-              {schematic.hotspots.map((hs, idx) => {
-                const part = parts.find(p => p.id === hs.partId);
-                const isSelected = selectedHotspotIndex === idx;
+            <div className="space-y-2 flex-1 flex flex-col min-h-0">
+              <div className="flex items-center justify-between gap-2 flex-wrap shrink-0 pt-1">
+                <span className="text-[11px] font-bold text-slate-700 font-mono uppercase">
+                  Repuestos en este Despiece ({schematic.hotspots.length})
+                </span>
+                {schematic.hotspots.length > 1 && (
+                  <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 text-[10px] font-bold shadow-xs">
+                    <button
+                      type="button"
+                      onClick={() => setSortMode('alpha')}
+                      className={`px-2 py-0.5 rounded-md transition-colors ${
+                        sortMode === 'alpha'
+                          ? 'bg-[#0A3088] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                      title="Ordenar alfabéticamente (A-Z)"
+                    >
+                      A-Z
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSortMode('item')}
+                      className={`px-2 py-0.5 rounded-md transition-colors ${
+                        sortMode === 'item'
+                          ? 'bg-[#0A3088] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                      title="Ordenar por número de ítem"
+                    >
+                      N° Ítem
+                    </button>
+                  </div>
+                )}
+              </div>
 
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setSelectedHotspotIndex(idx)}
-                    className={`w-full text-left p-2.5 rounded-xl border text-xs transition-all flex items-center justify-between ${
-                      isSelected
-                        ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-200'
-                        : 'bg-white border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                      <span className="w-5 h-5 rounded-full bg-[#E60012] text-white font-mono font-bold text-[10px] flex items-center justify-center shrink-0">
-                        {hs.itemNumber}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="font-bold text-slate-900 truncate font-display text-[11px]">{hs.label}</p>
-                        <p className="text-[10px] font-mono text-slate-500 font-bold">
-                          OEM: {part ? part.oemNumbers[0] : 'N/A'}
-                        </p>
+              <div className="space-y-1.5 flex-1 max-h-[260px] overflow-y-auto custom-scrollbar pr-1">
+                {sortedHotspotsWithIndex.map(({ hs, originalIndex }) => {
+                  const part = parts.find(p => p.id === hs.partId);
+                  const isSelected = selectedHotspotIndex === originalIndex;
+
+                  return (
+                    <button
+                      key={originalIndex}
+                      type="button"
+                      onClick={() => setSelectedHotspotIndex(originalIndex)}
+                      className={`w-full text-left p-2.5 rounded-xl border text-xs transition-all flex items-center justify-between ${
+                        isSelected
+                          ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-200'
+                          : 'bg-white border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                        <span className="w-5 h-5 rounded-full bg-[#E60012] text-white font-mono font-bold text-[10px] flex items-center justify-center shrink-0">
+                          {hs.itemNumber}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-900 truncate font-display text-[11px]">{hs.label}</p>
+                          <p className="text-[10px] font-mono text-slate-500 font-bold">
+                            OEM: {part ? part.oemNumbers[0] : 'N/A'}
+                          </p>
+                        </div>
                       </div>
-                    </div>
 
-                    {part && (
-                      <span className="text-[11px] font-mono font-bold text-[#E60012] shrink-0">
-                        {formatCurrency(part.price)}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+                      {part && (
+                        <span className="text-[11px] font-mono font-bold text-[#E60012] shrink-0">
+                          {formatCurrency(part.price)}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 

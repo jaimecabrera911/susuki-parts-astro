@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   X,
   Layers,
@@ -61,6 +61,30 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
   const [uploadingDiagram, setUploadingDiagram] = useState(false);
   const [description, setDescription] = useState("");
   const [hotspots, setHotspots] = useState<ExplodedDiagram["hotspots"]>([]);
+  const [hotspotSortMode, setHotspotSortMode] = useState<"item" | "alpha">("item");
+
+  const sortedHotspotsWithIndex = useMemo(() => {
+    const list = hotspots.map((hs, originalIndex) => {
+      const part = parts.find((p) => p.id === hs.partId);
+      const name = (hs.label || part?.name || "").trim();
+      return { hs, originalIndex, name, part };
+    });
+
+    if (hotspotSortMode === "item") {
+      // Ordena por el número/texto del hotspot (#1, #2, #3, ...)
+      return list.sort((a, b) => {
+        if (a.hs.itemNumber !== b.hs.itemNumber) {
+          return a.hs.itemNumber - b.hs.itemNumber;
+        }
+        return a.name.localeCompare(b.name, "es", { sensitivity: "base", numeric: true });
+      });
+    }
+
+    // Orden alfabético por nombre del repuesto (A-Z)
+    return list.sort((a, b) =>
+      a.name.localeCompare(b.name, "es", { sensitivity: "base", numeric: true })
+    );
+  }, [hotspots, hotspotSortMode, parts]);
 
   // Paste & URL Image states
   const [pasteFeedback, setPasteFeedback] = useState<string | null>(null);
@@ -1750,42 +1774,71 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
               )}
 
               {/* List of Current Hotspots with Edit & Remove Controls */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                <span className="text-xs font-bold text-slate-900 font-mono uppercase">
-                  Lista de Puntos Vinculados ({hotspots.length})
-                </span>
-                <div className="space-y-1.5">
-                  {hotspots.map((hs, idx) => {
-                    const part = parts.find((p) => p.id === hs.partId);
-                    const isEditing = editingHotspotIndex === idx;
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-slate-900 font-mono uppercase">
+                    Lista de Puntos Vinculados ({hotspots.length})
+                  </span>
+                  {hotspots.length > 1 && (
+                    <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 text-[10px] font-bold shadow-xs">
+                      <button
+                        type="button"
+                        onClick={() => setHotspotSortMode("alpha")}
+                        className={`px-2 py-1 rounded-md transition-colors ${
+                          hotspotSortMode === "alpha"
+                            ? "bg-[#0A3088] text-white shadow-xs"
+                            : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                        }`}
+                        title="Ordenar alfabéticamente por nombre de repuesto (A-Z)"
+                      >
+                        A-Z (Alfabético)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setHotspotSortMode("item")}
+                        className={`px-2 py-1 rounded-md transition-colors ${
+                          hotspotSortMode === "item"
+                            ? "bg-[#0A3088] text-white shadow-xs"
+                            : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                        }`}
+                        title="Ordenar por número de ítem (#1, #2, ...)"
+                      >
+                        N° Ítem
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-1.5 max-h-[380px] overflow-y-auto custom-scrollbar pr-1">
+                  {sortedHotspotsWithIndex.map(({ hs, originalIndex, name, part }) => {
+                    const isEditing = editingHotspotIndex === originalIndex;
                     return (
                       <div
-                        key={idx}
+                        key={originalIndex}
                         className={`flex items-center justify-between p-2.5 rounded-xl border text-xs transition-colors ${
                           isEditing
                             ? "bg-blue-50 border-blue-300 ring-2 ring-blue-200"
                             : "bg-white border-slate-200 hover:border-slate-300"
                         }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="w-6 h-6 rounded-full bg-[#E60012] text-white font-mono font-bold text-[11px] flex items-center justify-center shrink-0">
+                        <div className="flex items-center gap-3 min-w-0 pr-2">
+                          <span className="w-6 h-6 rounded-full bg-[#E60012] text-white font-mono font-bold text-[11px] flex items-center justify-center shrink-0 shadow-xs">
                             {hs.itemNumber}
                           </span>
-                          <div>
-                            <p className="font-bold text-slate-900 font-display">
-                              {hs.label}
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-900 font-display truncate">
+                              {name || hs.label || "Sin nombre"}
                             </p>
-                            <p className="text-[10px] font-mono text-slate-500 font-bold">
-                              OEM: {part ? part.oemNumbers[0] : "N/A"} (X:{" "}
+                            <p className="text-[10px] font-mono text-slate-500 font-bold truncate">
+                              OEM: {part ? part.oemNumbers[0] : "N/A"} • (X:{" "}
                               {hs.x}%, Y: {hs.y}%)
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 shrink-0">
                           <button
                             type="button"
-                            onClick={() => handleStartEditHotspot(idx)}
+                            onClick={() => handleStartEditHotspot(originalIndex)}
                             className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors"
                             title="Editar este punto"
                           >
@@ -1793,7 +1846,7 @@ export const SchematicDrawer: React.FC<SchematicDrawerProps> = ({
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleRemoveHotspot(idx)}
+                            onClick={() => handleRemoveHotspot(originalIndex)}
                             className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-slate-100 rounded-lg transition-colors"
                             title="Eliminar este punto"
                           >

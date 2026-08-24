@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Layers, Plus, Edit, Trash2, Copy, Tag, Crosshair, Image as ImageIcon, Eye } from 'lucide-react';
+import { Layers, Plus, Edit, Trash2, Copy, Tag, Crosshair, Image as ImageIcon, Eye, ListOrdered } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 import type { ExplodedDiagram, SuzukiModel, SuzukiPart } from '../../types';
 import { AdminSearchInput } from './AdminSearchInput';
 import { DataTable } from './DataTable';
 import type { DataTableColumn } from './DataTable';
+import { SchematicSectionsModal } from './SchematicSectionsModal';
 
 interface SchematicsManagerProps {
   schematics: ExplodedDiagram[];
@@ -40,6 +41,7 @@ export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
 }) => {
   // Local search (independent from the global header search)
   const [localSearch, setLocalSearch] = useState('');
+  const [isSectionsModalOpen, setIsSectionsModalOpen] = useState(false);
 
   const getModelTargetText = (schematic: ExplodedDiagram): string => {
     if (schematic.modelTarget && schematic.modelTarget.trim()) {
@@ -157,10 +159,19 @@ export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
           />
         </div>
 
-        <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
+        <div className="flex items-center gap-3 w-full lg:w-auto justify-end flex-wrap">
           <span className="text-xs text-slate-500 font-mono">
             <strong className="text-slate-900">{schematics.length}</strong> despieces
           </span>
+          <button
+            type="button"
+            onClick={() => setIsSectionsModalOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center gap-1.5 border border-slate-200 transition-all cursor-pointer shadow-xs"
+            title="Organizar el orden de las secciones de la moto"
+          >
+            <ListOrdered className="w-4 h-4 text-[#0A3088]" />
+            <span>Organizar Secciones</span>
+          </button>
           <button
             onClick={onAddSchematic}
             className="px-3.5 py-2 rounded-xl bg-[#E60012] hover:bg-[#b5000b] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-xs transition-all"
@@ -170,6 +181,13 @@ export const SchematicsManager: React.FC<SchematicsManagerProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Modal para organizar y ordenar secciones de la moto */}
+      <SchematicSectionsModal
+        isOpen={isSectionsModalOpen}
+        onClose={() => setIsSectionsModalOpen(false)}
+        schematics={schematics}
+      />
 
       {/* Schematics DataTable with per-column dynamic filters */}
       <DataTable

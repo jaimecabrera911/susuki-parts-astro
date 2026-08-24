@@ -609,6 +609,53 @@ export async function releaseStockReservationApi(params: {
   return json;
 }
 
+export async function fetchSchematicSections() {
+  const res = await fetch('/api/schematic-sections');
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Error cargando secciones de despiece');
+  return (json.data || []) as import('../types').SchematicSection[];
+}
+
+export async function saveSchematicSectionsOrder(sections: import('../types').SchematicSection[]) {
+  const res = await fetch('/api/schematic-sections', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify(sections)
+  });
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Error guardando orden de secciones');
+  return (json.data || []) as import('../types').SchematicSection[];
+}
+
+export async function upsertSchematicSectionApi(section: Partial<import('../types').SchematicSection>) {
+  const isEdit = Boolean(section.id);
+  const res = await fetch('/api/schematic-sections', {
+    method: isEdit ? 'PUT' : 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify(section)
+  });
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Error guardando sección');
+  return json.data;
+}
+
+export async function deleteSchematicSectionApi(id: string) {
+  const res = await fetch(`/api/schematic-sections?id=${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  const json = await res.json();
+  if (!json?.success) throw new Error(json?.error || 'Error eliminando sección');
+  return json;
+}
+
+
 
 
 

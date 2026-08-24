@@ -5,8 +5,8 @@ import { getPrimaryOem, getAvailabilityStatus, AVAILABILITY_META } from '../type
 import {
   Layers, ArrowLeft, Filter, Search, CheckCircle2, AlertTriangle,
   Eye, Info, ChevronRight, X, ArrowRightLeft,
-  ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2,
-  Plus, Minus
+  ZoomIn, ZoomOut, RotateCcw,
+  Plus, Minus, LayoutGrid
 } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 import { FaCartPlus } from 'react-icons/fa6';
@@ -47,20 +47,23 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   const [dbSchematics, setDbSchematics] = useState<ExplodedDiagram[]>(schematicsList || []);
   const [dbParts, setDbParts] = useState<SuzukiPart[]>(partsList || []);
   const [dbModels, setDbModels] = useState<SuzukiModel[]>(modelsList || []);
+  const [dbSections, setDbSections] = useState<import('../types').SchematicSection[]>([]);
 
   useEffect(() => {
     async function loadDbData() {
       try {
-        const [schRes, partRes, modRes] = await Promise.all([
+        const [schRes, partRes, modRes, secRes] = await Promise.all([
           fetch('/api/schematics').then(r => r.json()).catch(() => ({ data: [] })),
           fetch('/api/parts').then(r => r.json()).catch(() => ({ data: [] })),
-          fetch('/api/models').then(r => r.json()).catch(() => ({ data: [] }))
+          fetch('/api/models').then(r => r.json()).catch(() => ({ data: [] })),
+          fetch('/api/schematic-sections').then(r => r.json()).catch(() => ({ data: [] }))
         ]);
         if (schRes?.data?.length > 0) setDbSchematics(schRes.data);
         if (partRes?.data?.length > 0) setDbParts(partRes.data);
         if (modRes?.data?.length > 0) setDbModels(modRes.data);
+        if (secRes?.data?.length > 0) setDbSections(secRes.data);
       } catch (e) {
-        console.error('Error fetching schematics/parts/models from Neon DB:', e);
+        console.error('Error fetching schematics/parts/models/sections from Neon DB:', e);
       }
     }
     loadDbData();
@@ -83,6 +86,7 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   );
   const [selectedPartId, setSelectedPartId] = useState<string | null>(initialPartId ?? null);
   const [activeSection, setActiveSection] = useState<string>('all');
+  const [groupingMode, setGroupingMode] = useState<'flat' | 'grouped'>('flat');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [pinSize, setPinSize] = useState<'large' | 'normal' | 'compact'>('compact');
@@ -217,10 +221,16 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
   const availableSections = useMemo(() => {
     const set = new Set<string>();
     allDiagrams.forEach(d => set.add(getDiagramSection(d)));
-    const canonical = MOTORCYCLE_SECTION_ORDER.filter(s => set.has(s));
+
+    // Usar el orden configurado por el admin en la base de datos (o fallback)
+    const baseOrder = dbSections.length > 0
+      ? dbSections.filter(s => s.active !== false).map(s => s.name)
+      : MOTORCYCLE_SECTION_ORDER;
+
+    const canonical = baseOrder.filter(s => set.has(s));
     const extra = Array.from(set).filter(s => !canonical.includes(s));
     return [...canonical, ...extra];
-  }, [allDiagrams]);
+  }, [allDiagrams, dbSections]);
 
   // Apply motorcycle filter first, then section filter, then search
   const filteredDiagrams = useMemo(() => {
@@ -397,8 +407,38 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
               </p>
             </div>
 
-            <div className="flex items-center gap-2 self-start md:self-auto">
-              <span className="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200">
+            <div className="flex items-center gap-3 self-start md:self-auto flex-wrap">
+              {/* Grouping Mode Switcher Tabs */}
+              <div className="bg-slate-100 p-1 rounded-xl border border-slate-200 flex items-center gap-1 text-xs font-bold shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => setGroupingMode('flat')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    groupingMode === 'flat'
+                      ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-900/5 font-black'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  }`}
+                  title="Mostrar todos los despieces sin agrupar por sección técnica"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5 text-[#E60012]" />
+                  <span>Sin Agrupar</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGroupingMode('grouped')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    groupingMode === 'grouped'
+                      ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-900/5 font-black'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  }`}
+                  title="Organizar diagramas agrupados por su sección técnica (Motor, Chasis, etc.)"
+                >
+                  <Layers className="w-3.5 h-3.5 text-[#0A3088]" />
+                  <span>Por Sección Técnica</span>
+                </button>
+              </div>
+
+              <span className="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-3 py-2 rounded-xl border border-slate-200 shrink-0">
                 {filteredDiagrams.length} / {allDiagrams.length} Diagramas
               </span>
             </div>
@@ -505,11 +545,11 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
             </div>
           </aside>
 
-          {/* Diagrams Grid — grouped by section like the reference catalog */}
+          {/* Diagrams Grid — flat or grouped by section */}
           <div className="flex-1 w-full min-w-0">
             {isLoading ? (
               <DiagramCatalogSkeletonGrid count={6} />
-            ) : groupedBySection.length === 0 ? (
+            ) : filteredDiagrams.length === 0 ? (
               <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
                 <Info className="w-10 h-10 text-slate-400 mx-auto mb-3" aria-hidden="true" />
                 <h3 className="text-base font-bold text-slate-800">Sin diagramas</h3>
@@ -519,7 +559,39 @@ export const ExplodedView: React.FC<ExplodedViewProps> = ({
                     : 'No hay diagramas que coincidan con el filtro actual.'}
                 </p>
               </div>
+            ) : groupingMode === 'flat' ? (
+              /* Flat view without technical section grouping (Default) */
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3 pb-2 mb-1 border-b border-slate-200">
+                  <span className="font-mono text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Vista continua • {filteredDiagrams.length} {filteredDiagrams.length === 1 ? 'despiece' : 'despieces'}
+                  </span>
+                  {activeSection !== 'all' && (
+                    <span className="text-[11px] font-bold text-[#E60012] bg-red-50 border border-red-200 px-2 py-0.5 rounded-md">
+                      Filtrado por: {activeSection}
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
+                  {filteredDiagrams.map(diagram => (
+                    <DiagramCard
+                      key={diagram.id}
+                      diagram={diagram}
+                      onClick={() => {
+                        setSelectedDiagramId(diagram.id);
+                        setSelectedPartId(null);
+                        setViewMode('detail');
+                        if (window.location.pathname !== `/despieces/${diagram.id}`) {
+                          window.history.pushState(null, '', `/despieces/${diagram.id}`);
+                          window.dispatchEvent(new Event('popstate'));
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
             ) : (
+              /* Grouped by technical section view */
               <div className="space-y-10">
                 {groupedBySection.map(group => (
                   <section key={group.section} aria-labelledby={`section-${group.section}`}>

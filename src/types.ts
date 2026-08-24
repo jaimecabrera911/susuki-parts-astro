@@ -376,6 +376,14 @@ export interface ExplodedDiagram {
   }[];
 }
 
+export interface SchematicSection {
+  id: string;
+  name: string;
+  slug?: string | null;
+  order: number;
+  active: boolean;
+}
+
 export interface ActiveMotorcycle {
   brand: string;
   modelId: string;
